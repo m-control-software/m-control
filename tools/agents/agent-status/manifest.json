@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "agent-status",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "name": "AI Agent Status",
   "description": "Dashboard of pending AI coding-agent sessions: Claude Code, Codex CLI, Cursor background agents, GitHub Copilot",
   "runtime": "node",
