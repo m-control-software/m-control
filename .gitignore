@@ -24,5 +24,6 @@ Thumbs.db
 *.swo
 *~
 
-# Cursor cache
-.cursor/
+# Cursor cache (but keep committed project rules)
+.cursor/*
+!.cursor/rules/

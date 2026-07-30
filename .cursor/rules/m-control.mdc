@@ -1,0 +1,40 @@
+---
+description: m-control project rules — architecture, monorepo layout, tool protocol
+alwaysApply: true
+---
+
+# m-control rules (Cursor)
+
+Canonical context lives in the repo docs — read these before changing code:
+
+1. `docs/ai/PROJECT-CONTEXT.md` — product context
+2. `docs/architecture/constraints.md` — hard rules (the constitution)
+3. `docs/architecture/execution-model.md` — Tool Protocol v1 spec
+4. `docs/ai/CODING-GUIDELINES.md` — patterns and naming
+5. `CLAUDE.md` — condensed working rules (shared source of truth)
+
+## Layout (monorepo, Yarn workspaces)
+
+- `packages/core` — runtime engine `@m-control/core`, library only; public API is `src/index.ts`
+- `apps/mctl` — CLI binary, imports `@m-control/core` (never internal paths)
+- `tools/<category>/<id>/` — standalone tool processes, NOT npm packages, any language
+- `templates/node-tool`, `templates/python-tool` — boilerplate for new tools
+
+## Build order
+
+`yarn build` from the repo root (core first, then mctl). Never run
+`yarn install` inside a package directory.
+
+## Tool Protocol v1 (never violate)
+
+- Tool stdout = NDJSON ToolEvent lines ONLY; no raw prints
+- Tool stdin = single JSON ToolRequest, read to EOF before executing
+- Event sequence: `started` → `log`* → `result` | `error`; exit 0/1/≥2
+- Every tool dir has `manifest.json` with `manifestVersion: 1`, `id`, `runtime`, `entry`
+
+## Never
+
+- `console.log` in `packages/` or `apps/` production code (use EventSink)
+- Throw raw `Error` — use the hierarchy from `@m-control/core` (see `.claude/rules/errors.md`)
+- Hardcode paths — use `path.resolve()` or config
+- Change `packages/core` public API without updating `src/index.ts`

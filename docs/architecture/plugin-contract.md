@@ -333,7 +333,7 @@ cat output.json | jq '.success' # Should be true
 
 ### 1. Create from Template
 ```bash
-cp -r templates/tool-boilerplate src/plugins/category/new-tool
+cp -r templates/node-tool tools/<category>/<tool-id>
 ```
 
 ### 2. Edit Manifest

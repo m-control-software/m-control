@@ -165,7 +165,7 @@ throw new ConfigError('configVersion mismatch: expected 1, got 2. Delete ~/.m-co
 
 ## Adding a tool
 
-1. Copy `templates/tool-boilerplate/` to `tools/<category>/<id>/`
+1. Copy `templates/node-tool/` or `templates/python-tool/` to `tools/<category>/<id>/`
 2. Edit `manifest.json` — set `manifestVersion: 1`, `id`, `runtime`, `entry`
 3. Implement the entry file:
    - Read all stdin before executing (JSON ToolRequest)

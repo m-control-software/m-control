@@ -46,6 +46,9 @@ const CONFIG_TEMPLATE: MControlConfig = {
       vaultPath: '',
     },
   },
+  paths: {
+    toolsRoots: [],
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -59,8 +62,11 @@ export function configExists(): boolean {
 /**
  * Write the default config template to the global config path.
  * No-op if the file already exists (preserves user edits).
+ *
+ * @param options.toolsRoots  Pre-fill paths.toolsRoots (e.g. the repo's
+ *                            tools/ dir when initialising from a checkout).
  */
-export function initConfig(): void {
+export function initConfig(options?: { toolsRoots?: string[] }): void {
   const dir = globalConfigDir();
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -68,7 +74,13 @@ export function initConfig(): void {
 
   const p = globalConfigPath();
   if (!fs.existsSync(p)) {
-    fs.writeFileSync(p, JSON.stringify(CONFIG_TEMPLATE, null, 2), 'utf-8');
+    const template: MControlConfig = {
+      ...CONFIG_TEMPLATE,
+      paths: {
+        toolsRoots: options?.toolsRoots ?? [],
+      },
+    };
+    fs.writeFileSync(p, JSON.stringify(template, null, 2), 'utf-8');
   }
 }
 
@@ -98,6 +110,10 @@ export function loadConfig(cwd?: string): MControlConfig {
  * Extract a flat key-value map of config values for a tool.
  * Used to build `RunContext.config` passed to tool processes.
  *
+ * Keys are dot-paths resolved against the `tools` section of the config
+ * (NOT the config root) — tool authors write "azdo.token", not
+ * "tools.azdo.token".
+ *
  * @example
  * extractToolConfig(config, ['azdo.token', 'azdo.organization'])
  * // => { 'azdo.token': 'pat-xxx', 'azdo.organization': 'myorg' }
@@ -110,19 +126,52 @@ export function extractToolConfig(
 
   for (const key of keys) {
     const parts = key.split('.');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let value: any = config;
+    let value: unknown = config.tools;
     for (const part of parts) {
       if (value == null || typeof value !== 'object') {
         value = undefined;
         break;
       }
-      value = value[part];
+      value = (value as Record<string, unknown>)[part];
     }
     result[key] = value;
   }
 
   return result;
+}
+
+/**
+ * Resolve the list of directories to scan for tool manifests.
+ *
+ * Priority (first non-empty source wins):
+ *   1. M_CONTROL_TOOLS_ROOT env var (multiple paths joined with path.delimiter)
+ *   2. config.paths.toolsRoots
+ *   3. fallbackRoots (e.g. repo-relative tools/ during development)
+ *
+ * Missing directories are fine — discovery treats them as empty.
+ */
+export function resolveToolsRoots(
+  config: MControlConfig | undefined,
+  fallbackRoots: string[] = []
+): string[] {
+  const fromEnv = (process.env['M_CONTROL_TOOLS_ROOT'] ?? '')
+    .split(path.delimiter)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+  if (fromEnv.length > 0) {
+    return dedupe(fromEnv.map((p) => path.resolve(p)));
+  }
+
+  const fromConfig = config?.paths?.toolsRoots ?? [];
+  if (fromConfig.length > 0) {
+    return dedupe(fromConfig.map((p) => path.resolve(p)));
+  }
+
+  return dedupe(fallbackRoots.map((p) => path.resolve(p)));
+}
+
+function dedupe(paths: string[]): string[] {
+  return [...new Set(paths)];
 }
 
 /**
@@ -214,8 +263,8 @@ function mergeConfigs(
       ...global.tools,
       // Spread project tools — each tool section is merged at the key level
       ...Object.fromEntries(
-        Object.entries(project.tools).map(([key, projectValue]) => {
-          const globalValue = global.tools[key as keyof typeof global.tools];
+        Object.entries(project.tools ?? {}).map(([key, projectValue]) => {
+          const globalValue = global.tools?.[key];
           return [
             key,
             typeof projectValue === 'object' && typeof globalValue === 'object'
@@ -225,5 +274,13 @@ function mergeConfigs(
         })
       ),
     },
+    // Project paths/runtimes win wholesale when present (no partial merge —
+    // toolsRoots is an ordered list, mixing layers would be surprising).
+    ...((project.paths ?? global.paths)
+      ? { paths: project.paths ?? global.paths }
+      : {}),
+    ...((project.runtimes ?? global.runtimes)
+      ? { runtimes: { ...global.runtimes, ...project.runtimes } }
+      : {}),
   };
 }

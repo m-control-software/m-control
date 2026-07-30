@@ -42,12 +42,21 @@ m-control/
 │           ├── design-review.md
 │           └── write-adr.md
 │
-└── templates/
-    └── tool-boilerplate/        # Copy this when creating a new plugin
-        ├── manifest.json        # Plugin metadata
-        ├── index.ts             # Handler with error handling pattern
-        ├── README.md            # Plugin-specific docs template
-        └── test.spec.ts         # Test structure template
+├── templates/
+│   ├── node-tool/               # Copy for a new Node.js tool (protocol v1)
+│   │   ├── manifest.json
+│   │   ├── index.js             # Plain JS — no build step
+│   │   └── README.md
+│   └── python-tool/             # Copy for a new Python tool (protocol v1)
+│       ├── manifest.json
+│       ├── main.py
+│       └── README.md
+│
+├── .claude/                     # Claude Code
+│   ├── rules/                   # Focused rule files (monorepo, errors, protocol)
+│   └── skills/                  # Project skills (see skills/README.md)
+├── .cursor/rules/               # Cursor rules — thin pointer to docs/
+└── .github/copilot-instructions.md  # Copilot — thin pointer to docs/
 ```
 
 ---
@@ -72,8 +81,11 @@ Technical and product documentation. Organized by *audience* (architecture for e
 ### `docs/ai/PROMPTS/`
 **Reusable prompt recipes.** Don't write the same context paragraph for the 10th time — template it here and reference it.
 
-### `templates/tool-boilerplate/`
-**Copy-paste foundation** for new plugins. Contains working code patterns, not just stubs. Follow the README for how to rename and customize.
+### `templates/node-tool/`, `templates/python-tool/`
+**Copy-paste foundation** for new tools — working Tool Protocol v1 implementations, not just stubs. Copy into `tools/<category>/<id>/`, set the manifest fields, implement.
+
+### `.claude/`, `.cursor/`, `.github/copilot-instructions.md`
+**Per-assistant entry points.** The rules live in `CLAUDE.md` and `docs/` — these files only point there (plus assistant-specific mechanics like skills). Never duplicate a rule into an assistant file; duplicated rules go stale.
 
 ---
 
@@ -82,7 +94,7 @@ Technical and product documentation. Organized by *audience* (architecture for e
 | I want to… | Read… |
 |------------|-------|
 | Start a new AI coding session | `docs/ai/PROJECT-CONTEXT.md` |
-| Add a new plugin | `docs/architecture/plugin-contract.md` + `templates/tool-boilerplate/` |
+| Add a new plugin | `docs/architecture/plugin-contract.md` + `templates/node-tool/` or `templates/python-tool/` |
 | Make an architectural decision | `docs/adr/TEMPLATE.md` + `docs/ai/PROMPTS/write-adr.md` |
 | Understand a hard rule | `docs/architecture/constraints.md` |
 | Review code quality | `docs/ai/CODING-GUIDELINES.md` + `docs/ai/ANTI-PATTERNS.md` |

@@ -33,8 +33,17 @@ jobs:
       - name: Lint
         run: yarn lint
 
+      - name: Test
+        run: yarn test
+
       - name: Build
         run: yarn build
 
       - name: Smoke test
-        run: node apps/mctl/dist/bundle/index.js --help
+        run: |
+          node apps/mctl/dist/bundle/index.js --help
+          node apps/mctl/dist/bundle/index.js init
+          node apps/mctl/dist/bundle/index.js list
+          node apps/mctl/dist/bundle/index.js doctor
+          node apps/mctl/dist/bundle/index.js run hello-world name=CI
+          node apps/mctl/dist/bundle/index.js run hello-python name=CI

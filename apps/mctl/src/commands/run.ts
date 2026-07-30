@@ -1,9 +1,7 @@
-import * as path from 'path';
 import {
   discoverTools,
   loadConfig,
   configExists,
-  initConfig,
   extractToolConfig,
   createEventSink,
   getRunner,
@@ -11,28 +9,31 @@ import {
   ToolInput,
   RunnerOptions,
 } from '@m-control/core';
+import { getToolsRoots } from '../paths';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function findToolsRoot(): string {
-  // __dirname = apps/mctl/dist/commands/ at runtime -> up 4 levels to monorepo root
-  return path.resolve(__dirname, '../../../../tools');
-}
 
 function parseArgs(args: string[]): {
   toolId: string;
   jsonMode: boolean;
   input: ToolInput;
 } {
-  // args = everything after 'run', e.g. ['hello-world', '--json']
+  // args = everything after 'run', e.g. ['hello-world', 'name=Michal', '--json']
   const toolId = args[0];
   const jsonMode = args.includes('--json');
 
-  // Future: parse --input or --key=value pairs here
-  // For now, input is empty — tools use context only
+  // Bare key=value pairs after the tool id become the tool input.
+  // Values are passed as strings — tools coerce as needed.
   const input: ToolInput = {};
+  for (const arg of args.slice(1)) {
+    if (arg.startsWith('--')) continue;
+    const eq = arg.indexOf('=');
+    if (eq > 0) {
+      input[arg.slice(0, eq)] = arg.slice(eq + 1);
+    }
+  }
 
   return { toolId, jsonMode, input };
 }
@@ -43,7 +44,7 @@ function parseArgs(args: string[]): {
 
 export async function runRun(args: string[]): Promise<void> {
   if (!args[0]) {
-    console.error('Usage: mctl run <tool-id> [--json]');
+    console.error('Usage: mctl run <tool-id> [key=value ...] [--json]');
     process.exit(1);
   }
 
@@ -53,10 +54,9 @@ export async function runRun(args: string[]): Promise<void> {
   // Config
   // -------------------------------------------------------------------------
   if (!configExists()) {
-    initConfig();
     console.error(
-      `Config initialised at ~/.m-control/config.json\n` +
-        `Fill in your credentials and run 'mctl run ${toolId}' again.`
+      `No config found. Run 'mctl init' to create ~/.m-control/config.json,\n` +
+        `then run 'mctl run ${toolId}' again.`
     );
     process.exit(1);
   }
@@ -74,8 +74,8 @@ export async function runRun(args: string[]): Promise<void> {
   // -------------------------------------------------------------------------
   // Discovery — find the tool by id
   // -------------------------------------------------------------------------
-  const toolsRoot = findToolsRoot();
-  const { tools, errors: discoveryErrors } = discoverTools(toolsRoot);
+  const toolsRoots = getToolsRoots(config);
+  const { tools, errors: discoveryErrors } = discoverTools(toolsRoots);
 
   for (const { file, error } of discoveryErrors) {
     process.stderr.write(
@@ -99,18 +99,19 @@ export async function runRun(args: string[]): Promise<void> {
     config,
     tool.manifest.requiredConfig ?? []
   );
-  const workspaceRoot = path.resolve(__dirname, '../../../..');
 
   const context: RunContext = {
     toolId,
     config: toolConfig,
-    workspaceRoot,
+    // The directory the user invoked mctl from — tools resolve relative
+    // paths against this, not against the mctl install location.
+    workspaceRoot: process.cwd(),
   };
 
   // -------------------------------------------------------------------------
   // Run
   // -------------------------------------------------------------------------
-  const runner = getRunner(tool.manifest);
+  const runner = getRunner(tool.manifest, config.runtimes);
   const sink = createEventSink(jsonMode);
 
   const runnerOptions: RunnerOptions = {

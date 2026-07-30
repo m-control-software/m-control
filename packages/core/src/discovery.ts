@@ -26,38 +26,55 @@ export interface DiscoveryResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Scan a tools root directory recursively for manifest.json files.
+ * Scan one or more tools root directories recursively for manifest.json files.
  *
  * Structure expected:
  *   <toolsRoot>/<category>/<tool-id>/manifest.json
  *
- * Non-fatal errors (bad manifests) are collected in result.errors.
- * Fatal errors (toolsRoot unreadable) throw DiscoveryError.
+ * Multiple roots: earlier roots win on tool id collisions — the duplicate
+ * is skipped and reported in result.errors.
+ *
+ * Non-fatal errors (bad manifests, duplicates) are collected in
+ * result.errors. Fatal errors (a root exists but is not a directory)
+ * throw DiscoveryError. Missing roots are treated as empty.
  */
-export function discoverTools(toolsRoot: string): DiscoveryResult {
-  if (!fs.existsSync(toolsRoot)) {
-    // Not an error if tools/ doesn't exist yet — return empty
-    return { tools: [], errors: [] };
-  }
+export function discoverTools(toolsRoot: string | string[]): DiscoveryResult {
+  const roots = Array.isArray(toolsRoot) ? toolsRoot : [toolsRoot];
 
-  const stat = fs.statSync(toolsRoot);
-  if (!stat.isDirectory()) {
-    throw new DiscoveryError(`Tools root is not a directory: ${toolsRoot}`);
-  }
-
-  const manifestFiles = findManifests(toolsRoot);
   const tools: DiscoveredTool[] = [];
   const errors: DiscoveryResult['errors'] = [];
+  const seen = new Map<string, string>(); // tool id -> manifest path
 
-  for (const file of manifestFiles) {
-    try {
-      const discovered = loadManifest(file);
-      tools.push(discovered);
-    } catch (err) {
-      errors.push({
-        file,
-        error: err instanceof Error ? err.message : String(err),
-      });
+  for (const root of roots) {
+    if (!fs.existsSync(root)) {
+      // Not an error if a root doesn't exist yet — treat as empty
+      continue;
+    }
+
+    const stat = fs.statSync(root);
+    if (!stat.isDirectory()) {
+      throw new DiscoveryError(`Tools root is not a directory: ${root}`);
+    }
+
+    for (const file of findManifests(root)) {
+      try {
+        const discovered = loadManifest(file);
+        const existing = seen.get(discovered.manifest.id);
+        if (existing) {
+          errors.push({
+            file,
+            error: `duplicate tool id "${discovered.manifest.id}" — already defined by ${existing}`,
+          });
+          continue;
+        }
+        seen.set(discovered.manifest.id, file);
+        tools.push(discovered);
+      } catch (err) {
+        errors.push({
+          file,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
   }
 

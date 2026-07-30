@@ -1,0 +1,11 @@
+{
+  "manifestVersion": 1,
+  "id": "tool-id",
+  "version": "0.1.0",
+  "name": "Tool Display Name",
+  "description": "One-line description shown in mctl list",
+  "runtime": "python",
+  "entry": "main.py",
+  "requiredConfig": [],
+  "tags": []
+}

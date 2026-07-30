@@ -12,6 +12,8 @@
     "lint": "yarn workspaces run lint",
     "format": "yarn workspaces run format",
     "typecheck": "yarn workspaces run typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "dev": "yarn workspace @m-control/mctl dev",
     "clean": "find . -name 'dist' -not -path '*/node_modules/*' -type d | xargs rm -rf"
   },
@@ -26,6 +28,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "prettier": "^3.8.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   }
 }

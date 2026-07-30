@@ -121,7 +121,7 @@ node apps/mctl/dist/bundle/index.js <command>
 
 1. Copy the boilerplate:
    ```bash
-   cp -r templates/tool-boilerplate tools/<category>/<tool-id>
+   cp -r templates/node-tool tools/<category>/<tool-id>   # or templates/python-tool
    ```
 
 2. Edit `tools/<category>/<tool-id>/manifest.json`:

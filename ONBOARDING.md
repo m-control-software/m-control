@@ -74,7 +74,7 @@ m-control/
 │           ├── events.ts      # EventSink interface + ConsoleEventSink + JsonEventSink
 │           └── runner/
 │               ├── index.ts   # getRunner() factory
-│               └── node-runner.ts  # NodeRunner implementation
+│               └── process-runner.ts  # ProcessRunner (all runtimes)
 │
 ├── tools/
 │   └── misc/
@@ -88,7 +88,8 @@ m-control/
 │   └── ai/                    # AI assistant context (PROJECT-CONTEXT.md etc.)
 │
 ├── templates/
-│   └── tool-boilerplate/      # Copy this when creating a new tool
+│   ├── node-tool/             # Copy for new Node.js tools
+│   └── python-tool/           # Copy for new Python tools
 │
 ├── tsconfig.base.json         # Shared TS config (extended by each package)
 └── package.json               # Yarn workspaces root
@@ -207,7 +208,7 @@ interface Runner {
 }
 ```
 
-`NodeRunner` spawns `node <entryPath>`, writes the request to stdin, parses NDJSON from stdout line by line, forwards stderr raw.
+`ProcessRunner` spawns the runtime command for the manifest (e.g. `node <entryPath>`, `python3 <entryPath>`), writes the request to stdin, parses NDJSON from stdout line by line, forwards stderr raw.
 
 Guardrails (all configurable, these are defaults):
 
@@ -240,7 +241,7 @@ Two implementations:
 ## Adding a New Tool
 
 1. Create `tools/<category>/<tool-id>/`
-2. Copy `templates/tool-boilerplate/` as a starting point
+2. Copy `templates/node-tool/` or `templates/python-tool/` as a starting point
 3. Write `manifest.json` — set `id`, `runtime`, `entry`, `requiredConfig`
 4. Implement your tool (reads stdin JSON, emits NDJSON events to stdout)
 5. `mctl list` — verify it appears
@@ -249,7 +250,7 @@ Two implementations:
 No registration step. Discovery is automatic.
 
 **Node tools** — plain `.js`, no TypeScript compilation. Keep dependencies minimal or zero.
-**Other runtimes** — `manifest.json` is the same; runner support for python/dotnet/powershell is not yet implemented (`NotImplementedError` will be thrown).
+**Other runtimes** — `manifest.json` is the same; python, powershell, and dotnet are executed by the same `ProcessRunner`, only the spawn command differs. Interpreters can be overridden per machine via `runtimes` in the config.
 
 ---
 
@@ -292,7 +293,7 @@ Build order matters: `core` must be built before `mctl` (mctl imports from `core
 | `docs/architecture/constraints.md` | Hard rules — read before making architectural decisions |
 | `docs/ai/PROJECT-CONTEXT.md` | Attach to every new AI coding session |
 | `tools/misc/hello-world/index.js` | Reference implementation of Tool Protocol v1 |
-| `templates/tool-boilerplate/` | Copy-paste start for new tools |
+| `templates/node-tool/`, `templates/python-tool/` | Copy-paste start for new tools |
 
 ---
 
@@ -312,11 +313,10 @@ MControlError
 
 ## What's Not Here Yet
 
-- `mctl run` does not yet accept `--input` flags (tool input is always `{}`)
-- Python / .NET / PowerShell runners — `NotImplementedError`
+- Structured `--input` JSON for `mctl run` (bare `key=value` pairs work; values arrive as strings)
 - TUI / interactive mode — removed in this refactor, will return later
 - Auth abstraction, telemetry — intentionally deferred
-- Tests — framework TBD (Jest or Vitest)
+- Per-tool guardrail overrides in the manifest (runner defaults apply to all tools)
 
 ---
 

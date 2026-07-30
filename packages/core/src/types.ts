@@ -231,24 +231,39 @@ export const EXIT_CODES = {
 // ---------------------------------------------------------------------------
 
 /**
+ * A single tool's config section. Tools define their own keys —
+ * the orchestrator treats sections as opaque.
+ */
+export type ToolConfigSection = Record<string, unknown>;
+
+/**
  * Global user config stored at ~/.m-control/config.json.
  * `configVersion` is a literal type for the same reason as manifestVersion.
+ *
+ * `tools` is an OPEN schema on purpose: adding a new tool must never require
+ * a change to @m-control/core. Sections are keyed by tool section name
+ * (usually the manifest id or a shared service name like "azdo").
  */
 export interface MControlConfig {
   /** Schema version. Fail fast if this doesn't match expected version. */
   configVersion: 1;
-  tools: {
-    azdo?: {
-      token: string;
-      organization: string;
-    };
-    k8s?: {
-      defaultContext: string;
-    };
-    obsidian?: {
-      vaultPath: string;
-    };
+  /** Per-tool config sections. Keys referenced by manifest.requiredConfig. */
+  tools: Record<string, ToolConfigSection | undefined>;
+  /** Orchestrator path configuration. */
+  paths?: {
+    /**
+     * Absolute paths to directories scanned for tool manifests.
+     * Required for a globally installed mctl (which has no repo-relative
+     * fallback). Multiple roots supported — later roots are lower priority
+     * when tool ids collide.
+     */
+    toolsRoots?: string[];
   };
+  /**
+   * Per-runtime command overrides, e.g. { "python": "py" } on Windows.
+   * Defaults are chosen per platform by the runner.
+   */
+  runtimes?: Partial<Record<ToolRuntime, string>>;
 }
 
 export const CONFIG_VERSION = 1 as const;

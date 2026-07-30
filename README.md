@@ -23,13 +23,23 @@ m-control/
 ├── packages/core/      # Runtime engine (@m-control/core) — library only
 ├── tools/              # Standalone tool processes (NOT npm packages)
 │   └── misc/
-│       └── hello-world/
-├── templates/          # Boilerplate for new tools
+│       ├── hello-world/    # node reference tool
+│       └── hello-python/   # python reference tool
+├── templates/          # Boilerplate for new tools (node-tool, python-tool)
 ├── docs/               # Architecture docs, ADRs, AI context
-└── scripts/            # install.ps1 (Windows)
+├── scripts/            # install.ps1 (Windows), install.sh (Linux/macOS)
+├── .claude/            # Claude Code rules + project skills
+├── .cursor/            # Cursor rules (thin pointer to docs/)
+└── .github/            # CI + Copilot instructions
 ```
 
 ## Installation
+
+The installers build the repo, copy the single-file bundle to
+`~/.m-control/mctl.js`, put `mctl` (and the `mm` alias) on PATH, and create
+`~/.m-control/config.json` with this checkout's `tools/` directory registered
+as a tools root — so the globally installed `mctl` keeps discovering the
+repo's tools. `git pull` + `./scripts/install.sh` (or `.ps1`) to update.
 
 ### Windows
 
@@ -37,17 +47,31 @@ m-control/
 .\scripts\install.ps1
 ```
 
-This builds the project, copies `apps/mctl/dist/bundle/index.js` to `%USERPROFILE%\.m-control\`, adds `mctl` to PATH, and initializes config.
-
 **Restart your terminal after installation.**
+
+### Linux / macOS
+
+```bash
+./scripts/install.sh
+```
+
+Wrappers go to `~/.local/bin` (override with `M_CONTROL_BIN_DIR`).
 
 ## Usage
 
 ```bash
-mctl list               # list all discovered tools
-mctl run hello-world    # run the hello-world tool
-mctl --help             # show help
+mctl init                        # create ~/.m-control/config.json
+mctl list                        # list all discovered tools
+mctl run hello-world             # run a tool
+mctl run hello-world name=You    # key=value pairs become tool input
+mctl run hello-world --json      # raw NDJSON event passthrough
+mctl doctor                      # diagnose config, discovery, runtimes
+mctl --help                      # show help
 ```
+
+Tools are discovered from, in priority order: the `M_CONTROL_TOOLS_ROOT`
+env var, `paths.toolsRoots` in the config, or the repo's `tools/` directory
+when running from a checkout.
 
 ## Build
 
@@ -71,6 +95,7 @@ node apps/mctl/dist/bundle/index.js --help
 ```bash
 yarn typecheck     # type-check all packages
 yarn lint          # lint all packages
+yarn test          # run Vitest tests
 yarn build         # full build (core then mctl)
 ```
 
@@ -87,10 +112,14 @@ CI runs on both branches. See `CONTRIBUTING.md` for details.
 
 ## Adding a tool
 
-1. Copy `templates/tool-boilerplate/` to `tools/<category>/<id>/`
+1. Copy `templates/node-tool/` or `templates/python-tool/` to `tools/<category>/<id>/`
 2. Edit `manifest.json` — set `id`, `runtime`, `entry`
 3. Implement the entry file following Tool Protocol v1 (NDJSON stdout, JSON stdin)
 4. No registration needed — discovery is automatic
+
+Any language works: `node`, `python`, `powershell`, and `dotnet` runtimes are
+supported out of the box; interpreters can be overridden per machine via
+`runtimes` in the config (e.g. `{ "python": "py" }`).
 
 See `docs/architecture/execution-model.md` for the protocol spec.
 

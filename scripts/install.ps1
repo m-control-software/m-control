@@ -85,13 +85,36 @@ try {
     Write-Host ""
     Write-Host "Initializing configuration..." -ForegroundColor Yellow
     $configPath = "$env:USERPROFILE\.m-control\config.json"
+    $repoToolsRoot = Join-Path $RepoRoot "tools"
+
     if (-not (Test-Path $configPath)) {
-        Copy-Item -Path "$InstallPath\config.template.json" -Destination $configPath -Force
+        # Run init via the bundle INSIDE the repo — it detects the checkout
+        # and pre-fills paths.toolsRoots with the repo tools\ directory.
+        node $mctlBundle init
+        if ($LASTEXITCODE -ne 0) { throw "mctl init failed" }
         Write-Host "OK Config initialized at: $configPath" -ForegroundColor Green
         Write-Host "Edit the config file to add your credentials:" -ForegroundColor Cyan
         Write-Host "  $configPath" -ForegroundColor White
     } else {
-        Write-Host "OK Config already exists, skipping" -ForegroundColor Green
+        Write-Host "OK Config already exists" -ForegroundColor Green
+
+        # Ensure the installed mctl can find this repo's tools: a globally
+        # installed bundle has no repo-relative fallback, it relies on
+        # paths.toolsRoots in the config.
+        $config = Get-Content $configPath -Raw | ConvertFrom-Json
+        if (-not $config.paths) {
+            $config | Add-Member -MemberType NoteProperty -Name "paths" -Value ([pscustomobject]@{ toolsRoots = @() })
+        }
+        if (-not $config.paths.toolsRoots) {
+            $config.paths | Add-Member -MemberType NoteProperty -Name "toolsRoots" -Value @() -Force
+        }
+        if ($config.paths.toolsRoots -notcontains $repoToolsRoot) {
+            $config.paths.toolsRoots = @($config.paths.toolsRoots) + $repoToolsRoot
+            $config | ConvertTo-Json -Depth 10 | Set-Content -Path $configPath -Encoding UTF8
+            Write-Host "OK Registered tools root in config: $repoToolsRoot" -ForegroundColor Green
+        } else {
+            Write-Host "OK Tools root already registered: $repoToolsRoot" -ForegroundColor Green
+        }
     }
 
     Write-Host ""
@@ -99,7 +122,7 @@ try {
     Write-Host ""
     Write-Host "Next steps:" -ForegroundColor Cyan
     Write-Host "  1. Restart your terminal"
-    Write-Host "  2. Run 'mctl --help' to verify"
+    Write-Host "  2. Run 'mctl doctor' to verify the setup"
     Write-Host "  3. Fill in credentials in: $configPath"
     Write-Host ""
 

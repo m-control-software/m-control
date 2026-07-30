@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Multi-runtime execution** — `ProcessRunner` runs all four runtimes (node, python,
+  dotnet, powershell); the runtime only changes the spawn command. Interpreters can be
+  overridden per machine via `runtimes` in the config. See ADR-0006. `hello-python`
+  (`tools/misc/hello-python/`) proves the polyglot pipeline end to end.
+- **Config-driven tool discovery** — tools roots resolve from `M_CONTROL_TOOLS_ROOT`
+  env var → `paths.toolsRoots` in config → repo `tools/` fallback. Fixes the globally
+  installed `mctl` finding no tools (it relied on a repo-relative path). Multiple roots
+  are supported; duplicate tool ids are reported. See ADR-0007.
+- **`mctl init` and `mctl doctor`** — `init` creates the config (registering the repo's
+  `tools/` when run from a checkout); `doctor` diagnoses config validity, tools roots,
+  discovery warnings, and runtime availability, exiting non-zero on failure.
+- **Tool input from the command line** — `mctl run <id> key=value ...` passes bare
+  key=value pairs as the tool's input (values arrive as strings).
+- **Linux/macOS installer** (`scripts/install.sh`) — mirrors `install.ps1`: builds,
+  copies the bundle to `~/.m-control`, creates `mctl`/`mm` wrappers in `~/.local/bin`,
+  and registers the repo tools root in the config.
+- **Vitest test suite** for `@m-control/core` (discovery, config, spawn-command
+  resolution) wired into `yarn test` and CI. See ADR-0008.
+- **AI assistant structure** — `.claude/skills/` for Claude Code project skills,
+  `.cursor/rules/m-control.mdc` for Cursor, `.github/copilot-instructions.md` for
+  Copilot. Assistant files are thin pointers; `CLAUDE.md` + `docs/` stay canonical.
+
+### Changed
+
+- **Open config schema** — `MControlConfig.tools` is now `Record<string, section>`;
+  adding a tool never requires a change to `@m-control/core`. Existing configs remain
+  valid (`configVersion` stays 1).
+- **`extractToolConfig` resolves `requiredConfig` keys against the `tools` section**
+  (previously resolved against the config root, so every key came back undefined).
+- **`workspaceRoot` is now the invoking directory** (`process.cwd()`), not the mctl
+  install location.
+- **Tool templates rewritten** — `templates/node-tool/` and `templates/python-tool/`
+  replace the pre-monorepo `templates/tool-boilerplate/`, which produced tools that
+  failed manifest validation.
+
+### Removed
+
+- `docs/00-DOCS-STRUCTURE.md` (stale duplicate of root `DOCS-STRUCTURE.md`) and
+  `.cursorrules` (described the pre-monorepo architecture).
+
 ### Planned
 - AZDO PR review tool (Claude-powered)
 - Kubernetes pod inspector

@@ -1,22 +1,22 @@
 import { ResolvedTool, Runner, ToolManifest } from '../types';
-import { NotImplementedError } from '../errors';
-import { NodeRunner } from './node-runner';
+import { ProcessRunner, RuntimeCommandOverrides } from './process-runner';
 
+export { ProcessRunner, resolveSpawnCommand } from './process-runner';
+export type { RuntimeCommandOverrides, SpawnCommand } from './process-runner';
 export { NodeRunner } from './node-runner';
 
 /**
  * Get the appropriate Runner for a given tool manifest.
- * Throws NotImplementedError for runtimes not yet supported.
+ *
+ * All supported runtimes are executed by ProcessRunner — the runtime only
+ * changes the spawn command. `overrides` (from config.runtimes) lets users
+ * point a runtime at a specific interpreter (e.g. { python: 'py' }).
  */
-export function getRunner(manifest: ToolManifest): Runner {
-  switch (manifest.runtime) {
-    case 'node':
-      return new NodeRunner();
-    case 'python':
-    case 'dotnet':
-    case 'powershell':
-      throw new NotImplementedError(manifest.runtime);
-  }
+export function getRunner(
+  _manifest: ToolManifest,
+  overrides?: RuntimeCommandOverrides
+): Runner {
+  return new ProcessRunner(overrides);
 }
 
 // Re-export ResolvedTool for convenience (used in mctl run)

@@ -25,19 +25,33 @@ yarn build            # runs both in correct order
 - TypeScript strict mode, Node 18+, Yarn workspaces
 - `tsconfig.base.json` at root, extended by each package
 - ESLint + Prettier (configs at root)
-- No test framework yet — TBD (Jest or Vitest)
+- Vitest for tests (`yarn test` from root; tests in `packages/*/test/`)
 
 ## Key Contracts
 - Every tool needs `manifest.json` with `manifestVersion: 1`, `id`, `runtime`, `entry`
 - Tool stdout = ONLY NDJSON ToolEvent lines. Never raw console.log to stdout in tools.
 - Tool stdin = single JSON ToolRequest, read to EOF before executing
 - `packages/core/src/types.ts` is the source of truth for all interfaces
+- All runtimes (node/python/dotnet/powershell) run via `ProcessRunner`; the
+  runtime only changes the spawn command (`resolveSpawnCommand`)
+- Config is an OPEN schema: new tools add sections under `tools.*` in
+  `~/.m-control/config.json` — never add tool-specific types to core
+- Tools are discovered from: `M_CONTROL_TOOLS_ROOT` env > `paths.toolsRoots`
+  in config > repo `tools/` fallback (dev only)
 
 ## Adding a Tool
 1. Create `tools/<category>/<id>/` with `manifest.json` + entry file
 2. No registration — discovery is automatic (`discoverTools()`)
-3. Copy `templates/tool-boilerplate/` as starting point
-4. Node tools: plain `.js`, no build step, no TS
+3. Copy `templates/node-tool/` or `templates/python-tool/` as starting point
+4. Node tools: plain `.js`, no build step, no TS. Python tools: stdlib-only
+   preferred, `main.py` entry.
+
+## AI Assistant Files
+- `CLAUDE.md` + `docs/` are the canonical rules; per-assistant files
+  (`.cursor/rules/`, `.github/copilot-instructions.md`) are thin pointers —
+  update the canonical docs, not the pointers
+- Claude Code project skills live in `.claude/skills/<name>/SKILL.md`
+  (see `.claude/skills/README.md`)
 
 ## ADR
 Write ADR in `docs/adr/` for any architectural decision. Use `docs/adr/TEMPLATE.md`.

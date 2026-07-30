@@ -1,22 +1,11 @@
-import * as path from 'path';
 import { discoverTools, DiscoveryResult } from '@m-control/core';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function findToolsRoot(): string {
-  // Resolve tools/ relative to the monorepo root.
-  // __dirname = apps/mctl/dist/commands/ at runtime → go up 4 levels.
-  // In ts-node (dev) __dirname = apps/mctl/src/commands/ → same depth.
-  return path.resolve(__dirname, '../../../../tools');
-}
+import { getToolsRoots, tryLoadConfig } from '../paths';
 
 // ---------------------------------------------------------------------------
 // Formatting
 // ---------------------------------------------------------------------------
 
-function renderList(result: DiscoveryResult): void {
+function renderList(result: DiscoveryResult, roots: string[]): void {
   if (result.errors.length > 0) {
     for (const { file, error } of result.errors) {
       process.stderr.write(
@@ -27,7 +16,13 @@ function renderList(result: DiscoveryResult): void {
 
   if (result.tools.length === 0) {
     console.log('No tools found.\n');
-    console.log(`Expected manifests in: ${findToolsRoot()}`);
+    console.log('Searched tools roots:');
+    for (const root of roots) {
+      console.log(`  ${root}`);
+    }
+    if (roots.length === 0) {
+      console.log('  (none — run mctl init or set paths.toolsRoots in config)');
+    }
     return;
   }
 
@@ -81,7 +76,17 @@ function renderList(result: DiscoveryResult): void {
 // ---------------------------------------------------------------------------
 
 export function runList(): void {
-  const toolsRoot = findToolsRoot();
-  const result = discoverTools(toolsRoot);
-  renderList(result);
+  // Config is optional for list — without it we fall back to the repo tools/
+  let config;
+  try {
+    config = tryLoadConfig();
+  } catch (err) {
+    process.stderr.write(
+      `[warn] ignoring invalid config: ${err instanceof Error ? err.message : String(err)}\n`
+    );
+  }
+
+  const roots = getToolsRoots(config);
+  const result = discoverTools(roots);
+  renderList(result, roots);
 }

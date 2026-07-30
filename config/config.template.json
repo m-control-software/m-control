@@ -11,5 +11,8 @@
     "obsidian": {
       "vaultPath": ""
     }
+  },
+  "paths": {
+    "toolsRoots": []
   }
 }

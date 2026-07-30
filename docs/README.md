@@ -25,7 +25,6 @@ Welcome to the m-control documentation. This guide will help you navigate the do
 ```
 docs/
 ├── README.md                    👈 You are here
-├── 00-DOCS-STRUCTURE.md         📋 Meta-docs (how docs work)
 ├── VISION.md                    🎯 Product north star
 │
 ├── adr/                         📝 Architecture Decision Records
@@ -67,7 +66,7 @@ docs/
 - [Prompt Templates](ai/PROMPTS/)
 
 ### For Understanding Docs
-- [Documentation Structure Guide](00-DOCS-STRUCTURE.md) - Meta-documentation
+- [Documentation Structure Guide (DOCS-STRUCTURE.md)](../DOCS-STRUCTURE.md) - Meta-documentation
 
 ## 🔍 Finding What You Need
 
@@ -90,7 +89,7 @@ docs/
 → [ai/PROJECT-CONTEXT.md](ai/PROJECT-CONTEXT.md)
 
 ### "I don't know how the docs are organized"
-→ [00-DOCS-STRUCTURE.md](00-DOCS-STRUCTURE.md)
+→ [DOCS-STRUCTURE.md](../DOCS-STRUCTURE.md)
 
 ## 📝 Contributing to Docs
 
@@ -107,7 +106,7 @@ docs/
 3. **Living:** Update when changes happen, not after
 4. **Why Over What:** Code shows what, docs explain why
 
-See [00-DOCS-STRUCTURE.md](00-DOCS-STRUCTURE.md#-documentation-principles) for details.
+See [DOCS-STRUCTURE.md](../DOCS-STRUCTURE.md) for details.
 
 ## 🗺️ Documentation Roadmap
 
@@ -132,6 +131,6 @@ See [00-DOCS-STRUCTURE.md](00-DOCS-STRUCTURE.md#-documentation-principles) for d
 ---
 
 **Questions about documentation?**  
-See [00-DOCS-STRUCTURE.md](00-DOCS-STRUCTURE.md) or update this README to answer common questions.
+See [DOCS-STRUCTURE.md](../DOCS-STRUCTURE.md) or update this README to answer common questions.
 
 **Last updated:** 2025-02-18

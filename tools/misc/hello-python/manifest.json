@@ -1,0 +1,11 @@
+{
+  "manifestVersion": 1,
+  "id": "hello-python",
+  "version": "0.1.0",
+  "name": "Hello Python",
+  "description": "Sanity-check tool — verifies the python runtime pipeline end to end",
+  "runtime": "python",
+  "entry": "main.py",
+  "requiredConfig": [],
+  "tags": ["misc", "debug"]
+}
