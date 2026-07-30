@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`agent-status` tool** (`tools/agents/agent-status/`) — one dashboard for pending
+  AI coding-agent sessions across providers: local Claude Code and Codex CLI session
+  logs, Cursor background agents (API), and GitHub Copilot coding-agent PRs (API).
+  Reports who is `awaiting-input` vs `working` vs `failed`; providers without config
+  or local data are skipped gracefully. Optional config lives under
+  `tools.agent-status` (Cursor API key, GitHub token). First real tool in the
+  `tools/agents/` category.
+
 - **Multi-runtime execution** — `ProcessRunner` runs all four runtimes (node, python,
   dotnet, powershell); the runtime only changes the spawn command. Interpreters can be
   overridden per machine via `runtimes` in the config. See ADR-0006. `hello-python`

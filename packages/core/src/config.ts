@@ -45,6 +45,13 @@ const CONFIG_TEMPLATE: MControlConfig = {
     obsidian: {
       vaultPath: '',
     },
+    'agent-status': {
+      cursorApiKey: '',
+      githubToken: '',
+      githubOwners: '',
+      claudeProjectsDir: '',
+      codexSessionsDir: '',
+    },
   },
   paths: {
     toolsRoots: [],
