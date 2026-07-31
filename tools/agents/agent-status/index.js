@@ -284,10 +284,17 @@ async function readSessionRegistry() {
 let sqliteModule; // undefined = not probed, null = unavailable in-process
 function getSqliteInProcess() {
   if (sqliteModule === undefined) {
+    // Silence the ExperimentalWarning that requiring node:sqlite prints to
+    // stderr — it shows up in every mctl run otherwise. The warning fires on
+    // nextTick, so restore the default listeners one tick later.
+    const prev = process.rawListeners('warning');
+    process.removeAllListeners('warning');
     try {
       sqliteModule = require('node:sqlite');
     } catch {
       sqliteModule = null;
+    } finally {
+      setImmediate(() => prev.forEach((l) => process.on('warning', l)));
     }
   }
   return sqliteModule;
@@ -636,13 +643,16 @@ async function scanCursorIde(config, opts, sys) {
 
   const cursorProcs = sys.procs ? sys.procs.filter((p) => CURSOR_CMD_RE.test(p.cmd)) : null;
   const cursorRunning = cursorProcs === null ? null : cursorProcs.length > 0;
+  const dbg = (msg) => opts.debug && log('info', `[cursor-ide debug] ${msg}`);
+  dbg(`userDir=${userDir} · cursorRunning=${cursorRunning === null ? 'unknown (scan failed)' : cursorRunning}`);
 
   // Collect recent composers across workspaces.
   const composers = []; // { id, name, lastUpdatedAt, folder }
   try {
     const wsRoot = path.join(userDir, 'workspaceStorage');
-    for (const ws of await listDir(wsRoot)) {
-      if (!ws.isDirectory()) continue;
+    const wsEntries = (await listDir(wsRoot)).filter((e) => e.isDirectory());
+    dbg(`${wsEntries.length} workspaceStorage dirs`);
+    for (const ws of wsEntries) {
       const wsDir = path.join(wsRoot, ws.name);
       const db = path.join(wsDir, 'state.vscdb');
       const stat = await safeStat(db);
@@ -673,9 +683,14 @@ async function scanCursorIde(config, opts, sys) {
         }
         continue; // this workspace's db is unreadable right now — skip it
       }
-      if (!rows[0]) continue;
+      if (!rows[0]) {
+        dbg(`${ws.name}: no composer.composerData key`);
+        continue;
+      }
       try {
-        for (const c of JSON.parse(sqliteText(rows[0].value)).allComposers ?? []) {
+        const all = JSON.parse(sqliteText(rows[0].value)).allComposers ?? [];
+        dbg(`${ws.name} (${folder}): ${all.length} composers in workspace db`);
+        for (const c of all) {
           const ts = Number(c.lastUpdatedAt ?? c.createdAt ?? 0);
           if (!ts || Date.now() - ts > opts.maxAgeMs) continue;
           composers.push({ id: String(c.composerId), name: c.name || '', lastUpdatedAt: ts, folder });
@@ -686,6 +701,46 @@ async function scanCursorIde(config, opts, sys) {
     }
   } catch (err) {
     return { provider, ok: false, reason: `failed to read Cursor state: ${err.message}`, agents: [] };
+  }
+
+  // Newer Cursor builds register chats only in the global store, not in the
+  // workspace ItemTable — scan cursorDiskKV directly for anything we missed.
+  // substr() keeps this cheap: timestamps/name live at the head of the JSON,
+  // and full conversations (potentially MBs) are never pulled here.
+  const globalDb = path.join(userDir, 'globalStorage', 'state.vscdb');
+  try {
+    const known = new Set(composers.map((c) => c.id));
+    const rows = await querySqlite(
+      globalDb,
+      "SELECT key, substr(value, 1, 4096) AS head FROM cursorDiskKV WHERE key LIKE 'composerData:%'"
+    );
+    dbg(`global store: ${rows.length} composerData entries`);
+    let added = 0;
+    for (const row of rows) {
+      const id = sqliteText(row.key).slice('composerData:'.length);
+      if (known.has(id)) continue;
+      const head = sqliteText(row.head);
+      const ts = Number(
+        (head.match(/"lastUpdatedAt"\s*:\s*(\d+)/) || [])[1] ||
+          (head.match(/"createdAt"\s*:\s*(\d+)/) || [])[1] ||
+          0
+      );
+      if (!ts || Date.now() - ts > opts.maxAgeMs) continue;
+      let name = '';
+      const m = head.match(/"name"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      if (m) {
+        try {
+          name = JSON.parse(`"${m[1]}"`);
+        } catch {
+          /* keep empty */
+        }
+      }
+      composers.push({ id, name, lastUpdatedAt: ts, folder: 'Cursor' });
+      added++;
+    }
+    dbg(`global store: ${added} recent composers not listed in any workspace db`);
+  } catch (err) {
+    dbg(`global store scan failed: ${err.message}`);
   }
 
   // One lookup in the global conversation store to see who spoke last.
@@ -923,6 +978,7 @@ function parseOptions(input) {
     activeMs: (Number.isFinite(activeSeconds) ? activeSeconds : 120) * 1_000,
     httpTimeoutMs: 10_000,
     showIdle: String(input.showIdle ?? '') === 'true',
+    debug: String(input.debug ?? '') === 'true',
     maxPerProvider: 50,
   };
 }
@@ -965,6 +1021,12 @@ async function main() {
   // One process-list snapshot shared by the local providers for liveness checks.
   const needsLocal = opts.providers.some((p) => LOCAL_PROVIDERS.includes(p));
   const sys = { procs: needsLocal ? await listProcesses() : null };
+  if (opts.debug && needsLocal) {
+    log(
+      'info',
+      `[debug] process scan: ${sys.procs === null ? 'FAILED — liveness checks degraded' : `${sys.procs.length} processes`}`
+    );
+  }
 
   const results = await Promise.all(
     opts.providers.map((p) => PROVIDERS[p](config, opts, sys))

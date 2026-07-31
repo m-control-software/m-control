@@ -14,6 +14,7 @@ mctl run agent-status                          # all providers, last 24h
 mctl run agent-status providers=claude-code,cursor
 mctl run agent-status maxAgeHours=8            # narrower window
 mctl run agent-status showIdle=true            # include stale/abandoned sessions
+mctl run agent-status debug=true               # provider-level diagnostics (what was scanned/found)
 mctl run agent-status --json                   # raw NDJSON for scripting/widgets
 
 # Poor man's live widget:
