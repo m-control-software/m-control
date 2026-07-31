@@ -26,7 +26,7 @@ const os = require('os');
 
 const TOOL_ID = 'agent-status';
 
-const ALL_PROVIDERS = ['claude-code', 'codex', 'cursor', 'copilot'];
+const ALL_PROVIDERS = ['claude-code', 'codex', 'cursor', 'cursor-ide', 'copilot'];
 
 // Status vocabulary (ordered by how much the user cares):
 //   awaiting-input — the agent finished and is waiting on you (the money shot)
@@ -274,6 +274,61 @@ async function readSessionRegistry() {
   return { present: false, sessions: {} };
 }
 
+// ---------------------------------------------------------------------------
+// SQLite access (for Cursor IDE local state) — no dependencies
+// ---------------------------------------------------------------------------
+// node:sqlite ships with Node >=22.5 (unflagged in recent 22.x/23.4+). Prefer
+// the in-process module; fall back to re-spawning ourselves with
+// --experimental-sqlite for Node versions where it is still flag-gated.
+
+let sqliteModule; // undefined = not probed, null = unavailable in-process
+function getSqliteInProcess() {
+  if (sqliteModule === undefined) {
+    try {
+      sqliteModule = require('node:sqlite');
+    } catch {
+      sqliteModule = null;
+    }
+  }
+  return sqliteModule;
+}
+
+function querySqliteSync(dbPath, sql, params) {
+  const sqlite = getSqliteInProcess();
+  if (!sqlite) throw Object.assign(new Error('node:sqlite unavailable'), { code: 'NO_SQLITE' });
+  const db = new sqlite.DatabaseSync(dbPath, { readOnly: true });
+  try {
+    return db.prepare(sql).all(...params);
+  } finally {
+    db.close();
+  }
+}
+
+/** Query a SQLite db, tolerating flag-gated node:sqlite and busy/locked files. */
+async function querySqlite(dbPath, sql, params = []) {
+  try {
+    return querySqliteSync(dbPath, sql, params);
+  } catch (err) {
+    if (err.code === 'NO_SQLITE') {
+      // Older Node: re-exec this script in helper mode with the flag.
+      const out = await execFileP(
+        process.execPath,
+        ['--experimental-sqlite', __filename, '--sqlite-helper', dbPath, sql, JSON.stringify(params)],
+        { timeout: 15_000, maxBuffer: 64 * 1024 * 1024, encoding: 'utf-8', windowsHide: true }
+      );
+      return JSON.parse(out);
+    }
+    // Likely SQLITE_BUSY while the app is writing — retry against a temp copy.
+    const tmp = path.join(os.tmpdir(), `agent-status-${process.pid}-${Date.now()}.vscdb`);
+    try {
+      await fs.copyFile(dbPath, tmp);
+      return querySqliteSync(tmp, sql, params);
+    } finally {
+      await fs.rm(tmp, { force: true }).catch(() => {});
+    }
+  }
+}
+
 /** Drop registry entries whose process died without a SessionEnd hook firing. */
 async function pruneSessionRegistry(deadIds) {
   if (deadIds.length === 0) return;
@@ -500,10 +555,202 @@ async function fetchCursor(config, opts) {
         url: (a.target && a.target.url) || a.url || undefined,
       });
     }
-    return { provider, ok: true, agents };
+    const hints = [];
+    if (agents.length === 0) {
+      hints.push(
+        'cursor API is reachable but lists 0 cloud Background Agents — chats inside the ' +
+          'Cursor desktop IDE are covered by the cursor-ide provider instead'
+      );
+    }
+    return { provider, ok: true, agents, hints };
   } catch (err) {
     return { provider, ok: false, reason: `Cursor API error: ${err.message}`, agents: [] };
   }
+}
+
+// ---------------------------------------------------------------------------
+// cursor-ide — chats/agents inside the Cursor desktop app (local SQLite state)
+// ---------------------------------------------------------------------------
+// Cursor has no public API for IDE sessions; it persists them locally:
+//   <User>/workspaceStorage/<hash>/workspace.json     -> which folder
+//   <User>/workspaceStorage/<hash>/state.vscdb        -> composer list (ItemTable)
+//   <User>/globalStorage/state.vscdb                  -> conversations (cursorDiskKV)
+// Message types in conversations: 1 = user, 2 = assistant.
+
+const CURSOR_CMD_RE = /(?:^|[\\/\s"'=])cursor(?:\.exe|\.cmd|\.AppImage)?(?:["'\s]|$)/i;
+
+function cursorUserDir(config) {
+  const override = config['agent-status.cursorIdeDir'];
+  if (override) return String(override);
+  if (process.platform === 'win32') {
+    const appData =
+      process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+    return path.join(appData, 'Cursor', 'User');
+  }
+  if (process.platform === 'darwin') {
+    return path.join(os.homedir(), 'Library', 'Application Support', 'Cursor', 'User');
+  }
+  return path.join(os.homedir(), '.config', 'Cursor', 'User');
+}
+
+function fileUriToPath(uri) {
+  try {
+    const u = new URL(uri);
+    if (u.protocol !== 'file:') return uri;
+    let p = decodeURIComponent(u.pathname);
+    if (/^\/[a-zA-Z]:/.test(p)) p = p.slice(1); // windows /C:/...
+    return process.platform === 'win32' ? p.replace(/\//g, '\\') : p;
+  } catch {
+    return uri;
+  }
+}
+
+/** vscdb value columns are BLOB-typed — rows may come back as text or bytes. */
+function sqliteText(value) {
+  if (typeof value === 'string') return value;
+  if (value instanceof Uint8Array) return Buffer.from(value).toString('utf-8');
+  return String(value);
+}
+
+/** 1 = user, 2 = assistant, null = unknown. */
+function lastBubbleType(composerJson) {
+  const list = Array.isArray(composerJson.conversation)
+    ? composerJson.conversation
+    : Array.isArray(composerJson.fullConversationHeadersOnly)
+      ? composerJson.fullConversationHeadersOnly
+      : [];
+  for (let i = list.length - 1; i >= 0; i--) {
+    const t = list[i] && list[i].type;
+    if (t === 1 || t === 2) return t;
+  }
+  return null;
+}
+
+async function scanCursorIde(config, opts, sys) {
+  const provider = 'cursor-ide';
+  const userDir = cursorUserDir(config);
+
+  if (!(await safeStat(userDir))) {
+    return { provider, ok: false, reason: `Cursor desktop not found (${userDir} missing)`, agents: [] };
+  }
+
+  const cursorProcs = sys.procs ? sys.procs.filter((p) => CURSOR_CMD_RE.test(p.cmd)) : null;
+  const cursorRunning = cursorProcs === null ? null : cursorProcs.length > 0;
+
+  // Collect recent composers across workspaces.
+  const composers = []; // { id, name, lastUpdatedAt, folder }
+  try {
+    const wsRoot = path.join(userDir, 'workspaceStorage');
+    for (const ws of await listDir(wsRoot)) {
+      if (!ws.isDirectory()) continue;
+      const wsDir = path.join(wsRoot, ws.name);
+      const db = path.join(wsDir, 'state.vscdb');
+      const stat = await safeStat(db);
+      if (!stat || Date.now() - stat.mtimeMs > opts.maxAgeMs) continue;
+
+      let folder = ws.name;
+      try {
+        const meta = JSON.parse(await fs.readFile(path.join(wsDir, 'workspace.json'), 'utf-8'));
+        if (meta.folder) folder = fileUriToPath(meta.folder);
+      } catch {
+        /* workspace.json optional */
+      }
+
+      let rows;
+      try {
+        rows = await querySqlite(
+          db,
+          "SELECT value FROM ItemTable WHERE key = 'composer.composerData'"
+        );
+      } catch (err) {
+        if (err.code === 'NO_SQLITE' || /unknown or not supported|bad option/i.test(String(err.message))) {
+          return {
+            provider,
+            ok: false,
+            reason: 'reading Cursor IDE state needs Node >= 22.5 (node:sqlite)',
+            agents: [],
+          };
+        }
+        continue; // this workspace's db is unreadable right now — skip it
+      }
+      if (!rows[0]) continue;
+      try {
+        for (const c of JSON.parse(sqliteText(rows[0].value)).allComposers ?? []) {
+          const ts = Number(c.lastUpdatedAt ?? c.createdAt ?? 0);
+          if (!ts || Date.now() - ts > opts.maxAgeMs) continue;
+          composers.push({ id: String(c.composerId), name: c.name || '', lastUpdatedAt: ts, folder });
+        }
+      } catch {
+        /* malformed composer blob — skip workspace */
+      }
+    }
+  } catch (err) {
+    return { provider, ok: false, reason: `failed to read Cursor state: ${err.message}`, agents: [] };
+  }
+
+  // One lookup in the global conversation store to see who spoke last.
+  const lastTypeById = new Map();
+  if (composers.length > 0) {
+    try {
+      const keys = composers.map((c) => `composerData:${c.id}`);
+      const rows = await querySqlite(
+        path.join(userDir, 'globalStorage', 'state.vscdb'),
+        `SELECT key, value FROM cursorDiskKV WHERE key IN (${keys.map(() => '?').join(',')})`,
+        keys
+      );
+      for (const row of rows) {
+        try {
+          lastTypeById.set(
+            sqliteText(row.key).replace('composerData:', ''),
+            lastBubbleType(JSON.parse(sqliteText(row.value)))
+          );
+        } catch {
+          /* single bad row — leave unknown */
+        }
+      }
+    } catch {
+      /* global store unreadable — statuses degrade to idle/working below */
+    }
+  }
+
+  const agents = [];
+  for (const c of composers) {
+    const ageMs = Date.now() - c.lastUpdatedAt;
+    const last = lastTypeById.get(c.id) ?? null;
+    let status;
+    let detail;
+    let verified = false;
+
+    if (cursorRunning === false) {
+      status = 'idle';
+      detail = 'session closed (Cursor desktop is not running)';
+      verified = true;
+    } else if (ageMs < opts.activeMs) {
+      status = 'working';
+      detail = 'Cursor agent active right now';
+      verified = cursorRunning === true;
+    } else if (last === 2) {
+      status = 'awaiting-input';
+      detail = 'agent replied in Cursor IDE — unverified';
+    } else if (last === 1) {
+      status = 'idle';
+      detail = 'last message is yours — likely interrupted';
+    } else {
+      status = 'idle';
+      detail = 'inactive Cursor IDE chat';
+    }
+
+    agents.push({
+      provider,
+      id: c.id.slice(0, 8),
+      title: c.name ? `${c.folder} — ${c.name}` : c.folder,
+      status,
+      detail,
+      verified,
+      lastActivity: toIso(c.lastUpdatedAt),
+    });
+  }
+  return { provider, ok: true, agents };
 }
 
 async function fetchCopilot(config, opts) {
@@ -573,8 +820,11 @@ const PROVIDERS = {
   'claude-code': scanClaudeCode,
   codex: scanCodex,
   cursor: fetchCursor,
+  'cursor-ide': scanCursorIde,
   copilot: fetchCopilot,
 };
+
+const LOCAL_PROVIDERS = ['claude-code', 'codex', 'cursor-ide'];
 
 // ---------------------------------------------------------------------------
 // setup=claude-hooks — install/remove the lifecycle hooks in ~/.claude/settings.json
@@ -713,7 +963,7 @@ async function main() {
   }
 
   // One process-list snapshot shared by the local providers for liveness checks.
-  const needsLocal = opts.providers.some((p) => p === 'claude-code' || p === 'codex');
+  const needsLocal = opts.providers.some((p) => LOCAL_PROVIDERS.includes(p));
   const sys = { procs: needsLocal ? await listProcesses() : null };
 
   const results = await Promise.all(
@@ -782,6 +1032,23 @@ async function main() {
 
   result({ generatedAt: new Date().toISOString(), summary, providers, agents });
   process.exit(0);
+}
+
+// Helper mode: `node --experimental-sqlite index.js --sqlite-helper <db> <sql> <paramsJson>`
+// Used when node:sqlite is flag-gated in the host Node. Prints raw JSON rows —
+// this is a subprocess of the tool itself, not a Tool Protocol endpoint.
+if (process.argv[2] === '--sqlite-helper') {
+  try {
+    const [, , , dbPath, sql, paramsJson] = process.argv;
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync(dbPath, { readOnly: true });
+    process.stdout.write(JSON.stringify(db.prepare(sql).all(...JSON.parse(paramsJson))));
+    db.close();
+    process.exit(0);
+  } catch (err) {
+    process.stderr.write(String(err.message));
+    process.exit(1);
+  }
 }
 
 main().catch((err) => {

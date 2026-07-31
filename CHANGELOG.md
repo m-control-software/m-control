@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`agent-status` v0.3: `cursor-ide` provider** — sessions inside the Cursor
+  desktop app now show up. The Cursor API only lists cloud Background Agents, so
+  IDE chats are read from Cursor's local SQLite state (`workspaceStorage` +
+  `globalStorage` `state.vscdb`, via dependency-free `node:sqlite` with a
+  `--experimental-sqlite` re-exec fallback): last speaker determines
+  awaiting-input vs idle, and a process scan demotes everything to closed when
+  Cursor isn't running. The cloud `cursor` provider now explains itself when it
+  returns 0 agents.
+
 - **`agent-status` v0.2: verified liveness** — statuses are no longer log-file
   guesses. `mctl run agent-status setup=claude-hooks` installs Claude Code
   lifecycle hooks (SessionStart/UserPromptSubmit/Stop/Notification/SessionEnd)
