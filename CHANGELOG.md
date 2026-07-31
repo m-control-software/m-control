@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`agent-status` v0.2: verified liveness** — statuses are no longer log-file
+  guesses. `mctl run agent-status setup=claude-hooks` installs Claude Code
+  lifecycle hooks (SessionStart/UserPromptSubmit/Stop/Notification/SessionEnd)
+  that maintain a live-session registry (`~/.m-control/state/claude-sessions.json`)
+  with PIDs; the tool verifies each PID on every run, so closed/killed terminals
+  report as closed instead of `awaiting-input`, and stale registry entries are
+  pruned. Without hooks, a process scan guarantees nothing is reported as
+  `awaiting-input` when no `claude`/`codex` process is running. Agents now carry
+  a `verified` flag; unverified statuses are marked in the output.
+
 - **`agent-status` tool** (`tools/agents/agent-status/`) — one dashboard for pending
   AI coding-agent sessions across providers: local Claude Code and Codex CLI session
   logs, Cursor background agents (API), and GitHub Copilot coding-agent PRs (API).

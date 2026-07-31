@@ -184,6 +184,110 @@ function toIso(ms) {
   return new Date(ms).toISOString();
 }
 
+// ---------------------------------------------------------------------------
+// Liveness: hook registry + process scan
+// ---------------------------------------------------------------------------
+// JSONL heuristics cannot tell "agent replied, waiting for you" apart from
+// "terminal was closed" — the log file looks identical. Two extra signals fix
+// that:
+//   1. A live-session registry maintained by Claude Code lifecycle hooks
+//      (install once: `mctl run agent-status setup=claude-hooks`). Ground truth.
+//   2. A process scan: if no claude/codex process is running at all, nothing
+//      can be awaiting input — stale "awaiting-input" gets demoted to closed.
+
+const STATE_DIR =
+  process.env.M_CONTROL_STATE_DIR || path.join(os.homedir(), '.m-control', 'state');
+const REGISTRY_FILE = path.join(STATE_DIR, 'claude-sessions.json');
+
+const CLAUDE_CMD_RE = /(?:^|[\\/\s"'=])claude(?:\.exe|\.cmd|\.js|\.mjs)?(?:["'\s]|$)/i;
+const CODEX_CMD_RE = /(?:^|[\\/\s"'=])codex(?:\.exe|\.cmd|\.js|\.mjs)?(?:["'\s]|$)/i;
+
+function execFileP(cmd, args, options) {
+  const { execFile } = require('child_process');
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, options, (err, stdout) => (err ? reject(err) : resolve(stdout)));
+  });
+}
+
+/** List running processes as [{ pid, cmd }], or null if the scan failed. */
+async function listProcesses() {
+  try {
+    if (process.platform === 'win32') {
+      const out = await execFileP(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          'Get-CimInstance Win32_Process | Select-Object ProcessId,Name,CommandLine | ConvertTo-Json -Compress',
+        ],
+        { timeout: 15_000, windowsHide: true, maxBuffer: 32 * 1024 * 1024, encoding: 'utf-8' }
+      );
+      const parsed = JSON.parse(out);
+      const list = Array.isArray(parsed) ? parsed : [parsed];
+      return list.map((p) => ({
+        pid: Number(p.ProcessId),
+        cmd: String(p.CommandLine || p.Name || ''),
+      }));
+    }
+    const out = await execFileP('ps', ['-eo', 'pid=,args='], {
+      timeout: 15_000,
+      maxBuffer: 32 * 1024 * 1024,
+      encoding: 'utf-8',
+    });
+    return out
+      .split('\n')
+      .map((line) => line.trim().match(/^(\d+)\s+(.*)$/))
+      .filter(Boolean)
+      .map((m) => ({ pid: Number(m[1]), cmd: m[2] }));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Is `pid` alive? Prefer the scan snapshot (immune to PID reuse by unrelated
+ * processes when combined with a cmd match upstream); fall back to signal 0.
+ * Returns true / false, or null when it cannot be determined.
+ */
+function isPidAlive(pid, procs) {
+  if (!Number.isFinite(pid) || pid == null) return null;
+  if (procs) return procs.some((p) => p.pid === pid);
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return err.code === 'EPERM' ? true : false;
+  }
+}
+
+/** Registry written by hooks/claude-session-hook.js. */
+async function readSessionRegistry() {
+  try {
+    const raw = JSON.parse(await fs.readFile(REGISTRY_FILE, 'utf-8'));
+    if (raw && typeof raw === 'object' && raw.sessions && typeof raw.sessions === 'object') {
+      return { present: true, sessions: raw.sessions };
+    }
+  } catch {
+    /* not installed yet, or unreadable */
+  }
+  return { present: false, sessions: {} };
+}
+
+/** Drop registry entries whose process died without a SessionEnd hook firing. */
+async function pruneSessionRegistry(deadIds) {
+  if (deadIds.length === 0) return;
+  try {
+    const raw = JSON.parse(await fs.readFile(REGISTRY_FILE, 'utf-8'));
+    for (const id of deadIds) delete raw.sessions[id];
+    const tmp = `${REGISTRY_FILE}.${process.pid}.tmp`;
+    await fs.writeFile(tmp, JSON.stringify(raw, null, 2));
+    await fs.rename(tmp, REGISTRY_FILE);
+  } catch {
+    /* best-effort housekeeping — next run will retry */
+  }
+}
+
 function relTime(iso) {
   if (!iso) return 'unknown age';
   const ms = Date.now() - Date.parse(iso);
@@ -202,7 +306,7 @@ function relTime(iso) {
 // Each provider returns: { provider, ok, reason?, agents: Agent[] }
 // Agent: { provider, id, title, status, detail, lastActivity, url? }
 
-async function scanClaudeCode(config, opts) {
+async function scanClaudeCode(config, opts, sys) {
   const provider = 'claude-code';
   const root =
     (config['agent-status.claudeProjectsDir'] || '') ||
@@ -212,7 +316,13 @@ async function scanClaudeCode(config, opts) {
     return { provider, ok: false, reason: `no local Claude Code sessions (${root} not found)`, agents: [] };
   }
 
+  const registry = await readSessionRegistry();
+  const claudeProcs = sys.procs ? sys.procs.filter((p) => CLAUDE_CMD_RE.test(p.cmd)) : null;
+
   const agents = [];
+  const deadIds = [];
+  const hints = [];
+
   for (const project of await listDir(root)) {
     if (!project.isDirectory()) continue;
     const projectDir = path.join(root, project.name);
@@ -222,22 +332,81 @@ async function scanClaudeCode(config, opts) {
       const stat = await safeStat(file);
       if (!stat || Date.now() - stat.mtimeMs > opts.maxAgeMs) continue;
 
-      const { status, detail } = await classifyLocalSession(file, stat.mtimeMs, opts);
+      const sessionId = entry.name.replace(/\.jsonl$/, '');
+      const reg = registry.sessions[sessionId];
+      let status;
+      let detail;
+      let verified = false;
+
+      if (Date.now() - stat.mtimeMs < opts.activeMs) {
+        // Actively being written — live by definition, registry or not.
+        status = 'working';
+        detail = 'session log is being written right now';
+        verified = true;
+      } else if (reg) {
+        const alive = isPidAlive(reg.pid, claudeProcs);
+        if (alive === false) {
+          // Crash / killed terminal: SessionEnd never fired, but the PID is gone.
+          status = 'idle';
+          detail = 'session closed (its process is gone)';
+          verified = true;
+          deadIds.push(sessionId);
+        } else {
+          verified = alive === true;
+          if (reg.state === 'working') {
+            status = 'working';
+            detail = verified ? 'live session — agent is working' : 'agent is working (hooks)';
+          } else {
+            status = 'awaiting-input';
+            detail =
+              (reg.note || 'agent replied — response waiting for you') +
+              (verified ? ' (verified live)' : '');
+          }
+        }
+      } else if (registry.present) {
+        // Hooks are installed and tracking; an untracked session is not live.
+        status = 'idle';
+        detail = 'session closed (not in the live-session registry)';
+        verified = true;
+      } else {
+        // No hooks installed — heuristic mode, but never claim "awaiting input"
+        // when there is provably no claude process on the whole machine.
+        ({ status, detail } = await classifyLocalSession(file, stat.mtimeMs, opts));
+        if (status === 'awaiting-input') {
+          if (claudeProcs && claudeProcs.length === 0) {
+            status = 'idle';
+            detail = 'session closed (no Claude Code process is running)';
+            verified = true;
+          } else {
+            detail += ' — unverified';
+          }
+        }
+      }
+
       const cwd = extractCwd(await readHead(file));
       agents.push({
         provider,
-        id: entry.name.replace(/\.jsonl$/, '').slice(0, 8),
+        id: sessionId.slice(0, 8),
         title: cwd || project.name,
         status,
         detail,
+        verified,
         lastActivity: toIso(stat.mtimeMs),
       });
     }
   }
-  return { provider, ok: true, agents };
+
+  await pruneSessionRegistry(deadIds);
+  if (!registry.present && agents.length > 0) {
+    hints.push(
+      "claude-code statuses are heuristic — run 'mctl run agent-status setup=claude-hooks' " +
+        'once to install lifecycle hooks and get verified live status'
+    );
+  }
+  return { provider, ok: true, agents, hints };
 }
 
-async function scanCodex(config, opts) {
+async function scanCodex(config, opts, sys) {
   const provider = 'codex';
   const root =
     (config['agent-status.codexSessionsDir'] || '') ||
@@ -246,6 +415,8 @@ async function scanCodex(config, opts) {
   if (!(await safeStat(root))) {
     return { provider, ok: false, reason: `no local Codex sessions (${root} not found)`, agents: [] };
   }
+
+  const codexProcs = sys.procs ? sys.procs.filter((p) => CODEX_CMD_RE.test(p.cmd)) : null;
 
   // Layout: sessions/YYYY/MM/DD/rollout-<timestamp>-<uuid>.jsonl
   const files = [];
@@ -256,7 +427,19 @@ async function scanCodex(config, opts) {
     const stat = await safeStat(file);
     if (!stat || Date.now() - stat.mtimeMs > opts.maxAgeMs) continue;
 
-    const { status, detail } = await classifyLocalSession(file, stat.mtimeMs, opts);
+    let { status, detail } = await classifyLocalSession(file, stat.mtimeMs, opts);
+    let verified = status === 'working';
+    // Codex has no hook API for a live registry, but the process scan still
+    // stops closed sessions from masquerading as "awaiting input".
+    if (status === 'awaiting-input') {
+      if (codexProcs && codexProcs.length === 0) {
+        status = 'idle';
+        detail = 'session closed (no Codex process is running)';
+        verified = true;
+      } else {
+        detail += ' — unverified';
+      }
+    }
     const cwd = extractCwd(await readHead(file));
     const base = path.basename(file, '.jsonl');
     agents.push({
@@ -265,6 +448,7 @@ async function scanCodex(config, opts) {
       title: cwd || base,
       status,
       detail,
+      verified,
       lastActivity: toIso(stat.mtimeMs),
     });
   }
@@ -393,6 +577,66 @@ const PROVIDERS = {
 };
 
 // ---------------------------------------------------------------------------
+// setup=claude-hooks — install/remove the lifecycle hooks in ~/.claude/settings.json
+// ---------------------------------------------------------------------------
+
+const HOOK_EVENTS = ['SessionStart', 'UserPromptSubmit', 'Stop', 'Notification', 'SessionEnd'];
+const HOOK_MARKER = 'claude-session-hook.js';
+
+async function setupClaudeHooks(action) {
+  const settingsPath = path.join(os.homedir(), '.claude', 'settings.json');
+  const hookScript = path.join(__dirname, 'hooks', 'claude-session-hook.js');
+  const command = `node "${hookScript}"`;
+
+  let settings = {};
+  const stat = await safeStat(settingsPath);
+  if (stat) {
+    try {
+      settings = JSON.parse(await fs.readFile(settingsPath, 'utf-8'));
+    } catch (err) {
+      throw Object.assign(
+        new Error(
+          `${settingsPath} exists but is not valid JSON (${err.message}) — ` +
+            'fix it manually, then re-run setup'
+        ),
+        { code: 'SETTINGS_UNREADABLE' }
+      );
+    }
+    await fs.copyFile(settingsPath, `${settingsPath}.agent-status.bak`);
+    log('info', `backed up existing settings to ${settingsPath}.agent-status.bak`);
+  }
+
+  if (typeof settings.hooks !== 'object' || settings.hooks === null) settings.hooks = {};
+
+  for (const event of HOOK_EVENTS) {
+    const groups = Array.isArray(settings.hooks[event]) ? settings.hooks[event] : [];
+    // Drop any previous install of ours (identified by the script name), then
+    // re-add — this makes setup idempotent and repairs a moved repo path.
+    const kept = groups.filter(
+      (g) => !(g && Array.isArray(g.hooks) && g.hooks.some((h) => String(h.command).includes(HOOK_MARKER)))
+    );
+    if (action === 'install') {
+      kept.push({ hooks: [{ type: 'command', command }] });
+    }
+    if (kept.length > 0) settings.hooks[event] = kept;
+    else delete settings.hooks[event];
+  }
+  if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
+
+  await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+  await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+
+  if (action === 'install') {
+    log('info', `hooks installed in ${settingsPath} (${HOOK_EVENTS.join(', ')})`);
+    log('info', 'restart any running Claude Code sessions to activate them');
+    log('info', 'from then on, agent-status reports verified live status for claude-code');
+  } else {
+    log('info', `agent-status hooks removed from ${settingsPath}`);
+  }
+  return { action, settingsPath, hookScript, events: action === 'install' ? HOOK_EVENTS : [] };
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -414,7 +658,16 @@ function parseOptions(input) {
     );
   }
 
+  const setup = String(input.setup ?? '');
+  if (setup && !['claude-hooks', 'remove-claude-hooks'].includes(setup)) {
+    throw Object.assign(
+      new Error(`Unknown setup action: "${setup}". Valid: claude-hooks, remove-claude-hooks`),
+      { code: 'BAD_INPUT' }
+    );
+  }
+
   return {
+    setup: setup || null,
     providers: requested.length > 0 ? requested : ALL_PROVIDERS,
     maxAgeMs: (Number.isFinite(maxAgeHours) ? maxAgeHours : 24) * 3_600_000,
     activeMs: (Number.isFinite(activeSeconds) ? activeSeconds : 120) * 1_000,
@@ -446,13 +699,32 @@ async function main() {
     process.exit(1);
   }
 
+  if (opts.setup) {
+    try {
+      const payload = await setupClaudeHooks(
+        opts.setup === 'claude-hooks' ? 'install' : 'remove'
+      );
+      result(payload);
+      process.exit(0);
+    } catch (err) {
+      error(err.message, err.code ?? 'SETUP_FAILED', true);
+      process.exit(1);
+    }
+  }
+
+  // One process-list snapshot shared by the local providers for liveness checks.
+  const needsLocal = opts.providers.some((p) => p === 'claude-code' || p === 'codex');
+  const sys = { procs: needsLocal ? await listProcesses() : null };
+
   const results = await Promise.all(
-    opts.providers.map((p) => PROVIDERS[p](config, opts))
+    opts.providers.map((p) => PROVIDERS[p](config, opts, sys))
   );
 
   const providers = [];
+  const hints = [];
   let agents = [];
   for (const r of results) {
+    hints.push(...(r.hints ?? []));
     providers.push({
       id: r.provider,
       ok: r.ok,
@@ -481,7 +753,8 @@ async function main() {
 
   for (const a of agents) {
     const icon = STATUS_ICONS[a.status] ?? '?';
-    const label = a.status === 'awaiting-input' ? 'awaiting input' : a.status;
+    let label = a.status === 'awaiting-input' ? 'awaiting input' : a.status;
+    if (a.status === 'awaiting-input' && a.verified === false) label += ' (unverified)';
     log(
       'info',
       `${icon} [${a.provider}] ${a.title} (${a.id}) — ${label} · ${relTime(a.lastActivity)}`
@@ -503,6 +776,9 @@ async function main() {
         .map((p) => `${p.id}${p.ok ? `(${p.count})` : '(skipped)'}`)
         .join(', ')}`
   );
+  for (const hint of hints) {
+    log('info', `tip: ${hint}`);
+  }
 
   result({ generatedAt: new Date().toISOString(), summary, providers, agents });
   process.exit(0);

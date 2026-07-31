@@ -27,7 +27,38 @@ watch -n 30 mctl run agent-status
 | `awaiting-input` | The agent finished and is waiting on **you** (a reply/PR to review) |
 | `working` | The agent is actively doing something right now |
 | `failed` | The agent errored or expired |
-| `idle` | Stale session, probably abandoned (hidden unless `showIdle=true`) |
+| `idle` | Closed or stale session (hidden unless `showIdle=true`) |
+
+Each agent also carries `verified: true|false` — whether the status is backed
+by a live-process check (hooks/PID/API) or is only a log-file heuristic.
+Unverified `awaiting-input` is marked `(unverified)` in the output.
+
+## Verified live status for Claude Code (recommended)
+
+Log files alone cannot distinguish "agent replied, waiting for you" from
+"terminal was closed" — the file looks identical. Fix it once with:
+
+```bash
+mctl run agent-status setup=claude-hooks     # setup=remove-claude-hooks to undo
+```
+
+This installs Claude Code lifecycle hooks (in `~/.claude/settings.json`,
+after backing it up) that maintain a live-session registry at
+`~/.m-control/state/claude-sessions.json`:
+
+- `SessionStart` / `UserPromptSubmit` → session registered as `working` (with its PID)
+- `Stop` → `awaiting-input` (agent replied)
+- `Notification` → `awaiting-input` (permission prompt / needs attention)
+- `SessionEnd` → removed from the registry
+
+On every run the tool verifies each registered PID is still alive, so even a
+killed terminal (where `SessionEnd` never fired) is reported as closed and
+pruned. Restart any running Claude Code sessions after installing.
+
+Without hooks the tool falls back to heuristics, with one hard guarantee: if
+**no** `claude` process is running on the machine, stale sessions are reported
+as closed, never as `awaiting-input`. The same process-scan guard applies to
+Codex (which has no hook API).
 
 ## Providers
 
@@ -48,22 +79,44 @@ All keys optional, under `tools.agent-status` in `~/.m-control/config.json`:
 
 | Key | Description |
 |-----|-------------|
-| `cursorApiKey` | Cursor API key (Cursor → Settings → API keys) |
-| `githubToken` | GitHub PAT with `repo` read scope (for Copilot PR search) |
+| `cursorApiKey` | Cursor API key (see below) |
+| `githubToken` | GitHub PAT (see below) |
 | `githubOwners` | Comma-separated owners/orgs to scope the Copilot PR search. Default: PRs involving you or awaiting your review |
 | `claudeProjectsDir` | Override the Claude Code projects dir |
 | `codexSessionsDir` | Override the Codex sessions dir |
 
-## How local status is inferred (heuristics)
+### Getting the tokens
+
+**Cursor** — [cursor.com/dashboard](https://cursor.com/dashboard) →
+**Integrations** → **API Keys** → *Create API Key* (requires a plan with
+Background Agents). Copy the `key_...` value:
+
+```json
+"tools": { "agent-status": { "cursorApiKey": "key_..." } }
+```
+
+**GitHub Copilot** — [github.com/settings/tokens](https://github.com/settings/tokens)
+→ *Generate new token (classic)* → scope: `repo` (private repos) or
+`public_repo`. Fine-grained tokens also work with *Pull requests: read* +
+*Contents: read* on the relevant repos:
+
+```json
+"tools": { "agent-status": { "githubToken": "ghp_...", "githubOwners": "your-org" } }
+```
+
+## How local status is inferred (fallback heuristics)
+
+When the hook registry is not available:
 
 - Session file modified in the last `activeSeconds` (default 120) → `working`
 - Otherwise the tail of the log is scanned: last actor `assistant` →
-  `awaiting-input`; last actor `user` → `idle` (likely interrupted)
+  `awaiting-input (unverified)`; last actor `user` → `idle`
+- If no `claude`/`codex` process is running at all → `idle` (closed), never
+  `awaiting-input`
 - Sessions untouched for more than `maxAgeHours` (default 24) are ignored
 
-These are heuristics against undocumented local log formats — they can
-misclassify edge cases (e.g. role markers quoted inside message content) and
-may need updating when the CLIs change their formats.
+These heuristics work against undocumented local log formats and may need
+updating when the CLIs change their formats — prefer installing the hooks.
 
 ## Notes / future
 
