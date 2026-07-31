@@ -1,13 +1,14 @@
 {
   "manifestVersion": 1,
   "id": "agent-status",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "AI Agent Status",
-  "description": "Dashboard of pending AI coding-agent sessions: Claude Code, Codex CLI, Cursor background agents, GitHub Copilot",
+  "description": "Dashboard of pending AI coding-agent sessions: Claude Code, Codex CLI, Cursor (background agents + desktop IDE), GitHub Copilot",
   "runtime": "node",
   "entry": "index.js",
   "requiredConfig": [
     "agent-status.cursorApiKey",
+    "agent-status.cursorIdeDir",
     "agent-status.githubToken",
     "agent-status.githubOwners",
     "agent-status.claudeProjectsDir",

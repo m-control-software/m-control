@@ -66,8 +66,15 @@ Codex (which has no hook API).
 |----------|--------|---------------|
 | `claude-code` | Local session logs in `~/.claude/projects/` | no |
 | `codex` | Local Codex CLI session logs in `~/.codex/sessions/` | no |
-| `cursor` | Cursor Background Agents API (`api.cursor.com`) | `cursorApiKey` |
+| `cursor` | Cursor **cloud Background Agents** API (`api.cursor.com`) | `cursorApiKey` |
+| `cursor-ide` | Chats/agents inside the **Cursor desktop app** (local SQLite state) | no (Node ≥ 22.5) |
 | `copilot` | GitHub API — open PRs authored by the Copilot coding agent | `githubToken` |
+
+Note the Cursor split: the API only knows about cloud Background Agents
+(launched from cursor.com/agents or "run in background"); sessions inside the
+desktop IDE never appear there. `cursor-ide` covers those by reading Cursor's
+local state (`workspaceStorage`/`globalStorage` `state.vscdb`) via `node:sqlite`.
+If no Cursor process is running, IDE sessions are reported closed.
 
 Providers that lack config or local data are skipped with a log line — never
 an error. Claude Code **web** sessions have no public status API yet; local
@@ -84,6 +91,7 @@ All keys optional, under `tools.agent-status` in `~/.m-control/config.json`:
 | `githubOwners` | Comma-separated owners/orgs to scope the Copilot PR search. Default: PRs involving you or awaiting your review |
 | `claudeProjectsDir` | Override the Claude Code projects dir |
 | `codexSessionsDir` | Override the Codex sessions dir |
+| `cursorIdeDir` | Override the Cursor `User` dir (default: `%APPDATA%\Cursor\User` / `~/Library/Application Support/Cursor/User` / `~/.config/Cursor/User`) |
 
 ### Getting the tokens
 
