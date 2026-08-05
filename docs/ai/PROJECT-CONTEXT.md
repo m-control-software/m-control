@@ -32,6 +32,20 @@ A personal CLI orchestrator for developer productivity — discovers and runs st
 - 🔨 Kubernetes pod inspector
 - 🔨 Service abstractions (auth, logger, telemetry stubs)
 
+### ⏸️ Open decisions — read before architectural work
+
+Two ADRs are **Proposed, not Accepted**. They change repo layout and the
+manifest schema, so don't start structural work without resolving them:
+
+- `docs/adr/0009-repository-topology-and-personal-work-split.md` —
+  broadening m-control into a personal + work control center; GitHub org,
+  personal tools as a second tools root, secrets handling
+- `docs/adr/0010-tool-kinds-task-app-artifact.md` —
+  optional manifest `kind` / `visibility` / `requires.bin`, plus
+  `mctl apply` for config artifacts
+
+Each has an **Open Questions** section listing exactly what's undecided.
+
 ### Roadmap
 
 - v0.5: License system
@@ -216,4 +230,4 @@ Stop and review if you see:
 
 ---
 
-**Last updated:** 2026-02-28
+**Last updated:** 2026-08-05
