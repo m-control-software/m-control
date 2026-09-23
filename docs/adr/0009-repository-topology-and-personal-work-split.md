@@ -27,7 +27,8 @@ Concrete inventory driving this (existing + planned):
 | Teleprompter (Electron) | long-running GUI app |
 | AI agent status & cost dashboard (Electron) | long-running GUI app |
 | Claude/Cursor skills, hooks, MCP wiring | inert files applied to a target |
-| Stream Deck profiles, MX Master 4 config, IDE configs | inert files applied to a target |
+| IDE configs | inert files applied to a target |
+| Stream Deck profiles, MX Master 4 config | spec in git, config generated from it (ADR-0010) |
 
 Forces at play:
 
@@ -172,8 +173,8 @@ Resolve before flipping to Accepted:
    diffable, one age key carried per machine; (b) plaintext in a private
    repo, accepting the above; (c) no secrets repo — `~/.m-control/config.json`
    stays manual per machine. Preference: (a). **Undecided.**
-2. **Org name.** `m-control` collides with the repo name (`m-control/m-control`).
-   Acceptable, or pick something distinct?
+2. ~~**Org name.**~~ **Resolved 2026-08-08:** org created as
+   [`m-control-software`](https://github.com/m-control-software).
 3. **Is `m-control` public or private at the start?** Public unlocks free
    rulesets; private defers the open-source decision.
 4. **Transfer timing.** Move `michalmig/m-control` into the org now, or
@@ -200,6 +201,11 @@ Verified plan facts (2026-08-05):
   to `develop` while solo, no self-PRs — CI runs on both branches but
   nothing depends on *required* status checks or required reviewers. That
   changes the day someone else is onboarded onto the work toolset.
+- **Free orgs cap external collaborators on private repos at 3.** Directly
+  relevant to the sharing requirement: handing the work toolset to more
+  than three people means either making `m-control` public or paying for
+  Team. Another argument for keeping the shareable repo free of anything
+  personal, so public stays an option.
 - **Actions minutes are the thing to watch**, not repo count: Electron
   build matrices burn the 2,000-minute allowance fast (Windows runners
   bill at 2x, macOS at 10x). Another reason app builds belong in their own

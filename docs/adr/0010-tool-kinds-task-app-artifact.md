@@ -7,6 +7,10 @@
 
 > **Proposed — not decided.** Open questions are listed at the bottom.
 > Resolve them, then flip status to Accepted.
+>
+> **Revised 2026-08-08** — the "generated artifact" pattern below replaced
+> the original plan to version Stream Deck profiles as `artifact`. This
+> narrowed the `artifact` kind and defused two open questions.
 
 ## Context
 
@@ -22,7 +26,10 @@ The tooling inventory in ADR-0009 does not fit one shape. It fits three:
 |------|----------|-------------------|
 | **task** — one-shot, stdin → NDJSON → exit | `agent-status`, yt-dlp downloader, calendar poller, AZDO review | Yes — this is what exists |
 | **app** — long-running, owns a window | teleprompter, agent dashboard, notification center UI | No |
-| **artifact** — inert files applied to a target | Stream Deck profiles, MX Master 4 config, IDE configs, Claude skills/hooks | No |
+| **artifact** — inert files applied to a target | IDE configs, Claude skills/hooks | No |
+
+A fourth shape surfaced while designing the Stream Deck case and is
+covered by `task` rather than a new kind — see "Generated artifacts" below.
 
 The two mismatches are concrete, not hypothetical:
 
@@ -30,10 +37,10 @@ The two mismatches are concrete, not hypothetical:
   die after 30 seconds. Registering it as `runtime: node` means either
   lying in the manifest or weakening the guardrails that make the protocol
   trustworthy for every genuine task.
-- **`artifact`:** a Stream Deck profile has no `entry` at all. Faking one
-  produces "tools" whose only job is to copy a file. Once a meaningful
-  share of manifests are copy-file shims, the protocol stops meaning
-  anything.
+- **`artifact`:** a set of IDE configs or Claude skill files has no `entry`
+  at all. Faking one produces "tools" whose only job is to copy a file.
+  Once a meaningful share of manifests are copy-file shims, the protocol
+  stops meaning anything.
 
 There is also a second, orthogonal need from ADR-0009: filtering the tool
 list by personal vs work on a given machine.
@@ -73,10 +80,62 @@ Behaviour per kind:
   {
     "kind": "artifact",
     "targets": [
-      { "src": "profiles/", "dest": "~/AppData/Roaming/Elgato/StreamDeck/ProfilesV2", "strategy": "symlink" }
+      { "src": "skills/", "dest": "~/.claude/skills", "strategy": "symlink" }
     ]
   }
   ```
+
+### Generated artifacts — spec + generator, not a fourth kind
+
+Some device configs should not be versioned at all. A captured Stream Deck
+profile encodes *this machine* — absolute paths, device model, plugin
+versions, UUID-named directories — so it is a backup, not a build. The
+goal was never to preserve the file; it was to reproduce the setup on a
+new machine without hours of clicking.
+
+For these, **a declarative spec is the source of truth and a generator
+produces the target config**:
+
+```
+tools/artifacts/stream-deck/
+├── manifest.json     kind: task   ← a generator, not an artifact
+├── specs/*.yaml      buttons, positions, icons, actions
+├── icons/            committed PNGs
+└── generate.js       spec + icons -> .sdProfile
+```
+
+This needs **no new kind**: a generator is an ordinary `task` that reads a
+spec and writes files, emitting normal ToolEvents. `mctl run stream-deck`.
+
+Generate the target profile UUID deterministically from the profile name
+(UUIDv5, fixed namespace) so regeneration is idempotent and per-application
+profile bindings stay stable instead of duplicating on every run.
+
+**AI belongs at design time, not restore time.** Authoring spec entries,
+generating a consistent icon set, and adapting the generator to a changed
+Stream Deck schema are all good agent work — and all produce *committed*
+output (spec entries, PNGs, generator code). Restore stays a deterministic
+offline script. The asymmetry that drives this:
+
+| | Frequency | Urgency | Wants |
+|---|---|---|---|
+| Generating a profile | Every new machine | High | Deterministic, offline, seconds |
+| Adapting to a format change | Every few years | None | Reasoning, at leisure |
+
+Putting an agent on the frequent, urgent path to solve the rare,
+non-urgent one is backwards, and it creates a bootstrap circularity: the
+AI workflow tooling lives in m-control, so m-control's setup must not
+require a working agent, network, and API keys before it can run.
+
+Accepted cost: sync becomes one-way. An in-app tweak is silently reverted
+on the next regeneration — the spec is the only truth. Decided acceptable
+(2026-08-08); an importer producing a spec-vs-live diff is a possible
+later addition, not v1.
+
+Likely also the right shape for the MX Master 4 config, and possibly the
+IDE configs.
+
+### Visibility
 
 `visibility` supports `mctl list --profile work|personal` and a default
 profile in config. It is a **UX filter only** — the actual personal/work
@@ -95,8 +154,10 @@ mid-run failures ("yt-dlp not found") into one clear preflight message.
 - ✅ `mctl apply` is the feature that actually delivers one-command machine
   migration; a monorepo without it is just a folder you cloned
 - ✅ `ProcessRunner` guardrails stay strict because nothing needs them relaxed
-- ✅ Config artifacts (Stream Deck, IDE, mouse) become first-class instead
-  of being modelled as fake tools
+- ✅ Config files (IDE settings, Claude skills and hooks) become
+  first-class instead of being modelled as fake tools
+- ✅ Device configs with real generation logic (Stream Deck, MX Master)
+  stay ordinary `task` tools — no new machinery for the hardest case
 
 ### Negative
 - ❌ Three code paths in `mctl run`/`apply` instead of one
@@ -166,13 +227,17 @@ buys only explicitness.
 Resolve before flipping to Accepted:
 
 1. **Windows symlinks.** `strategy: "symlink"` requires Developer Mode or
-   an elevated shell on Windows, which is the primary platform here
-   (`scripts/install.ps1`). Default to `copy` on Windows and `symlink`
-   elsewhere? Copy loses the edit-in-place-and-commit workflow that makes
-   config-as-artifact worth doing at all. **Undecided.**
+   an elevated shell on Windows, the primary platform here
+   (`scripts/install.ps1`). **Downgraded 2026-08-08:** Stream Deck was the
+   case that made this urgent, and it is now a generator, so nothing yet
+   needs live bidirectional sync. Revisit when the first artifact genuinely
+   wants edit-in-place — IDE configs are the likely candidate. Default to
+   `copy` until then.
 2. **`mctl apply` safety.** It writes outside `~/.m-control/` for the first
    time. Needs at minimum a `--dry-run`, and probably a backup of anything
-   it overwrites. Is that v1 scope or a follow-up?
+   it overwrites. Is that v1 scope or a follow-up? Less pressing now that
+   the riskiest case (a live directory the Stream Deck app rewrites on
+   quit) is out of `apply` entirely.
 3. **The Chrome extension is a genuine misfit** — not a task, app, or
    artifact, but a thing installed into a browser profile. Model it as an
    `artifact` pointing at an unpacked-extension dir, or accept it as a
@@ -185,6 +250,14 @@ Resolve before flipping to Accepted:
    unlock ADR-0009 immediately. `AppLauncher` is only needed when the
    teleprompter lands; `mctl apply` when 2–3 real artifacts exist. Ship
    the manifest fields first and defer the runtimes?
+6. **Cross-root generators.** The Stream Deck generator is shared (work
+   root) but its personal spec lives in the personal root — the first
+   dependency that crosses a tools root. Resolve via a config section
+   listing spec dirs (`tools['stream-deck'].specDirs`), via `ToolInput`
+   paths, or by having the generator scan all roots for `*.deck.yaml`?
+   Config is per-machine, which is where "which roots exist here" belongs.
+   Preference: scan all roots, with a config override available.
+   **Undecided.**
 
 ## Implementation Notes
 
