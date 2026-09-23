@@ -6,7 +6,8 @@
       "Bash(yarn install:*)",
       "Bash(yarn typecheck:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "mcp__Claude_Code_Remote__read_documentation"
     ]
   }
 }
