@@ -16,11 +16,15 @@ Runs under the `python` runtime: `python3` on Linux/macOS, `python` on
 Windows. Override the interpreter via `runtimes.python` in
 `~/.m-control/config.json` (e.g. `"py"` or an absolute venv path).
 
-## Required config
+## Config
 
-Keys listed in `manifest.json` `requiredConfig` are resolved against the
-`tools` section of `~/.m-control/config.json` and passed to the tool as a
-flat map in `context["config"]`.
+Only keys the manifest declares reach the tool: `requiredConfig` (the tool
+can't work without them; `mctl doctor` reports unset ones) and `optionalConfig`
+(read when present). They are resolved against the `tools` section of
+`~/.m-control/config.json` and passed as a flat map in `context["config"]`, keyed by
+the dot-path (e.g. `"tool-id.apiKey"`).
+
+If a run can take more than 30 s, declare `timeoutMs` in the manifest.
 
 | Key | Description |
 |-----|-------------|

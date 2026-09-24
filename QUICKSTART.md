@@ -2,7 +2,7 @@
 
 ## What is this?
 
-**m-control** is a personal CLI orchestrator. You run `mctl <tool-id>` and it discovers, spawns, and streams the output of standalone tool processes.
+**m-control** is a personal CLI orchestrator. You run `mctl run <tool-id>` and it discovers, spawns, and streams the output of standalone tool processes.
 
 The project is a TypeScript monorepo:
 
@@ -11,11 +11,12 @@ m-control/
 ├── apps/mctl/          # CLI binary (@m-control/mctl)
 ├── packages/core/      # Runtime engine, no I/O (@m-control/core)
 ├── tools/              # Standalone tool processes (NOT npm packages)
-│   └── misc/
-│       └── hello-world/
+│   ├── misc/           # hello-world (node), hello-python (python)
+│   ├── agents/         # agent-status
+│   └── artifacts/      # stream-deck, logi-options
 ├── templates/          # Boilerplate for new tools
 ├── docs/               # Architecture docs, ADRs, AI context
-└── scripts/            # install.ps1 (Windows)
+└── scripts/            # install.ps1 (Windows), install.sh (Linux/macOS)
 ```
 
 ## Prerequisites
@@ -23,6 +24,7 @@ m-control/
 - Node.js 18+
 - Yarn 1.22+
 - Git
+- Python 3.10+ (for Python tools such as `hello-python`)
 
 ## 1. Install dependencies
 
@@ -57,26 +59,41 @@ Expected output: help text listing available commands and flags.
 ## 4. First commands
 
 ```bash
+# Create ~/.m-control/config.json (registers this checkout's tools/ directory)
+node apps/mctl/dist/bundle/index.js init
+
 # List all discovered tools
 node apps/mctl/dist/bundle/index.js list
 
-# Run the hello-world tool
-node apps/mctl/dist/bundle/index.js run hello-world
+# Run the hello-world tool (key=value pairs become the tool's input)
+node apps/mctl/dist/bundle/index.js run hello-world name=You
+
+# Check config, tools roots, runtimes, and required tool config
+node apps/mctl/dist/bundle/index.js doctor
 ```
 
-## 5. Install system-wide (Windows)
+`mctl run` needs the config: without `init` it stops with
+"No config found. Run 'mctl init'…". `doctor` reporting missing config for
+`stream-deck` or `logi-options` is expected until you fill in their sections
+under `tools` — those tools are Windows-only.
+
+## 5. Install system-wide
 
 ```powershell
-.\scripts\install.ps1
+.\scripts\install.ps1      # Windows
+```
+
+```bash
+./scripts/install.sh       # Linux/macOS — wrappers go to ~/.local/bin (override: M_CONTROL_BIN_DIR)
 ```
 
 This:
 - Builds the project
-- Copies `apps/mctl/dist/bundle/index.js` to `%USERPROFILE%\.m-control\`
+- Copies `apps/mctl/dist/bundle/index.js` to `~/.m-control/mctl.js`
 - Adds `mctl` (and alias `mm`) to your PATH
-- Initializes `~/.m-control/config.json`
+- Creates `~/.m-control/config.json`, or adds this checkout's `tools/` to `paths.toolsRoots` in an existing one
 
-**Restart your terminal after installation.**
+**Windows: restart your terminal after installation.**
 
 After installing:
 
@@ -97,6 +114,12 @@ yarn typecheck
 
 ```bash
 yarn lint
+```
+
+### Test
+
+```bash
+yarn test
 ```
 
 ### Full build
@@ -124,16 +147,20 @@ node apps/mctl/dist/bundle/index.js <command>
    cp -r templates/node-tool tools/<category>/<tool-id>   # or templates/python-tool
    ```
 
-2. Edit `tools/<category>/<tool-id>/manifest.json`:
+2. Edit `tools/<category>/<tool-id>/manifest.json` — every field below is required:
    ```json
    {
      "manifestVersion": 1,
      "id": "my-tool",
+     "version": "0.1.0",
      "name": "My Tool",
+     "description": "One line shown by mctl list",
      "runtime": "node",
      "entry": "index.js"
    }
    ```
+   Optional: `requiredConfig` / `optionalConfig` (config keys the tool may
+   read), `timeoutMs` (if it needs more than 30 s), `tags`.
 
 3. Implement `tools/<category>/<tool-id>/index.js` following the Tool Protocol:
    - Read all of `stdin` before doing work (JSON `ToolRequest`)
@@ -147,13 +174,15 @@ node apps/mctl/dist/bundle/index.js <command>
    node apps/mctl/dist/bundle/index.js run my-tool
    ```
 
-See `docs/architecture/execution-model.md` for the full Tool Protocol spec.
+See `AGENTS.md` → "Adding a tool" for the full checklist and
+`docs/architecture/execution-model.md` for the protocol spec.
 
 ## Project docs
 
 | File | Purpose |
 |------|---------|
-| `docs/ai/PROJECT-CONTEXT.md` | AI session primer — read this first |
+| `AGENTS.md` | Working rules for humans and AI agents — read this first |
+| `docs/ai/PROJECT-CONTEXT.md` | Project state, roadmap, open decisions |
 | `docs/architecture/constraints.md` | Hard rules (the constitution) |
 | `docs/architecture/execution-model.md` | Tool Protocol v1 spec |
 | `docs/ai/CODING-GUIDELINES.md` | Patterns and naming conventions |

@@ -8,7 +8,11 @@
 
 **m-control** is a CLI orchestrator for developer automation. You run `mctl run <tool-id>` and the orchestrator discovers, spawns, and streams output from a tool process.
 
-Current state: personal toolset for Michał's workflow.
+Current state: personal toolset for Michał's workflow, with real tools for AI
+agent status, Stream Deck profiles, and MX Master 4 profiles.
+
+The condensed, always-current rules are in `AGENTS.md`; this document explains
+the codebase in more depth.
 Direction: evolving toward a SaaS product for dev teams.
 
 The key architectural bet: tools are **separate processes** (any language), orchestrated by a **TypeScript CLI**. The two communicate over a well-defined protocol — stdin/stdout with NDJSON events.
@@ -20,6 +24,7 @@ The key architectural bet: tools are **separate processes** (any language), orch
 - Node.js 18+
 - Yarn 1.22+
 - Git
+- Python 3.10+ (for Python tools)
 
 ---
 
@@ -34,21 +39,27 @@ yarn install
 # Build all packages
 yarn build
 
-# Run
-node apps/mctl/dist/index.js list
-node apps/mctl/dist/index.js run hello-world
+# Run (the build output is a single bundled file)
+node apps/mctl/dist/bundle/index.js init      # creates ~/.m-control/config.json
+node apps/mctl/dist/bundle/index.js list
+node apps/mctl/dist/bundle/index.js run hello-world
+node apps/mctl/dist/bundle/index.js doctor
 ```
 
-First run of `mctl run` will initialise `~/.m-control/config.json` if it doesn't exist.
+`mctl run` requires the config and exits with a hint to run `mctl init` if it
+is missing. `mctl list` works without it (it falls back to the repo `tools/`).
 
-### Windows — install as global command
+### Install as a global command
 
 ```powershell
-.\scripts\install.ps1
-# Restart terminal, then:
-mctl list
-mctl run hello-world
+.\scripts\install.ps1      # Windows — restart the terminal afterwards
 ```
+
+```bash
+./scripts/install.sh       # Linux/macOS
+```
+
+Then `mctl list`, `mctl run hello-world`.
 
 ---
 
@@ -60,27 +71,34 @@ m-control/
 │   └── mctl/                  # CLI binary (@m-control/mctl)
 │       └── src/
 │           ├── index.ts       # Router — parses argv, delegates to commands
+│           ├── paths.ts       # Repo-checkout detection, tools-root resolution
 │           └── commands/
+│               ├── init.ts    # mctl init
 │               ├── list.ts    # mctl list
-│               └── run.ts     # mctl run <id>
+│               ├── run.ts     # mctl run <id>
+│               └── doctor.ts  # mctl doctor
 │
 ├── packages/
 │   └── core/                  # Runtime engine (@m-control/core)
-│       └── src/
-│           ├── types.ts       # All contracts (manifest, protocol, runner interface)
-│           ├── errors.ts      # Error hierarchy
-│           ├── discovery.ts   # Scans tools/**/manifest.json
-│           ├── config.ts      # Config loader (global + project merge)
-│           ├── events.ts      # EventSink interface + ConsoleEventSink + JsonEventSink
-│           └── runner/
-│               ├── index.ts   # getRunner() factory
-│               └── process-runner.ts  # ProcessRunner (all runtimes)
+│       ├── src/
+│       │   ├── types.ts       # All contracts (manifest, protocol, runner interface)
+│       │   ├── errors.ts      # Error hierarchy
+│       │   ├── discovery.ts   # Scans tools roots for manifest.json, validates
+│       │   ├── config.ts      # Config loader, key extraction, tools roots, timeouts
+│       │   ├── events.ts      # EventSink interface + ConsoleEventSink + JsonEventSink
+│       │   └── runner/
+│       │       ├── index.ts   # getRunner() factory
+│       │       └── process-runner.ts  # ProcessRunner (all runtimes)
+│       └── test/              # Vitest suites (run from TS sources)
 │
 ├── tools/
-│   └── misc/
-│       └── hello-world/
-│           ├── manifest.json  # Tool descriptor
-│           └── index.js       # Tool implementation (plain JS, Protocol v1)
+│   ├── misc/
+│   │   ├── hello-world/       # Node reference implementation of Protocol v1
+│   │   └── hello-python/      # Python reference implementation
+│   ├── agents/agent-status/   # AI coding-agent session dashboard (node)
+│   └── artifacts/
+│       ├── stream-deck/       # Stream Deck profiles from specs (powershell)
+│       └── logi-options/      # MX Master 4 profiles from specs (python)
 │
 ├── docs/
 │   ├── adr/                   # Architecture Decision Records
@@ -95,8 +113,10 @@ m-control/
 └── package.json               # Yarn workspaces root
 ```
 
-**Key rule:** `packages/core` is a library — it has no `bin`, no `process.argv`, no direct I/O.
-Everything user-facing lives in `apps/mctl`.
+**Key rule:** `packages/core` is a library — no `bin`, no `process.argv`, no
+`process.exit`, no `console.*`. Its only terminal writes are the `EventSink`
+implementations and the runner's stderr forwarding. Everything else
+user-facing lives in `apps/mctl`.
 
 ---
 
@@ -124,11 +144,15 @@ Every tool has a `manifest.json` next to its entry point:
 |-------|-------------|
 | `manifestVersion` | Always `1`. Fail-fast on mismatch. |
 | `id` | kebab-case. Used in `mctl run <id>`. Must be unique across all tools. |
-| `runtime` | `node` \| `python` \| `dotnet` \| `powershell`. Only `node` is implemented. |
+| `version`, `name`, `description` | Required strings; `description` is what `mctl list` shows. |
+| `runtime` | `node` \| `python` \| `powershell` \| `dotnet` — all run through `ProcessRunner`. |
 | `entry` | Path relative to manifest dir. For node: a `.js` file (no TS, no build step). |
-| `requiredConfig` | Dot-notation keys extracted from config and passed to the tool. |
+| `requiredConfig` | Dot-notation keys the tool can't work without. `mctl doctor` reports unset ones. |
+| `optionalConfig` | Keys the tool reads when present. Only declared keys (required + optional) are delivered. |
+| `timeoutMs` | Run budget when the 30 s default doesn't fit. |
+| `tags` | Free-form labels. |
 
-Discovery scans `tools/**/manifest.json` recursively. Any file that fails validation is skipped with a stderr warning — it never breaks the orchestrator.
+Discovery scans every tools root for `manifest.json` recursively. Any file that fails validation is skipped with a stderr warning — it never breaks the orchestrator.
 
 ---
 
@@ -158,11 +182,12 @@ orchestrator                tool process
     "config": { "azdo.token": "pat-xxx" },
     "workspaceRoot": "/path/to/project"
   },
-  "input": { }
+  "input": { "name": "You" }
 }
 ```
 
-Tools must read stdin to EOF before executing.
+Tools must read stdin to EOF before executing. `input` comes from
+`mctl run <id> key=value …` (values are strings); `--flags` never reach the tool.
 
 #### ToolEvent (stdout, one JSON object per line)
 
@@ -196,7 +221,11 @@ Optional project-local config at `.m-control/config.json` in cwd is merged over 
 
 `configVersion` mismatch → hard fail with actionable message. No silent corruption.
 
-The orchestrator extracts only the keys listed in `manifest.requiredConfig` and passes them as a flat map to the tool via `context.config`. Tools never receive the full config.
+The orchestrator extracts only the keys listed in `manifest.requiredConfig` and `manifest.optionalConfig`, resolved against the `tools` section, and passes them as a flat map to the tool via `context.config`. Tools never receive the full config.
+
+Other top-level sections: `paths.toolsRoots` (where to discover tools),
+`runtimes` (interpreter overrides such as `{ "python": "py" }`), and `timeouts`
+(`default`, and `tools` keyed by tool id).
 
 ---
 
@@ -210,7 +239,8 @@ interface Runner {
 
 `ProcessRunner` spawns the runtime command for the manifest (e.g. `node <entryPath>`, `python3 <entryPath>`), writes the request to stdin, parses NDJSON from stdout line by line, forwards stderr raw.
 
-Guardrails (all configurable, these are defaults):
+Guardrails (defaults; the timeout resolves per tool as
+`timeouts.tools[id]` > `manifest.timeoutMs` > `timeouts.default` > 30 s):
 
 | Guardrail | Default | Behaviour |
 |-----------|---------|-----------|
@@ -242,24 +272,27 @@ Two implementations:
 
 1. Create `tools/<category>/<tool-id>/`
 2. Copy `templates/node-tool/` or `templates/python-tool/` as a starting point
-3. Write `manifest.json` — set `id`, `runtime`, `entry`, `requiredConfig`
+3. Write `manifest.json` — all required fields, plus the config keys and budget the tool needs
 4. Implement your tool (reads stdin JSON, emits NDJSON events to stdout)
 5. `mctl list` — verify it appears
 6. `mctl run <tool-id>` — verify it runs
+7. Add tests under `tools/<category>/<tool-id>/test/` and a `README.md`
 
-No registration step. Discovery is automatic.
+No registration step. Discovery is automatic. Full checklist: `AGENTS.md` → "Adding a tool".
 
 **Node tools** — plain `.js`, no TypeScript compilation. Keep dependencies minimal or zero.
-**Other runtimes** — `manifest.json` is the same; python, powershell, and dotnet are executed by the same `ProcessRunner`, only the spawn command differs. Interpreters can be overridden per machine via `runtimes` in the config.
+**Other runtimes** — `manifest.json` is the same; python, powershell, and dotnet are executed by the same `ProcessRunner`, only the spawn command differs. Interpreters can be overridden per machine via `runtimes` in the config. PowerShell tools must run under Windows PowerShell 5.1 (what `powershell` spawns on Windows).
 
 ---
 
 ## CLI Reference
 
 ```bash
+mctl init                     # Create ~/.m-control/config.json
 mctl list                     # List all discovered tools
-mctl run <tool-id>            # Run tool, pretty-print events
+mctl run <tool-id> [k=v ...]  # Run tool, pretty-print events
 mctl run <tool-id> --json     # Run tool, passthrough raw NDJSON
+mctl doctor                   # Diagnose config, tools roots, runtimes, required config
 mctl --help
 ```
 
@@ -272,6 +305,7 @@ yarn build                    # Build all packages (core → mctl)
 yarn lint                     # ESLint across all packages
 yarn format                   # Prettier across all packages
 yarn typecheck                # tsc --noEmit across all packages
+yarn test                     # Vitest (core, CLI, and tool tests)
 
 # Build individual package
 yarn workspace @m-control/core build
@@ -286,6 +320,7 @@ Build order matters: `core` must be built before `mctl` (mctl imports from `core
 
 | File | Why you'd open it |
 |------|------------------|
+| `AGENTS.md` | Condensed rules and contracts |
 | `packages/core/src/types.ts` | Source of truth for all contracts |
 | `docs/architecture/execution-model.md` | Tool Protocol v1 spec in prose |
 | `docs/adr/0003-ndjson-protocol.md` | Why NDJSON over alternatives |
@@ -314,9 +349,10 @@ MControlError
 ## What's Not Here Yet
 
 - Structured `--input` JSON for `mctl run` (bare `key=value` pairs work; values arrive as strings)
-- TUI / interactive mode — removed in this refactor, will return later
-- Auth abstraction, telemetry — intentionally deferred
-- Per-tool guardrail overrides in the manifest (runner defaults apply to all tools)
+- TUI / interactive mode — removed in the monorepo refactor, may return later
+- Auth abstraction, telemetry, OS keychain for secrets — intentionally deferred
+- Per-tool overrides for `maxOutputBytes` / `maxEvents` (only the timeout is per tool)
+- Manifest `kind` / `visibility` and `mctl apply` — ADR-0010, still Proposed
 
 ---
 
@@ -325,8 +361,9 @@ MControlError
 ```
 docs/
 ├── VISION.md                  Where this is going (CLI → SaaS)
-├── architecture/OVERVIEW.md   Component map
-├── architecture/plugin-contract.md
+├── architecture/OVERVIEW.md   Component map and run flow
+├── architecture/constraints.md  Hard rules
+├── adr/                       Why things are the way they are
 ├── ai/CODING-GUIDELINES.md    Patterns to follow
 └── ai/ANTI-PATTERNS.md        What not to do (with rationale)
 ```

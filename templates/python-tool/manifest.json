@@ -7,5 +7,6 @@
   "runtime": "python",
   "entry": "main.py",
   "requiredConfig": [],
+  "optionalConfig": [],
   "tags": []
 }

@@ -39,8 +39,11 @@ node apps/mctl/dist/bundle/index.js <init|list|run|doctor>
 
 CI (`.github/workflows/ci.yml`) runs, in order: install `--frozen-lockfile`,
 build core, typecheck, lint, test, build, then a smoke test (`--help`, `init`,
-`list`, `doctor`, `run hello-world`, `run hello-python`). Run the same steps
-before pushing. Only `src/` of each workspace is linted; tools are not.
+`list`, `doctor` twice — it must fail on the fresh config and pass once the
+workflow fills every tool's `requiredConfig` — then `run hello-world` and
+`run hello-python`). Run the same steps before pushing. A new tool with
+`requiredConfig` needs CI values in that workflow step. Only `src/` of each
+workspace is linted; tools are not.
 
 ## Contracts (source of truth: `packages/core/src/types.ts`)
 

@@ -1,6 +1,7 @@
 # m-control — AI Project Context
 
-**Read this FIRST when starting a new AI session.**
+**Read `AGENTS.md` first** — it has the working rules and contracts. This file
+is the project-level picture: what exists, what's next, and what's undecided.
 
 ## What is m-control?
 
@@ -12,21 +13,30 @@ A personal CLI orchestrator for developer productivity — discovers and runs st
 
 ---
 
-## Current state (as of 2026-02-28)
+## Current state (as of 2026-09-24)
 
 ### What works
 
 - ✅ Yarn workspaces monorepo (`apps/mctl`, `packages/core`)
-- ✅ `@m-control/core` — runtime engine: tool discovery, protocol types, runner interface
-- ✅ `@m-control/mctl` — CLI: `mctl list`, `mctl run <id>`, `mctl --help`
-- ✅ Tool Protocol v1 — NDJSON stdout / JSON stdin / exit codes (ADR-0003)
-- ✅ `hello-world` tool in `tools/misc/hello-world/`
-- ✅ `logi-options` tool in `tools/artifacts/logi-options/` — MX Master 4 profiles from `*.logi.json` packs,
-  applied to the live Options+ agent (ADR-0011). Authoring: `.claude/skills/author-logi-profile/`
+- ✅ `@m-control/core` — types, config (open schema, global + project merge),
+  discovery across multiple tools roots, one `ProcessRunner` for node / python /
+  powershell / dotnet (ADR-0006, ADR-0007), per-tool run budgets
+- ✅ `@m-control/mctl` — `init`, `list`, `run <id> [k=v…] [--json]`, `doctor`
+- ✅ Tool Protocol v1 — JSON stdin / NDJSON stdout / exit codes (ADR-0003)
+- ✅ Tools:
+  - `hello-world` (node), `hello-python` (python) — protocol references
+  - `agent-status` (node) — pending sessions across Claude Code, Codex CLI,
+    Cursor (cloud + IDE) and Copilot, with verified liveness via Claude hooks
+  - `stream-deck` (powershell) — Stream Deck profile generated from `*.deck.json`
+    packs and installed live (ADR-0010 "Generated artifacts")
+  - `logi-options` (python) — MX Master 4 profiles from `*.logi.json` packs,
+    applied to the live Options+ agent (ADR-0011). Authoring skill:
+    `.claude/skills/author-logi-profile/`
+- ✅ Vitest suites for core and tools (ADR-0008)
 - ✅ ncc bundle at `apps/mctl/dist/bundle/index.js` (single self-contained file)
 - ✅ ESLint + Prettier + TypeScript strict mode
-- ✅ GitHub Actions CI — typecheck, lint, build, smoke test on push/PR to main/develop
-- ✅ Windows installer: `scripts/install.ps1`
+- ✅ GitHub Actions CI — build, typecheck, lint, test, smoke test
+- ✅ Installers: `scripts/install.ps1` (Windows), `scripts/install.sh` (Linux/macOS)
 
 ### What's next
 
@@ -51,7 +61,7 @@ Each has an **Open Questions** section listing exactly what's undecided.
 ### Roadmap
 
 - v0.5: License system
-- v1.0: Cloud backend, Stream Deck integration
+- v1.0: Cloud backend
 - v1.0+: Marketplace
 
 ---
@@ -65,10 +75,12 @@ m-control/
 ├── packages/core/      # Runtime engine (@m-control/core) — library, no I/O
 │   └── dist/           # TypeScript compiled output
 ├── tools/              # Standalone tool processes (NOT npm packages)
-│   └── misc/hello-world/
+│   ├── misc/           # hello-world, hello-python
+│   ├── agents/         # agent-status
+│   └── artifacts/      # stream-deck, logi-options
 ├── templates/          # Boilerplate for new tools
-├── docs/               # Architecture, ADRs, AI context
-└── scripts/            # install.ps1
+├── docs/               # Architecture, ADRs, AI context (archive/ = superseded)
+└── scripts/            # install.ps1, install.sh
 ```
 
 **Build output:** `apps/mctl/dist/bundle/index.js` — run with `node apps/mctl/dist/bundle/index.js`
@@ -92,27 +104,25 @@ Pipeline: `.github/workflows/ci.yml`
 Triggers: push or PR to `main` or `develop`
 
 Steps:
-1. Checkout
-2. Setup Node 22
-3. `yarn install --frozen-lockfile`
-4. `yarn typecheck` — type-check all packages
-5. `yarn lint` — lint all packages
-6. `yarn build` — core then mctl
-7. Smoke test: `node apps/mctl/dist/bundle/index.js --help`
+1. Checkout, setup Node 22
+2. `yarn install --frozen-lockfile`
+3. `yarn workspace @m-control/core build` — typecheck of mctl needs core's `dist/`
+4. `yarn typecheck`
+5. `yarn lint`
+6. `yarn test` — Vitest; Windows-only tool suites skip on the Ubuntu runner
+7. `yarn build`
+8. Smoke test: `--help`, `init`, `list`, `doctor` (must fail on the fresh
+   config, then pass after CI fills the required keys), `run hello-world`,
+   `run hello-python`
 
 ---
 
 ## Branching strategy
 
-| Branch | Purpose |
-|--------|---------|
-| `main` | Stable, releasable. Version tags here only. |
-| `develop` | Active development. Direct commits while solo. |
-
-- Day-to-day work goes to `develop` directly (no self-PRs while solo)
-- `main` is updated by merging `develop` at milestones
-- CI gates both branches
-- See ADR-0005 for the full rationale
+ADR-0005 defines `main` (stable, tags) + `develop` (day-to-day). **In practice**
+work is done on short-lived branches (often agent-created `claude/*`) and merged
+into `main`; `develop` has fallen behind `main`. Until ADR-0005 is revisited,
+target `main` and let CI gate it. See `CONTRIBUTING.md`.
 
 ---
 
@@ -130,9 +140,10 @@ User
 mctl CLI (apps/mctl)
   ↓
 @m-control/core
-  ├─ discoverTools()     — scans tools/ for manifest.json
-  ├─ ToolRunner          — spawns process, reads NDJSON stdout
-  └─ Types               — ToolRequest, ToolEvent, ToolManifest
+  ├─ discoverTools()     — scans the tools roots for manifest.json
+  ├─ getRunner()         — ProcessRunner: spawns, writes stdin, parses NDJSON
+  ├─ loadConfig() etc.   — config, declared-key extraction, run budgets
+  └─ Types               — ToolRequest, ToolEvent, ToolManifest, MControlConfig
   ↓
 Tool process (tools/<category>/<id>/)
   ├─ stdin  → JSON ToolRequest
@@ -140,14 +151,15 @@ Tool process (tools/<category>/<id>/)
   └─ stderr → raw diagnostic logs
 ```
 
-**Key principle:** Core coordinates, tools execute. Core has no I/O of its own.
+**Key principle:** Core coordinates, tools execute. Details:
+`docs/architecture/OVERVIEW.md`.
 
 ---
 
 ## Key constraints (MUST READ)
 
 ### Never
-- `console.log` in production code in `packages/` or `apps/` — use EventSink
+- `console.*` in `packages/core`; tool events rendered any way but an `EventSink`
 - Hardcode paths — use `path.resolve()` or config
 - Modify `packages/core` public API without updating `src/index.ts`
 - Raw stdout in tools — all output via ToolEvent NDJSON
@@ -181,15 +193,9 @@ throw new ConfigError('configVersion mismatch: expected 1, got 2. Delete ~/.m-co
 
 ## Adding a tool
 
-1. Copy `templates/node-tool/` or `templates/python-tool/` to `tools/<category>/<id>/`
-2. Edit `manifest.json` — set `manifestVersion: 1`, `id`, `runtime`, `entry`
-3. Implement the entry file:
-   - Read all stdin before executing (JSON ToolRequest)
-   - Emit NDJSON ToolEvent lines to stdout — never raw `console.log`
-   - Emit: `started` → zero or more `log` → `result` or `error`
-4. Discovery is automatic — no registration step
-
-**Full protocol:** `docs/architecture/execution-model.md`
+See `AGENTS.md` → "Adding a tool" (checklist) and
+`docs/ai/PROMPTS/implement-tool.md` (prompt). Protocol:
+`docs/architecture/execution-model.md`.
 
 ---
 
@@ -199,9 +205,12 @@ throw new ConfigError('configVersion mismatch: expected 1, got 2. Delete ~/.m-co
 yarn install                            # install dependencies (from root)
 yarn typecheck                          # type-check all packages
 yarn lint                               # lint all packages
+yarn test                               # Vitest
 yarn build                              # full build
+node apps/mctl/dist/bundle/index.js init          # create config
 node apps/mctl/dist/bundle/index.js list          # list tools
 node apps/mctl/dist/bundle/index.js run hello-world
+node apps/mctl/dist/bundle/index.js doctor
 ```
 
 ---
@@ -210,6 +219,8 @@ node apps/mctl/dist/bundle/index.js run hello-world
 
 | Question | File |
 |----------|------|
+| Working rules and contracts | `AGENTS.md` |
+| Architecture map | `docs/architecture/OVERVIEW.md` |
 | Architecture rules | `docs/architecture/constraints.md` |
 | Tool Protocol spec | `docs/architecture/execution-model.md` |
 | Code patterns | `docs/ai/CODING-GUIDELINES.md` |
@@ -223,13 +234,15 @@ node apps/mctl/dist/bundle/index.js run hello-world
 ## Red flags in AI-generated code
 
 Stop and review if you see:
-- `console.log` in `packages/` or `apps/`
+- `console.*` in `packages/core`, or tool events printed without an `EventSink`
 - Hardcoded paths (should use `path.resolve()` or config)
 - `any` type without a comment explaining why
 - Breaking config changes without a migration path
 - Direct access to `packages/core/src/` internals
-- Synchronous I/O (`readFileSync` etc.) in the hot path
+- Synchronous I/O on large or unbounded data (small startup reads of config and manifests are fine)
+- A tool reading a config key its manifest doesn't declare (it will always be undefined)
+- Personal or client data (names, paths, specs) committed to the repo
 
 ---
 
-**Last updated:** 2026-08-05
+**Last updated:** 2026-09-24

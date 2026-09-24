@@ -67,7 +67,9 @@ Established by stream-deck and logi-options (ADR-0010, ADR-0011):
 - **Offer a dry run** (`check=true`) that validates and reports what would
   change without touching anything.
 - **Back up before writing**, and keep the backup location configurable.
-- **Verify after writing**, and roll back or fail loudly on mismatch.
+- **Never leave a half-written target.** Either verify what the target kept
+  and roll back on mismatch (logi-options decompiles the live store), or swap
+  atomically with a restore path (stream-deck renames bundles aside).
 - **Fit the run budget.** Declare `timeoutMs` in the manifest when the tool
   needs anything other than the 30 s default, and never leave external state
   broken if the runner kills the tool mid-way.

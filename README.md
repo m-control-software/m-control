@@ -6,7 +6,7 @@ Michał's personal CLI orchestrator — discovers and runs standalone tool proce
 
 - Tool discovery — drop a `manifest.json` in `tools/`, it just works
 - NDJSON event streaming — live progress from long-running tools
-- Polyglot runtime — tools can be Node.js, Python, .NET, or anything else
+- Polyglot runtime — tools can be Node.js, Python, PowerShell, or .NET
 - Cross-platform — Windows primary, Linux secondary
 
 ## Requirements
@@ -22,15 +22,16 @@ m-control/
 │   └── dist/bundle/    # Build output — index.js (ncc bundle)
 ├── packages/core/      # Runtime engine (@m-control/core) — library only
 ├── tools/              # Standalone tool processes (NOT npm packages)
-│   └── misc/
-│       ├── hello-world/    # node reference tool
-│       └── hello-python/   # python reference tool
+│   ├── misc/           # hello-world (node), hello-python (python) — reference tools
+│   ├── agents/         # agent-status — AI coding-agent session dashboard
+│   └── artifacts/      # stream-deck, logi-options — device profiles from specs
 ├── templates/          # Boilerplate for new tools (node-tool, python-tool)
 ├── docs/               # Architecture docs, ADRs, AI context
 ├── scripts/            # install.ps1 (Windows), install.sh (Linux/macOS)
-├── .claude/            # Claude Code rules + project skills
-├── .cursor/            # Cursor rules (thin pointer to docs/)
-└── .github/            # CI + Copilot instructions
+├── AGENTS.md           # Canonical guide for AI agents (and contributors)
+├── .claude/            # Claude Code settings, rules + project skills
+├── .cursor/            # Cursor rules (pointer to AGENTS.md)
+└── .github/            # CI + Copilot instructions (pointer to AGENTS.md)
 ```
 
 ## Installation
@@ -103,19 +104,18 @@ See `QUICKSTART.md` for a complete getting-started walkthrough.
 
 ## Branching strategy
 
-| Branch | Purpose |
-|--------|---------|
-| `main` | Stable, releasable. Tags here only. |
-| `develop` | Active development. Direct commits while solo. |
-
-CI runs on both branches. See `CONTRIBUTING.md` for details.
+Work happens on short-lived branches merged into `main`; CI gates pushes and
+PRs to `main`. See `CONTRIBUTING.md` for details (and for the status of the
+`develop` branch from ADR-0005).
 
 ## Adding a tool
 
 1. Copy `templates/node-tool/` or `templates/python-tool/` to `tools/<category>/<id>/`
-2. Edit `manifest.json` — set `id`, `runtime`, `entry`
+2. Fill in `manifest.json` (`manifestVersion`, `id`, `version`, `name`, `description`, `runtime`, `entry`)
 3. Implement the entry file following Tool Protocol v1 (NDJSON stdout, JSON stdin)
 4. No registration needed — discovery is automatic
+
+Full checklist: `AGENTS.md` → "Adding a tool".
 
 Any language works: `node`, `python`, `powershell`, and `dotnet` runtimes are
 supported out of the box; interpreters can be overridden per machine via
@@ -126,8 +126,10 @@ See `docs/architecture/execution-model.md` for the protocol spec.
 ## Documentation
 
 - `QUICKSTART.md` — step-by-step first-run guide
+- `AGENTS.md` — working rules and contracts (AI agents start here)
+- `ONBOARDING.md` — deeper tour of the codebase
 - `CONTRIBUTING.md` — branching, CI, commit conventions
-- `docs/ai/PROJECT-CONTEXT.md` — AI session primer
+- `docs/ai/PROJECT-CONTEXT.md` — project state and open decisions
 - `docs/architecture/` — architecture docs and constraints
 - `docs/adr/` — architecture decision records
 

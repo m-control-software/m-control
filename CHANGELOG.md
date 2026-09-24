@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`stream-deck` tool** (`tools/artifacts/stream-deck/`, ADR-0010 "Generated
+  artifacts"): builds an Elgato Stream Deck profile from declarative
+  `*.deck.json` packs and installs it in place of the previous version. Packs
+  can live outside the repo (`tools.stream-deck.packDirs`); an absent pack is a
+  no-op. `check=true` validates and builds without writing. Install refuses
+  while the Stream Deck app runs, backs up the old profile, swaps by rename,
+  and recovers from a run killed mid-swap. Runs under Windows PowerShell 5.1.
+
+- **Per-tool run budgets** — a manifest may declare `timeoutMs`, and config
+  gains `timeouts` (`default`, and `tools` keyed by id). Precedence:
+  `timeouts.tools[id]` > `manifest.timeoutMs` > `timeouts.default` > 30 s.
+  Previously the 30 s was hard-coded, so a tool that needed longer (a full
+  Stream Deck install measured ~21 s and sometimes overran) could not run
+  reliably. Invalid values are rejected at discovery.
+
+- **`optionalConfig` in manifests** — keys a tool reads when present. A tool
+  receives the union of `requiredConfig` and `optionalConfig`; before this,
+  optional keys were never delivered.
+
+- **`mctl doctor` checks required config** — reports every tool whose
+  `requiredConfig` keys are unset or empty, naming the keys and the file.
+
+- **`AGENTS.md`** — one canonical guide for AI coding agents (layout,
+  commands, contracts, adding a tool, code rules). `CLAUDE.md` imports it; the
+  Cursor and Copilot files point at it.
+
 - **`logi-options` tool** (`tools/artifacts/logi-options/`, ADR-0011): Logitech MX Master 4
   button, gesture, and per-app profiles from declarative `*.logi.json` packs. Options+
   keeps its configuration in one JSON document owned by a running agent, so applying
@@ -83,8 +109,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replace the pre-monorepo `templates/tool-boilerplate/`, which produced tools that
   failed manifest validation.
 
+- **`logi-options` declares `timeoutMs: 30000`** — its transaction budgets
+  against exactly 30 s; without a declaration a lower `timeouts.default`
+  could kill it while the Options+ agent is stopped. A test keeps the two
+  numbers equal.
+- **CI smoke test** — `doctor` must fail on a fresh config, then pass once
+  the workflow supplies each tool's required keys. CI was red since `doctor`
+  started checking required config.
+- **Docs brought in line with the code** — `constraints.md` and
+  `CODING-GUIDELINES.md` rewritten to rules the code follows; QUICKSTART
+  (missing `mctl init`, invalid manifest example), ONBOARDING,
+  PROJECT-CONTEXT, README, CONTRIBUTING, execution-model, and the
+  implement-tool / design-review / write-adr prompts updated.
+- **Claude Code settings** — shared permissions moved to
+  `.claude/settings.json`; `.claude/settings.local.json` and
+  `CLAUDE.local.md` are no longer tracked.
+
 ### Removed
 
+- Pre-monorepo design docs (`architecture/OVERVIEW.md` old version,
+  `plugin-contract.md`, `context-model.md`, `diagrams/plugin-flow.mmd`) moved
+  to `docs/archive/` with a superseded banner; a new `OVERVIEW.md` describes
+  the current system.
 - `docs/00-DOCS-STRUCTURE.md` (stale duplicate of root `DOCS-STRUCTURE.md`) and
   `.cursorrules` (described the pre-monorepo architecture).
 

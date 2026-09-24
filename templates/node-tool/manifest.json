@@ -7,5 +7,6 @@
   "runtime": "node",
   "entry": "index.js",
   "requiredConfig": [],
+  "optionalConfig": [],
   "tags": []
 }
