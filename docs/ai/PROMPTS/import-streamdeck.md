@@ -61,11 +61,19 @@ For each button and each script, decide three things and justify each:
 
    This matters because ADR-0009 designates the `m-control` repo as the
    shareable one, possibly public one day. Client-specific material must
-   not land there. If you find that the ADR's three-way `visibility` split
-   has no correct home for client-specific tooling, SAY SO and propose how
-   to fix it — a per-client tools root (`m-control-<client>`) is one
-   option, and it has the side benefit that changing clients means
-   unplugging one root. Argue for or against; do not assume I want it.
+   not land there.
+
+   Treat "this should not move into any repo I own" as a FIRST-CLASS
+   OUTCOME, not a failure of the migration. Whether client work product
+   can live in my personal repositories is a contractual question, not an
+   architectural one — it may be the client's property, confidential, or
+   both. Do not resolve it. Flag it, tell me what specifically looks
+   client-owned or client-revealing, and let me decide.
+
+   If you find the ADR's three-way `visibility` split has no correct home
+   for client-specific tooling, SAY SO. Note that ADR-0007's multi-root
+   discovery means a tools root does NOT have to be a repo I own — see the
+   in-place option in Disposition below.
 
 2. **Portability.** What would break on a fresh machine?
    - Hardcoded absolute paths
@@ -74,12 +82,21 @@ For each button and each script, decide three things and justify each:
    - Assumed sibling repos or directory layout
 
 3. **Disposition.** One of:
-   - Becomes an m-control `task` tool (give it a kebab-case id) — prefer
-     this for anything that is really "run a thing and report a result",
-     since it makes the button `mctl run <id>` instead of an absolute path
-     that only exists on this machine
+   - **Stays exactly where it is**, and its directory is registered as a
+     tools root in `~/.m-control/config.json`. Nothing is copied, nothing
+     changes owner, the client's scripts stay in the client's repo where
+     their colleagues can use them, and offboarding is deleting one config
+     line. Consider this FIRST for anything client-specific — it is often
+     the right answer, not a fallback.
+   - Becomes an m-control `task` tool in one of my repos (give it a
+     kebab-case id) — good for anything generic that is really "run a thing
+     and report a result", since it makes the button `mctl run <id>`
+     instead of an absolute path that only exists on this machine. Only
+     propose this for material that is clearly mine to move.
    - Stays external, referenced through config rather than a hardcoded path
    - Dropped (dead, superseded, or not worth carrying)
+
+   For each one, say explicitly whose property you think it is and why.
 
 Present this as a table. Do not start writing code yet.
 
@@ -107,7 +124,10 @@ error-handling rules in .claude/rules/errors.md.
 - Do not copy secrets into the repo. If a script needs one, it reads from
   config (`tools['stream-deck'].<key>`), per the open config schema.
 - Do not vacuum the whole source directory into m-control. Classify first;
-  some of it should not come along.
+  some of it should not come along, and some of it should not move at all.
+- Never propose moving client-owned material into my personal repositories
+  as a default. "Leave it where it is and register the directory as a tools
+  root" is a legitimate and often better answer.
 - Do not invent Stream Deck schema details. Read the real files. If
   something is ambiguous, say so rather than guessing.
 - Ask me before anything destructive to the existing setup. It currently
@@ -130,3 +150,12 @@ into a repo intended to be shareable.
 `Proposed` and were written before anyone looked at a real profile. A
 migration that discovers the design is wrong is a useful result — record it
 in the ADR's open questions rather than bending the data to fit.
+
+**Why "don't move it" is offered first.** m-control's value is
+orchestration, not storage. `paths.toolsRoots` is a list of absolute paths
+and nothing requires a root to be a repo you own, so a client's script
+directory can be a tools root in place. That keeps the ownership question
+from arising at all, keeps the client's tooling in the client's repo, and
+makes offboarding a deletion rather than an audit. A migration prompt that
+only asks "which of my repos does this go in?" quietly presumes an answer
+to a question that is contractual, not architectural.
