@@ -6,6 +6,7 @@
   "description": "Generates an Elgato Stream Deck profile from declarative *.deck.json specs contributed by one or more packs",
   "runtime": "powershell",
   "entry": "main.ps1",
+  "timeoutMs": 120000,
   "requiredConfig": [
     "stream-deck.profileName",
     "stream-deck.packDirs"
