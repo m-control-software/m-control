@@ -1,136 +1,65 @@
 # m-control Documentation
 
-Welcome to the m-control documentation. This guide will help you navigate the documentation structure and find what you need.
+Where to find what. For how the documentation system itself is organised and
+maintained, see [DOCS-STRUCTURE.md](../DOCS-STRUCTURE.md).
 
-## 📖 Start Here
+## Start here
+
+**Working on the code (human or AI agent)?**
+1. [AGENTS.md](../AGENTS.md): layout, commands, contracts, how to add a tool, code rules
+2. [ai/PROJECT-CONTEXT.md](ai/PROJECT-CONTEXT.md): current state, roadmap, open decisions
+3. [architecture/constraints.md](architecture/constraints.md): the hard rules
 
 **New to the project?**
-1. Read [VISION.md](VISION.md) - Understand what m-control is and where it's going
-2. Read [architecture/OVERVIEW.md](architecture/OVERVIEW.md) - High-level technical overview
-3. Read [adr/](adr/) - Understand key decisions made
+1. [VISION.md](VISION.md): what m-control is for and where it's going
+2. [architecture/OVERVIEW.md](architecture/OVERVIEW.md): how it's put together
+3. [../QUICKSTART.md](../QUICKSTART.md), then [../ONBOARDING.md](../ONBOARDING.md)
 
-**Working with AI assistants?**
-1. Start with [ai/PROJECT-CONTEXT.md](ai/PROJECT-CONTEXT.md) - Bootstrap context
-2. Check [ai/CODING-GUIDELINES.md](ai/CODING-GUIDELINES.md) - Code patterns
-3. Review [ai/ANTI-PATTERNS.md](ai/ANTI-PATTERNS.md) - What NOT to do
-4. Use [ai/PROMPTS/](ai/PROMPTS/) - Reusable prompt templates
+**Making an architectural change?**
+1. [architecture/constraints.md](architecture/constraints.md): non-negotiable rules
+2. [adr/](adr/): past decisions; ADR-0009 and ADR-0010 are still Proposed
+3. New ADR from [adr/TEMPLATE.md](adr/TEMPLATE.md) (see [ai/PROMPTS/write-adr.md](ai/PROMPTS/write-adr.md))
 
-**Making architectural changes?**
-1. Review [architecture/constraints.md](architecture/constraints.md) - Non-negotiable rules
-2. Check [adr/](adr/) - Past decisions to avoid conflicts
-3. Create new ADR using [adr/TEMPLATE.md](adr/TEMPLATE.md)
-
-## 📂 Documentation Structure
+## Layout
 
 ```
 docs/
-├── README.md                    👈 You are here
-├── VISION.md                    🎯 Product north star
-│
-├── adr/                         📝 Architecture Decision Records
-│   ├── TEMPLATE.md              
-│   └── 0001-*.md                
-│
-├── architecture/                🏗️ Technical architecture
-│   ├── OVERVIEW.md              
-│   ├── constraints.md           ⚠️ "Constitution"
-│   ├── plugin-contract.md       
-│   ├── execution-model.md       
-│   ├── context-model.md         
-│   └── diagrams/                
-│
-└── ai/                          🤖 AI assistant context
-    ├── PROJECT-CONTEXT.md       🚀 Bootstrap new AI chat
-    ├── CODING-GUIDELINES.md     
-    ├── ANTI-PATTERNS.md         
-    └── PROMPTS/                 
+├── README.md               👈 You are here
+├── VISION.md               Product north star
+├── adr/                    Architecture Decision Records (0001–0011)
+├── architecture/
+│   ├── OVERVIEW.md         Component map, run flow, tool kinds
+│   ├── constraints.md      ⚠️ The hard rules
+│   └── execution-model.md  Tool Protocol v1
+├── ai/
+│   ├── PROJECT-CONTEXT.md  State of the project for a new session
+│   ├── CODING-GUIDELINES.md
+│   ├── ANTI-PATTERNS.md    Mistakes we made, and what to do instead
+│   └── PROMPTS/            implement-tool, design-review, write-adr, import-streamdeck
+└── archive/                Superseded pre-monorepo designs; history only
 ```
 
-## 🎯 Quick Links
+Tool-specific docs live with the tool: `tools/<category>/<id>/README.md`, plus
+`docs/` inside larger tools (e.g. `tools/artifacts/logi-options/docs/`).
 
-### For Developers
-- [Getting Started](../CONTRIBUTING.md#getting-started)
-- [Adding New Tools](../CONTRIBUTING.md#adding-new-toolsplugins)
-- [Code Style](ai/CODING-GUIDELINES.md)
-- [Architecture Overview](architecture/OVERVIEW.md)
+## Finding what you need
 
-### For Product Understanding
-- [Vision & Roadmap](VISION.md)
-- [Architecture Decisions](adr/)
-- [Lessons Learned](../LESSONS-LEARNED.md)
+| I want to… | Go to |
+|------------|-------|
+| Add a tool | [AGENTS.md](../AGENTS.md) → "Adding a tool", [ai/PROMPTS/implement-tool.md](ai/PROMPTS/implement-tool.md) |
+| Understand the tool protocol | [architecture/execution-model.md](architecture/execution-model.md) |
+| Know why we chose X over Y | [adr/](adr/) |
+| Review a design before building it | [ai/PROMPTS/design-review.md](ai/PROMPTS/design-review.md) |
+| Record a mistake so it isn't repeated | [ai/ANTI-PATTERNS.md](ai/ANTI-PATTERNS.md) or [../LESSONS-LEARNED.md](../LESSONS-LEARNED.md) |
+| See what changed | [../CHANGELOG.md](../CHANGELOG.md) |
+| Branching, CI, releases | [../CONTRIBUTING.md](../CONTRIBUTING.md) |
 
-### For AI Assistants
-- [Project Context](ai/PROJECT-CONTEXT.md) ⭐ START HERE
-- [Coding Guidelines](ai/CODING-GUIDELINES.md)
-- [Anti-Patterns](ai/ANTI-PATTERNS.md)
-- [Prompt Templates](ai/PROMPTS/)
+## Principles
 
-### For Understanding Docs
-- [Documentation Structure Guide (DOCS-STRUCTURE.md)](../DOCS-STRUCTURE.md) - Meta-documentation
+1. **One source of truth per topic.** Link to it; don't restate it.
+2. **Docs match the code.** A doc that describes something the code doesn't do
+   goes to `archive/`, or gets fixed in the same change.
+3. **Why over what.** The code shows what; docs explain why.
+4. **Update in the same change**, not afterwards.
 
-## 🔍 Finding What You Need
-
-### "I want to understand the project vision"
-→ [VISION.md](VISION.md)
-
-### "I want to know why we chose X over Y"
-→ [adr/](adr/) - Search for relevant ADR
-
-### "I want to add a new feature"
-→ [ai/PROMPTS/implement-tool.md](ai/PROMPTS/implement-tool.md)
-
-### "I want to understand the architecture"
-→ [architecture/OVERVIEW.md](architecture/OVERVIEW.md)
-
-### "I made a mistake and want to prevent it in future"
-→ Add to [ai/ANTI-PATTERNS.md](ai/ANTI-PATTERNS.md)
-
-### "I'm using AI and need context"
-→ [ai/PROJECT-CONTEXT.md](ai/PROJECT-CONTEXT.md)
-
-### "I don't know how the docs are organized"
-→ [DOCS-STRUCTURE.md](../DOCS-STRUCTURE.md)
-
-## 📝 Contributing to Docs
-
-### When to Update Docs
-- **Always:** Architecture changes → update `architecture/*.md`
-- **Always:** New decision → create ADR in `adr/`
-- **Often:** New pattern emerges → update `ai/CODING-GUIDELINES.md`
-- **Often:** Mistake made → add to `ai/ANTI-PATTERNS.md`
-- **Sometimes:** Vision shifts → update `VISION.md`
-
-### Documentation Principles
-1. **AI-First:** Write for AI assistants as primary audience
-2. **DRY:** One source of truth per topic
-3. **Living:** Update when changes happen, not after
-4. **Why Over What:** Code shows what, docs explain why
-
-See [DOCS-STRUCTURE.md](../DOCS-STRUCTURE.md) for details.
-
-## 🗺️ Documentation Roadmap
-
-### Current State (v1.0)
-- ✅ Core structure established
-- ✅ AI context bootstrapping
-- ✅ Architecture foundation
-- ✅ ADR system ready
-
-### Near Future
-- [ ] API documentation (when API stabilizes)
-- [ ] User guides (when features solidify)
-- [ ] Plugin development guide (when plugin system complete)
-- [ ] Troubleshooting guide (when common issues emerge)
-
-### Long Term
-- [ ] Video tutorials
-- [ ] Interactive examples
-- [ ] Community contribution guides
-- [ ] Internationalization
-
----
-
-**Questions about documentation?**  
-See [DOCS-STRUCTURE.md](../DOCS-STRUCTURE.md) or update this README to answer common questions.
-
-**Last updated:** 2025-02-18
+**Last updated:** 2026-09-24

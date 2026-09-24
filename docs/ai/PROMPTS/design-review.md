@@ -10,6 +10,7 @@ Use this prompt when you want AI to review an architectural decision or implemen
 I'm planning to [IMPLEMENT/CHANGE] [FEATURE/COMPONENT] in m-control.
 
 **Current context:**
+@AGENTS.md
 @docs/ai/PROJECT-CONTEXT.md
 
 **Proposed approach:**
@@ -36,22 +37,21 @@ Provide:
 
 ## Example Usage
 
-### Example 1: Plugin Discovery System
+### Example 1: Long-running app tools
 
 ```
-I'm planning to IMPLEMENT a plugin discovery system in m-control.
+I'm planning to IMPLEMENT `kind: "app"` tools (ADR-0010) in m-control.
 
 **Proposed approach:**
-- Scan `src/plugins/` directory at startup
-- Load manifest.json from each subfolder
-- Register commands dynamically
-- Use fs.readdir() to find plugins
-- Cache loaded plugins in memory
+- Optional manifest field `kind`, default "task" — no manifestVersion bump
+- New `AppLauncher` next to `ProcessRunner`: spawns detached, no NDJSON,
+  no timeout, returns once the process is up
+- `mctl list` shows the kind; `mctl doctor` checks the runtime as today
 
 **Concerns:**
-- Performance - will scanning directory on every startup be slow?
-- Security - what if someone adds malicious plugin?
-- Testing - how to test dynamic loading?
+- How does the user stop or find a running app?
+- Should `mctl run` refuse `--json` for apps?
+- Testing a detached process in CI
 
 Please review this design considering:
 [... rest of template ...]
@@ -97,11 +97,13 @@ Please review this design considering:
 ```
 ✅ GOOD: Fits architecture
 - Aligns with hybrid local/cloud model
-- Maintains plugin isolation
+- Keeps secrets out of tool stdout and the config file
 
 ⚠️ CONCERN: Architectural misalignment
-- Keychain access from plugins violates service locator pattern
-- Should be accessed via context.auth.getToken()
+- Tools read secrets from `context.config`; if keychain lookup lives in each
+  tool, every runtime needs its own binding
+- Resolve keychain references in core when building RunContext instead, so
+  tools keep receiving a flat config map
 ```
 
 ### 3. Pattern Compliance
@@ -213,4 +215,4 @@ After design review:
 
 ---
 
-**Last updated:** 2025-02-18
+**Last updated:** 2026-09-24

@@ -1,3 +1,10 @@
+> **ARCHIVED — do not follow.** This describes the pre-monorepo design
+> (in-process TypeScript plugins, TUI, service locator, temp-file I/O) that was
+> replaced in 2025–2026. It is kept only as history. Current architecture:
+> [`docs/architecture/OVERVIEW.md`](../architecture/OVERVIEW.md),
+> [`execution-model.md`](../architecture/execution-model.md), and
+> [`AGENTS.md`](../../AGENTS.md).
+
 # Plugin Contract
 
 This document defines how plugins work in m-control. All plugins (TypeScript internal or external polyglot) must adhere to this contract.

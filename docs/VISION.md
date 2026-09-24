@@ -18,11 +18,11 @@ Modern developers face productivity challenges:
 ## 💡 The Solution
 
 **m-control** provides:
-1. **Unified interface** - One TUI for all your dev tools
+1. **Unified interface** - One command (`mctl`) for all your dev tools; an interactive mode may return later
 2. **AI-native automation** - Leverage Claude/GPT for intelligent task execution
-3. **Extensible architecture** - Add new tools as plugins (TypeScript, Python, .NET, etc.)
+3. **Extensible architecture** - Add new tools as standalone processes in any runtime (Node.js, Python, PowerShell, .NET)
 4. **Hybrid deployment** - Works local-first, cloud-optional (security-conscious organizations friendly)
-5. **Stream Deck integration** - Physical buttons for common workflows (future)
+5. **Device integration** - Stream Deck and mouse profiles generated from declarative specs
 
 ## 🎪 Current Phase: MVP (Personal Use)
 
@@ -32,15 +32,16 @@ Modern developers face productivity challenges:
 **Success metric:** Daily use for 5+ tasks
 
 ### MVP Scope
-- ✅ CLI orchestrator with TUI
-- 🔨 Plugin architecture
-- 🔨 First killer features:
+- ✅ CLI orchestrator (`mctl init | list | run | doctor`); the original TUI was dropped in the monorepo rewrite
+- ✅ Tool architecture: discovered manifests, Tool Protocol v1, four runtimes
+- ✅ Config management (local, open schema)
+- ✅ Stream Deck profile generation (`stream-deck`) and MX Master 4 profiles (`logi-options`)
+- ✅ AI agent session dashboard (`agent-status`)
+- 🔨 First killer features still to build:
   - AZDO PR review generation (Claude-powered)
   - K8s pod inspection
   - Git smart commit messages
   - Obsidian note launcher
-- 🔨 Config management (local)
-- 🔨 Stream Deck basic integration
 
 ### Out of Scope (MVP)
 - ❌ Cloud backend
@@ -193,7 +194,7 @@ A platform where:
 1. **Developer-First** - Build for developers, by developers
 2. **AI-Augmented, Not AI-Replaced** - Enhance human capability, don't replace it
 3. **Local by Default** - Privacy and security matter
-4. **Extensible Always** - Plugin architecture is non-negotiable
+4. **Extensible Always** - Adding a tool never requires changing the core
 5. **Ship Fast, Iterate Faster** - MVP > Perfect
 6. **Document Decisions** - Future self will thank us
 
@@ -251,5 +252,5 @@ MVP          Beta         Launch       Scale        Platform
 
 **This vision is a living document.** It will evolve as we learn from users, market, and execution.
 
-**Last updated:** 2025-02-18  
-**Next review:** 2025-03-18 (after MVP milestone)
+**Last updated:** 2026-09-24 (MVP scope status only; the vision itself is unchanged from 2025-02-18)  
+**Next review:** when ADR-0009 (personal + work control center) is decided

@@ -1,314 +1,98 @@
 # Architecture Overview
 
-High-level technical architecture of m-control.
+How m-control is put together today. For the rules, see
+[`constraints.md`](constraints.md); for the wire protocol, see
+[`execution-model.md`](execution-model.md); for the reasons, see the
+[ADRs](../adr/).
 
-## 🎯 Design Goals
-
-1. **Extensibility** - Easy to add new tools without modifying core
-2. **Isolation** - Tool failures don't crash orchestrator
-3. **Polyglot** - Support tools in any language (TypeScript, Python, .NET, etc.)
-4. **Hybrid-Ready** - Works local-first, cloud-optional
-5. **AI-Friendly** - Clear contracts for AI-assisted development
-
-## 🏗️ System Architecture
+## Shape
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        User                                  │
-└─────────────┬───────────────────────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    CLI Entry Point                           │
-│  (mctl / mm)                                                 │
-│  ├─ Parse args                                               │
-│  ├─ Route to mode (interactive vs direct)                    │
-│  └─ Initialize services                                      │
-└─────────────┬───────────────────────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   TUI / Interactive Mode                     │
-│  ├─ Category selection (prompts)                             │
-│  ├─ Command selection                                        │
-│  └─ Parameter input (if needed)                              │
-└─────────────┬───────────────────────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  Orchestrator Core                           │
-│  ├─ Plugin Registry                                          │
-│  ├─ Service Locator (auth, config, logger, telemetry)       │
-│  └─ Execution Engine                                         │
-└─────────────┬───────────────────────────────────────────────┘
-              │
-      ┌───────┴───────┬───────────┬────────────┐
-      ▼               ▼           ▼            ▼
-┌──────────┐    ┌──────────┐ ┌──────────┐ ┌──────────┐
-│ Plugin A │    │ Plugin B │ │ Plugin C │ │ Plugin D │
-│(TypeScript)    │(TypeScript)│(Python)   │(.NET)    │
-└────┬─────┘    └────┬─────┘ └────┬─────┘ └────┬─────┘
-     │               │            │            │
-     ▼               ▼            ▼            ▼
-┌─────────────────────────────────────────────────────┐
-│          External Services / APIs                    │
-│  (Azure DevOps, K8s, Git, Claude API, etc.)         │
-└─────────────────────────────────────────────────────┘
+user
+ │  mctl <init | list | run | doctor>
+ ▼
+apps/mctl  (@m-control/mctl)  ── the CLI: argument parsing, terminal output,
+ │                                exit codes; bundled to dist/bundle/index.js
+ │  imports
+ ▼
+packages/core  (@m-control/core) ── library: types, config, discovery,
+ │                                   runner, event sinks
+ │  spawns (one process per run)
+ ▼
+tools/<category>/<id>/  ── standalone processes in node | python |
+                           powershell | dotnet, speaking Tool Protocol v1
 ```
 
-## 📦 Component Breakdown
+- **Core coordinates, tools execute.** Core never embeds tool logic, and a tool
+  never imports core; the protocol is the only coupling. A crash stays in the
+  tool's process.
+- **Adding a tool never touches core or mctl.** Discovery finds manifests; the
+  config schema is open under `tools.*`.
+- **One runner for every runtime** (ADR-0006). The runtime only picks the
+  spawn command.
 
-### 1. CLI Entry Point
-**Location:** `src/index.ts`  
-**Responsibility:** Parse arguments, route to appropriate handler
+## Components
 
-**Modes:**
-- **No args:** Interactive TUI mode
-- **Command arg:** Direct execution
-- **--help:** Show help
+| Module | Responsibility |
+|--------|----------------|
+| `core/src/types.ts` | Every contract: `ToolManifest`, `ToolEvent`, `ToolRequest`/`RunContext`, `Runner`, `MControlConfig`, exit codes |
+| `core/src/discovery.ts` | Recursively scans tools roots for `manifest.json`, validates each, returns `{ tools, errors }` |
+| `core/src/config.ts` | Loads global + project config, extracts a tool's declared keys, resolves tools roots and run budgets, writes the initial config |
+| `core/src/runner/` | `ProcessRunner`: spawn, write the request, parse NDJSON, enforce guardrails; `getRunner()`, `resolveSpawnCommand()` |
+| `core/src/events.ts` | `EventSink` plus `ConsoleEventSink` (human) and `JsonEventSink` (`--json` passthrough) |
+| `core/src/errors.ts` | `MControlError` hierarchy |
+| `mctl/src/commands/` | `init`, `list`, `run`, `doctor` |
+| `mctl/src/paths.ts` | Repo-checkout detection and tools-root resolution for the CLI |
 
-### 2. TUI (Interactive Mode)
-**Location:** `src/ui/interactive.ts`  
-**Technology:** `prompts` library  
-**Responsibility:** User interaction for command selection
-
-**Flow:**
-1. Check config exists (init if needed)
-2. Show category selection
-3. Show command selection
-4. Execute selected command
-
-### 3. Orchestrator Core
-
-#### Plugin Registry
-**Location:** `src/commands/index.ts` (current), future: `src/core/plugin/`  
-**Responsibility:** Maintain catalog of available commands/plugins
-
-**Data structure:**
-```typescript
-{
-  groups: [
-    {
-      name: "Category",
-      commands: [
-        {
-          id: "command-id",
-          name: "Display Name",
-          description: "What it does",
-          handler: async () => {...}
-        }
-      ]
-    }
-  ]
-}
-```
-
-#### Service Locator
-**Location:** `src/core/services/` (future)  
-**Responsibility:** Provide access to cross-cutting concerns
-
-**Services:**
-- **Config:** Read/write configuration
-- **Auth:** Authenticate with cloud services (future)
-- **Logger:** Structured logging
-- **Telemetry:** Usage tracking (future)
-
-#### Execution Engine
-**Location:** `src/core/tool-runner.ts` (for external tools)  
-**Responsibility:** Execute plugins and external tools safely
-
-**Execution types:**
-1. **In-process (TypeScript plugins):** Direct function call
-2. **External process (Python/.NET):** Spawn child process with JSON I/O
-
-### 4. Plugins
-
-**Structure:**
-```
-src/plugins/
-  category/
-    tool-name/
-      manifest.json    # Metadata
-      index.ts         # Entry point
-      README.md        # Documentation
-```
-
-**Plugin types:**
-- **Internal (TypeScript):** Implemented in TypeScript, runs in same process
-- **External (Polyglot):** Executable (Python, .NET, etc.), spawned as child process
-
-**Communication:**
-- **Input:** JSON via stdin or temp file
-- **Output:** JSON via stdout or temp file
-- **Exit codes:** 0 = success, non-zero = failure
-
-## 🔄 Data Flow
-
-### Interactive Mode Flow
-```
-User runs `mctl`
-  → Entry point checks config
-  → TUI shows categories
-  → User selects category
-  → TUI shows commands in category
-  → User selects command
-  → Orchestrator loads command handler
-  → Handler executes
-  → Result displayed to user
-```
-
-### Direct Execution Flow
-```
-User runs `mctl command-id`
-  → Entry point parses args
-  → Orchestrator looks up command
-  → Command found? Execute : Show error
-  → Handler executes
-  → Result displayed to user
-```
-
-### External Tool Execution Flow
-```
-Orchestrator calls tool
-  → Prepare input JSON
-  → Spawn child process (python tool.py --input input.json)
-  → Tool executes
-  → Tool writes output JSON
-  → Orchestrator reads output
-  → Parse result and return
-```
-
-## 🗂️ Directory Structure
+## Run flow
 
 ```
-m-control/
-├── src/
-│   ├── index.ts              # CLI entry point
-│   ├── commands/             # Plugin registry (will move to core/plugin/)
-│   │   ├── index.ts
-│   │   └── category/
-│   │       └── tool/
-│   ├── core/
-│   │   ├── config.ts         # Config management
-│   │   ├── tool-runner.ts    # External tool executor
-│   │   ├── types.ts          # Shared types
-│   │   └── services/         # Service abstractions (future)
-│   │       ├── auth.service.ts
-│   │       ├── logger.service.ts
-│   │       └── telemetry.service.ts
-│   └── ui/
-│       └── interactive.ts    # TUI implementation
-├── dist/                     # Compiled output
-├── config/
-│   └── config.template.json  # Config template (embedded in code)
-└── scripts/
-    ├── bundle.js             # Build script
-    └── install.ps1           # Windows installer
+mctl run <id> k=v … [--json]
+  1. load config            ~/.m-control/config.json (+ <cwd>/.m-control/config.json)
+                            missing → "run mctl init"
+  2. resolve tools roots    M_CONTROL_TOOLS_ROOT | paths.toolsRoots | repo tools/
+  3. discover + find <id>   invalid manifests → warnings, not failures
+  4. build RunContext       declared config keys only, workspaceRoot = cwd
+  5. resolve budget         timeouts.tools[id] | manifest.timeoutMs | timeouts.default | 30 s
+  6. run                    spawn → stdin ToolRequest → stdout NDJSON → EventSink
+  7. exit                   0 ok | 1 expected failure | ≥2 crash / guardrail
 ```
 
-## 🔌 Plugin Architecture
+`mctl doctor` runs steps 1–3 without executing anything, then checks that each
+runtime in use is on PATH and that every `requiredConfig` key is set.
 
-### Plugin Lifecycle
-1. **Discovery:** Load from registry or scan directory (future)
-2. **Validation:** Check manifest, dependencies
-3. **Execution:** Call handler or spawn process
-4. **Cleanup:** Release resources
+## Tool kinds in practice
 
-### Plugin Contract
-Every plugin must:
-- Have unique ID
-- Export async handler function (TypeScript) OR accept JSON I/O (external)
-- Handle errors gracefully
-- Return success/failure status
+ADR-0010 (Proposed) adds an optional manifest `kind`: `task` (run and report —
+everything today), `app` (long-running, launched detached), and `artifact`
+(files linked into place by a future `mctl apply`, never executed). It also
+names a pattern that is *not* a kind: the **generated artifact**, a task that
+turns declarative specs into a device or app config. Today:
 
-See [plugin-contract.md](plugin-contract.md) for details.
+| Tool | Runtime | Shape |
+|------|---------|-------|
+| `hello-world`, `hello-python` | node, python | protocol reference |
+| `agent-status` | node | task — reads local agent logs and APIs, reports |
+| `stream-deck` | powershell | generated artifact — specs → Stream Deck profile, installed live |
+| `logi-options` | python | generated artifact — specs → Options+ settings, applied to a running agent (ADR-0011) |
 
-## 🌐 Hybrid Architecture (Local + Cloud)
+Generated-artifact tools share a pattern: declarative specs in personal pack
+directories outside the repo, a `check=true` dry run, backup before write, and
+verification after.
 
-### Local Mode (MVP)
-- All execution happens locally
-- Config stored in `~/.m-control/config.json`
-- No network calls except to external APIs (AZDO, K8s, etc.)
+## Local and cloud
 
-### Cloud Mode (Future)
-- Config sync to cloud
-- License validation
-- Telemetry submission
-- Shared team workflows
+Everything runs locally today. Config, including credentials, is a plaintext
+file in `~/.m-control/`. Cloud sync, licensing, and teams (`docs/VISION.md`)
+are future work; the protocol's process boundary and JSON contracts are what
+keep that door open.
 
-### Hybrid Approach
-- Local execution by default
-- Cloud features opt-in
-- Graceful degradation when offline
+## Distribution
 
-## 🔐 Security Considerations
+`yarn build` produces a single self-contained file,
+`apps/mctl/dist/bundle/index.js` (ncc). `scripts/install.ps1` /
+`scripts/install.sh` copy it to `~/.m-control/mctl.js`, create `mctl` and `mm`
+launchers, and register the checkout's `tools/` as a tools root (ADR-0004,
+ADR-0007).
 
-### Credentials Management
-- **Current:** Plaintext in config.json (user's machine)
-- **Future:** OS keychain integration (Credential Manager on Windows, Keychain on Mac)
-
-### Plugin Isolation
-- TypeScript plugins: Share process (trust model)
-- External tools: Separate process (OS-level isolation)
-
-### Network Security
-- Only orchestrator makes network calls
-- Plugins never directly access network (except via orchestrator services)
-
-## 📊 Technology Stack
-
-| Component          | Technology        | Rationale                    |
-|--------------------|-------------------|------------------------------|
-| Language           | TypeScript        | AI-friendly, rapid iteration |
-| Runtime            | Node.js 18+       | Cross-platform               |
-| TUI                | prompts           | Simple, effective            |
-| Build              | tsc + esbuild     | Fast, single file output     |
-| Package Manager    | npm/yarn          | Standard Node.js             |
-| Future Desktop     | Electron          | Easy migration from CLI      |
-| Future Backend     | NestJS (.NET?)    | TBD based on needs           |
-
-## 🚀 Evolution Path
-
-### Current (v0.1.0)
-- ✅ Basic orchestrator
-- ✅ Hardcoded commands
-- ✅ Config management
-- ✅ TUI
-
-### Near Future (v0.2.0)
-- 🔨 Plugin discovery system
-- 🔨 Service abstractions
-- 🔨 External tool runner
-- 🔨 Error handling improvements
-
-### Medium Term (v0.5.0)
-- License validation
-- Telemetry
-- Cloud config sync
-- Auto-updates
-
-### Long Term (v1.0+)
-- Full cloud backend
-- Marketplace
-- Team features
-- Desktop app (Electron)
-
-## 🎯 Design Principles
-
-1. **Convention over Configuration** - Sensible defaults, minimal setup
-2. **Fail Fast** - Validate early, provide clear error messages
-3. **Progressive Enhancement** - Core works offline, cloud adds features
-4. **Separation of Concerns** - Orchestrator ≠ Tools ≠ Services
-5. **Testability** - Clear boundaries for testing
-
-## 📚 Related Documentation
-
-- [Plugin Contract](plugin-contract.md) - How plugins work
-- [Execution Model](execution-model.md) - How commands execute
-- [Context Model](context-model.md) - How data flows
-- [Constraints](constraints.md) - Architectural rules
-
----
-
-**Last updated:** 2025-02-18  
-**Next review:** After plugin architecture implementation
+**Last updated:** 2026-09-24

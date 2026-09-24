@@ -63,7 +63,7 @@ interface ToolRequest {
 interface RunContext {
   toolId: string;
   config: Record<string, unknown>; // flat key-value, e.g. { "azdo.token": "..." }
-  workspaceRoot: string;           // absolute path to project root
+  workspaceRoot: string;           // absolute path mctl was invoked from (cwd)
 }
 ```
 
@@ -171,13 +171,17 @@ budget would kill every run instantly.
 ```typescript
 interface Runner {
   run(
-    manifest: ToolManifest,
+    tool: ResolvedTool,        // manifest + absolute dir + entryPath
     context: RunContext,
     input: ToolInput,
     options?: RunnerOptions,
   ): AsyncIterable<ToolEvent>;
 }
 ```
+
+`getRunner(manifest, runtimes)` returns a `ProcessRunner` for every runtime;
+`resolveSpawnCommand` is the only runtime-specific part (see `AGENTS.md` →
+Runtimes).
 
 ---
 
@@ -189,7 +193,14 @@ mctl run hello-world
 
 # NDJSON passthrough — for piping / scripting
 mctl run hello-world --json
+
+# Tool input: bare key=value pairs become ToolRequest.input (values are strings)
+mctl run hello-world name=Michal
 ```
+
+`--flags` are consumed by mctl (`--json` is the only one today) and never reach
+the tool. A tool takes options from `input`, never from argv: `check=true`,
+not `--check`.
 
 ---
 
@@ -206,11 +217,11 @@ mctl run hello-world --json
 
 ## Related Docs
 
-- [Plugin Contract](plugin-contract.md)
+- [Architecture Overview](OVERVIEW.md) — components and the full `mctl run` flow
 - [ADR-0003](../adr/0003-ndjson-protocol.md) — protocol design rationale
 - [ADR-0002](../adr/0002-monorepo-workspaces.md) — monorepo structure
 
 ---
 
-**Last updated:** 2025-02-25 — Rewritten for Tool Protocol v1  
-**Supersedes:** Previous temp-file-based execution model
+**Last updated:** 2026-09-24 — Runner signature, input/flags, optionalConfig  
+**Supersedes:** Previous temp-file-based execution model (`docs/archive/plugin-contract.md`)

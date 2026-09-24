@@ -7,7 +7,7 @@ Use this prompt when you've made a significant technical decision and need to do
 ## When to Write an ADR
 
 Write an ADR when the decision:
-- Affects the overall architecture or plugin contract
+- Affects the overall architecture, Tool Protocol v1, the manifest, or the config schema
 - Is hard to reverse (high cost of change)
 - Involves non-obvious trade-offs
 - Others might question later ("why did we do it this way?")
@@ -33,7 +33,8 @@ Write an ADR for m-control using docs/adr/TEMPLATE.md.
 ADR number: [Next number from docs/adr/ directory]
 
 Reference constraints from @docs/architecture/constraints.md where relevant.
-Link to related ADRs if applicable.
+Link to related ADRs if applicable. If an ADR is Proposed, list what is still
+undecided under Open Questions.
 ```
 
 ---
@@ -43,19 +44,20 @@ Link to related ADRs if applicable.
 ```
 Write an ADR for m-control using docs/adr/TEMPLATE.md.
 
-**Decision:** Use JSON-over-stdin/stdout as the IPC protocol for external plugins
-**Context:** External polyglot plugins (Python, .NET) need to communicate with
-  the TypeScript orchestrator. Options: shared temp files, named pipes, HTTP, stdio.
-**Chosen approach:** JSON via stdin/stdout — write JSON to stdin, read JSON from stdout
+**Decision:** Let a tool declare its own run budget in the manifest
+**Context:** The runner killed every tool at a hard-coded 30 s. A Stream Deck
+  generate-plus-install measured ~21 s on a good run and sometimes exceeded
+  30 s mid-install; other tools rely on the 30 s being exact.
+**Chosen approach:** Optional `timeoutMs` in the manifest; precedence
+  config.timeouts.tools[id] > manifest.timeoutMs > config.timeouts.default > 30 s
 **Rejected alternatives:**
-  - Temp files — cross-platform path headaches, cleanup burden
-  - HTTP — overkill for local CLI, port conflicts
-  - Named pipes — OS-specific implementation differences
-**Key trade-offs:** Can't stream large payloads efficiently, but fits typical CLI use case
-**Consequences:** All external plugins must serialize output as JSON; orchestrator
-  must handle subprocess lifecycle and timeout
+  - Raise the global default — slows failure detection for every tool
+  - Config-only overrides — every user rediscovers the budget by failing
+**Key trade-offs:** Tool authors can ask for long budgets; the user override
+  stays on top
+**Consequences:** Additive field, no manifestVersion bump; discovery validates it
 
-ADR number: 0002
+ADR number: [next free number]
 ```
 
 ---
@@ -86,6 +88,7 @@ A complete ADR file following `docs/adr/TEMPLATE.md`:
 - [ ] Consequences are honest (include negatives)
 - [ ] File saved as `docs/adr/XXXX-kebab-case-title.md`
 - [ ] CHANGELOG.md updated if the decision caused visible changes
+- [ ] AGENTS.md / architecture docs updated if a contract or rule changed
 
 ---
 
@@ -96,4 +99,4 @@ A complete ADR file following `docs/adr/TEMPLATE.md`:
 
 ---
 
-**Last updated:** 2025-02-18
+**Last updated:** 2026-09-24
