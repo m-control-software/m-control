@@ -291,6 +291,23 @@ if __name__ == '__main__':
 - Never pass full config object
 - Orchestrator filters by `requiredConfig` + `optionalConfig`
 
+### Required vs optional config
+
+Both lists deliver the key. They differ only in what the tool promises:
+
+- **`requiredConfig`** — the tool cannot do its job without this. `mctl
+  doctor` fails when it is unset or empty, so the user hears about it before
+  a run rather than during one. `mctl run` does not block: a tool that wants
+  to refuse should say so itself, with a message naming the key.
+- **`optionalConfig`** — the tool has a working default, or degrades to a
+  clearly reported "not configured — skipped".
+
+Getting this wrong is easy in both directions, and both have happened here:
+`stream-deck` read three keys it declared in neither list and silently
+received `undefined` for all of them, while `agent-status` declared six keys
+as required that it actually skips gracefully. If the tool keeps running
+without the key, it is optional.
+
 ### Network Access
 - Internal plugins: Can make HTTP calls directly
 - External plugins: Should receive pre-authenticated clients (future)

@@ -7,9 +7,13 @@ import {
   discoverTools,
   globalConfigPath,
   loadConfig,
+  missingRequiredConfig,
   resolveSpawnCommand,
 } from '@m-control/core';
 import { getToolsRoots } from '../paths';
+
+/** Stand-in when the config is absent or unreadable: every key is missing. */
+const emptyConfig: MControlConfig = { configVersion: 1, tools: {} };
 
 /**
  * mctl doctor — diagnose the local setup:
@@ -17,6 +21,7 @@ import { getToolsRoots } from '../paths';
  *   2. Tools roots resolved and existing
  *   3. Tool discovery results (including manifest warnings)
  *   4. Required runtimes available on this machine
+ *   5. Config keys tools declare as required are actually set
  *
  * Exits 1 if any check fails — usable in scripts/CI.
  */
@@ -101,6 +106,37 @@ export function runDoctor(): void {
           `Install it or override via config.runtimes.${runtime}`
       );
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // 5. Config required by discovered tools
+  // -------------------------------------------------------------------------
+  console.log('\nTool config');
+  if (tools.length === 0) {
+    warn('no tools to check (none discovered)');
+  } else {
+    let anyRequired = false;
+    for (const tool of tools) {
+      const required = tool.manifest.requiredConfig ?? [];
+      if (required.length === 0) continue;
+      anyRequired = true;
+      const missing = missingRequiredConfig(
+        tool.manifest,
+        config ?? emptyConfig
+      );
+      if (missing.length === 0) {
+        ok(`${tool.manifest.id} -> ${required.length} required key(s) set`);
+      } else {
+        // Nothing enforces requiredConfig at run time - the tool simply
+        // receives undefined and falls back to whatever it assumes. Say so
+        // here instead of letting that surface as a confusing mid-run failure.
+        fail(
+          `${tool.manifest.id} is missing required config: ${missing.join(', ')}. ` +
+            `Add them under "tools" in ${globalConfigPath()}`
+        );
+      }
+    }
+    if (!anyRequired) ok('no tool declares required config');
   }
 
   console.log('');

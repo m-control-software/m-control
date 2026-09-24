@@ -6,7 +6,8 @@
   "description": "Dashboard of pending AI coding-agent sessions: Claude Code, Codex CLI, Cursor (background agents + desktop IDE), GitHub Copilot",
   "runtime": "node",
   "entry": "index.js",
-  "requiredConfig": [
+  "requiredConfig": [],
+  "optionalConfig": [
     "agent-status.cursorApiKey",
     "agent-status.cursorIdeDir",
     "agent-status.githubToken",

@@ -182,6 +182,26 @@ export function resolveTimeoutMs(
 }
 
 /**
+ * The keys a tool says it cannot run without, that this machine does not
+ * supply. Empty list means the tool is fully configured.
+ *
+ * A key present but empty counts as missing: `""` in config is almost always
+ * a half-finished edit, not a deliberate value.
+ */
+export function missingRequiredConfig(
+  manifest: ToolManifest,
+  config: MControlConfig
+): string[] {
+  const required = manifest.requiredConfig ?? [];
+  if (required.length === 0) return [];
+  const supplied = extractToolConfig(config, required);
+  return required.filter((key) => {
+    const v = supplied[key];
+    return v === undefined || v === null || v === '';
+  });
+}
+
+/**
  * The config keys a tool is allowed to see: everything its manifest declares,
  * required or optional.
  *

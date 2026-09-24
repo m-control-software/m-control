@@ -19,7 +19,7 @@ DEFAULT_DEVICE = "mx-master-4"
 
 
 def cfg(config: dict, name: str, default=None):
-    """RunContext.config is flat, keyed by the manifest's requiredConfig entries."""
+    """RunContext.config is flat, keyed by the manifest's required/optional config entries."""
     for k in (f"logi-options.{name}", name):
         v = config.get(k)
         if v not in (None, "", []):

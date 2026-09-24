@@ -5,6 +5,7 @@ import {
   declaredConfigKeys,
   resolveToolsRoots,
   resolveTimeoutMs,
+  missingRequiredConfig,
   DEFAULT_TIMEOUT_MS,
 } from '../src/config';
 import { MControlConfig, ToolManifest } from '../src/types';
@@ -83,6 +84,53 @@ describe('declaredConfigKeys', () => {
       optionalConfig: ['a.b'],
     };
     expect(declaredConfigKeys(manifest)).toEqual(['a.b']);
+  });
+});
+
+describe('missingRequiredConfig', () => {
+  const base: ToolManifest = {
+    manifestVersion: 1,
+    id: 'azdo',
+    version: '0.1.0',
+    name: 'AZDO',
+    description: 'azdo',
+    runtime: 'node',
+    entry: 'index.js',
+  };
+
+  it('is empty when the tool declares nothing', () => {
+    expect(missingRequiredConfig(base, config)).toEqual([]);
+  });
+
+  it('is empty when every declared key is supplied', () => {
+    const m = { ...base, requiredConfig: ['azdo.token', 'azdo.organization'] };
+    expect(missingRequiredConfig(m, config)).toEqual([]);
+  });
+
+  it('names the keys this machine does not supply', () => {
+    // Nothing enforces requiredConfig at run time, so the tool would just see
+    // undefined and fall back to an assumption. doctor has to say it instead.
+    const m = { ...base, requiredConfig: ['azdo.token', 'azdo.project'] };
+    expect(missingRequiredConfig(m, config)).toEqual(['azdo.project']);
+  });
+
+  it('treats an empty string as missing, not as a deliberate value', () => {
+    const cfg: MControlConfig = {
+      configVersion: 1,
+      tools: { azdo: { token: '' } },
+    };
+    expect(missingRequiredConfig({ ...base, requiredConfig: ['azdo.token'] }, cfg)).toEqual([
+      'azdo.token',
+    ]);
+  });
+
+  it('ignores optional keys', () => {
+    const m = {
+      ...base,
+      requiredConfig: ['azdo.token'],
+      optionalConfig: ['azdo.nowhere'],
+    };
+    expect(missingRequiredConfig(m, config)).toEqual([]);
   });
 });
 

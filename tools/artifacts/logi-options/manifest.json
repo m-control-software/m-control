@@ -7,7 +7,9 @@
   "runtime": "python",
   "entry": "main.py",
   "requiredConfig": [
-    "logi-options.packDirs",
+    "logi-options.packDirs"
+  ],
+  "optionalConfig": [
     "logi-options.dataDir",
     "logi-options.backupDir"
   ],
