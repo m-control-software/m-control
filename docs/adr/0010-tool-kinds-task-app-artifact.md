@@ -16,6 +16,12 @@
 > (ADR-0011, `tools/artifacts/logi-options`), with two refinements to
 > "Generated artifacts" below: the generator must also *apply*, and the
 > spec-vs-live diff came for free.
+>
+> **Revised 2026-09-24 (2)** — the Stream Deck generator is now built and
+> installed (`tools/artifacts/stream-deck`, 93 keys across 11 pages). It
+> contradicted this ADR in several places; see "Corrections from the Stream
+> Deck build" before the open questions. Statements above that section are
+> left as originally written.
 
 ## Context
 
@@ -241,6 +247,124 @@ field gets the same safety at a fraction of the cost.
 **Why rejected:** Version bumps should cost something to earn; this one
 buys only explicitness.
 
+## Corrections from the Stream Deck build
+
+*Added 2026-09-24, after building and installing
+`tools/artifacts/stream-deck` against a real 93-button profile. Each item
+is something this ADR asserted or assumed that the build showed to be
+wrong. They are recorded here rather than edited into the text above so the
+original reasoning stays legible.*
+
+### 1. The guardrails did need relaxing
+
+**Asserted:** "`ProcessRunner` guardrails stay strict because nothing needs
+them relaxed", and Option A was rejected partly because it "requires
+per-tool timeout exemptions, eroding the guardrails globally".
+
+**Observed:** a full generate-plus-install measured **20.6s** and exceeded
+the hardcoded 30s in a real `mctl run`, aborting mid-install. Check mode
+alone is 10.8s. The difference is the backup copy of ~120 files and a
+`Get-AppxPackage` lookup (~1.4s). The margin was 1.45x, which is why one
+run succeeded and the next did not.
+
+**Landed:** an optional `timeoutMs` on the manifest plus a `timeouts`
+section in config, resolved per tool rather than globally (commit
+`9ab4fef`). This is the per-tool exemption Option A was rejected for — the
+rejection stands only because the exemption is declared and scoped, not
+because no tool ever needs one.
+
+### 2. Stream Deck is a live target, not a file target
+
+**Assumed:** stream-deck is plain file generation (`spec + icons ->
+.sdProfile`), in contrast to the Logi agent's "live state, not files".
+
+**Observed:** the Stream Deck app holds every profile in memory and
+**rewrites all bundles on quit**, so anything written while it runs is
+silently discarded. The app must be closed for an install, exactly like the
+Logi agent must be stopped. The ADR-0011 refinement applies to both cases,
+not just the mouse.
+
+### 3. The specs are JSON and the generator is PowerShell
+
+**Asserted:** `specs/*.yaml` and `generate.js`.
+
+**Built:** `specs/*.deck.json` and `main.ps1` with eight `lib/*.ps1`
+modules.
+
+**Why:** the profile format is itself JSON, and Windows PowerShell 5.1
+ships with `ConvertFrom-Json`, `System.Drawing` (icon rendering) and
+`Get-AppxPackage` (Store apps) already present. YAML would add a parser
+dependency to the one tool that has to run on a machine where nothing is
+installed yet — which is the bootstrap property this ADR argues for
+elsewhere.
+
+### 4. A deterministic UUID does not make adoption seamless
+
+**Asserted:** deriving the profile UUID from its name (UUIDv5) keeps
+"per-application profile bindings stable instead of duplicating on every
+run".
+
+**Observed:** true for repeated runs, but the first run produces a UUID
+that differs from the pre-existing hand-made profile's. Three other bundles
+referenced the old one by GUID — Teams, FileExplorer View, and the new
+profile's own switcher key — and all three kept pointing at a profile that
+no longer existed. They had to be repointed by hand.
+
+Determinism solves duplication on re-run. It does not solve *taking over
+from* an existing profile, and this ADR should not imply that it does.
+
+### 5. Sibling profiles are named in the spec but stored by GUID, and names collide
+
+**Asserted:** nothing — this case is absent from the ADR.
+
+**Observed:** `openchild` / `profile.rotate` actions store a lowercase
+`ProfileUUID`, while profile directories are uppercase `<GUID>.sdProfile`.
+The generator therefore has to build a name-to-GUID map by scanning the
+profiles root, and profile names are **not unique**: while the old and new
+`Work` profiles coexisted, which bundle a name resolved to depended on
+directory enumeration order — and that same map also selects the device
+block. Now reported as a warning rather than silently resolved (`ad8e376`).
+
+Any generator that references targets it does not itself generate has this
+problem. It is not Stream Deck specific.
+
+### 6. `requires.bin` would not have caught the dependency that mattered
+
+**Asserted:** `requires.bin` converts "a class of confusing mid-run
+failures" into one clear preflight message.
+
+**Observed:** the hard dependency here was the Snipping Tool, a Store app.
+`C:\Program Files\WindowsApps` denies directory enumeration to everyone
+including administrators, so a wildcard `Resolve-Path` returns zero matches
+while `Test-Path` on the exact same file returns `True`. Store apps are
+locatable only via `Get-AppxPackage`, and launching one needs both
+`is_bundle: true` and the AppUserModelId — neither of which is a binary on
+`PATH`.
+
+`requires.bin` is still worth having, but preflight needs a second notion
+of dependency for platform-installed apps, or it will give a clean bill of
+health to a profile with dead buttons.
+
+### 7. Profile paths, and dead data that looks like corruption
+
+**Asserted:** nothing about profile locations.
+
+**Observed:** profiles live in `%APPDATA%\Elgato\StreamDeck\ProfilesV3` on
+the current version — earlier research had suggested `ProfilesV2`, which is
+the older layout. Also, the app routinely leaves one **unreferenced page
+with `Actions: null`** behind, so a live bundle legitimately has one more
+page than the spec produced. Both the old and new bundles had one. A
+verifier that treats a page count mismatch as corruption will report a
+false positive.
+
+### Open question 6 answered in passing
+
+Cross-root spec discovery was resolved as **explicit config**, not
+scanning: `stream-deck.packDirs` is a required config key listing the pack
+directories, and the tool reads nothing it has not declared. Scanning all
+roots for `*.deck.json` was not needed, and explicit dirs make it obvious
+which client-owned packs live outside this repo (ADR-0009).
+
 ## Open Questions
 
 Resolve before flipping to Accepted:
@@ -276,7 +400,8 @@ Resolve before flipping to Accepted:
    paths, or by having the generator scan all roots for `*.deck.yaml`?
    Config is per-machine, which is where "which roots exist here" belongs.
    Preference: scan all roots, with a config override available.
-   **Undecided.**
+   **Answered 2026-09-24:** explicit config won — `stream-deck.packDirs`.
+   See "Corrections from the Stream Deck build".
 
 ## Implementation Notes
 
@@ -307,4 +432,7 @@ depends on.
 - `docs/architecture/execution-model.md` — Tool Protocol v1 spec
 - `packages/core/src/discovery.ts:139` — `validateManifest()` ignores unknown fields
 - `packages/core/src/runner/process-runner.ts:20` — guardrail defaults
+- `packages/core/src/config.ts` — `resolveTimeoutMs()`, the per-tool budget
+  added in response to correction 1
+- `tools/artifacts/stream-deck/` — the build these corrections came from
 - `.claude/rules/tool-protocol.md` — stdout/stdin rules for `task` tools
