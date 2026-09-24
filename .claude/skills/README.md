@@ -27,8 +27,10 @@ Instructions for the skill...
   and are available to anyone (or any agent) working in it.
 - Keep machine-specific or personal skills in `~/.claude/skills/` instead.
 - A skill that encodes an architectural rule must POINT at the canonical doc
-  (`docs/architecture/`, `CLAUDE.md`), not restate it — restated rules go
+  (`AGENTS.md`, `docs/architecture/`), not restate it — restated rules go
   stale (see LESSONS-LEARNED.md).
+- No machine-specific paths in a committed skill: refer to the config key
+  that holds the path (e.g. `tools.logi-options.packDirs`).
 - Skill names: kebab-case, verb-first where sensible (e.g. `add-tool`,
   `write-adr`).
 
@@ -36,9 +38,10 @@ Instructions for the skill...
 
 | Assistant | Where it reads from |
 |-----------|---------------------|
-| Claude Code | `CLAUDE.md`, `.claude/rules/`, `.claude/skills/` |
+| Any agent that supports it (Codex, Cursor, Copilot, …) | `AGENTS.md` |
+| Claude Code | `CLAUDE.md` (imports `AGENTS.md`), `.claude/rules/`, `.claude/skills/` |
 | Cursor | `.cursor/rules/*.mdc` |
 | GitHub Copilot | `.github/copilot-instructions.md` |
 
-All three point at the same canonical docs under `docs/` — update those,
-not the assistant files.
+`AGENTS.md` is canonical; the assistant-specific files point at it. Update
+`AGENTS.md` (and the docs it links), not the pointers.

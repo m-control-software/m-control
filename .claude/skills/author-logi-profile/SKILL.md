@@ -13,8 +13,8 @@ grammar. Don't restate it from memory; the details matter.
 ## Workflow
 
 1. **Find the pack.** Specs live in the directories listed in
-   `tools.logi-options.packDirs` in `~/.m-control/config.json` (personal:
-   `C:\MikeM\m-control-personal\logi-options\`). **Never put personal or client
+   `tools.logi-options.packDirs` in `~/.m-control/config.json`; read it there
+   rather than assuming a location. **Never put personal or client
    specs into the m-control repo.** `examples/` in the tool is reference material,
    and it is never applied.
 2. **See the current state** before changing it:

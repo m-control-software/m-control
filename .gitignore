@@ -28,3 +28,7 @@ Thumbs.db
 # Cursor cache (but keep committed project rules)
 .cursor/*
 !.cursor/rules/
+
+# Claude Code personal files (shared settings live in .claude/settings.json)
+.claude/settings.local.json
+CLAUDE.local.md
