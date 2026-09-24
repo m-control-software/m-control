@@ -123,6 +123,8 @@ try {
 
     $runContext = @{
         ResolvedApps    = $apps.Resolved
+        AppBundleIds    = $apps.BundleIds
+        MissingProfiles = [System.Collections.Generic.List[string]]::new()
         SiblingProfiles = $siblings
         PageGuids       = $pageGuids
         Plugins         = $model.Plugins
@@ -142,6 +144,13 @@ try {
         Write-ToolLog -Level 'info' -Message ("Built $($built.Stats.Pages) page(s), " +
             "$($built.Stats.Keys) key(s), $($built.Stats.Icons) icon(s).")
 
+        $missingProfiles = @($runContext.MissingProfiles)
+        if ($missingProfiles.Count -gt 0) {
+            Write-ToolLog -Level 'warn' `
+                -Message 'Some profile-switch keys point at profiles that do not exist here; they were left inert.' `
+                -Data @{ missing = $missingProfiles }
+        }
+
         if ($checkOnly) {
             Write-ToolResult -Payload ([ordered]@{
                 mode = 'check'; ok = $true; profile = $model.ProfileName
@@ -149,6 +158,7 @@ try {
                 packs = @($model.Packs.Keys); pages = @($model.Pages.Keys)
                 pageCount = $built.Stats.Pages; keyCount = $built.Stats.Keys
                 missingApps = $apps.Missing
+                missingProfiles = $missingProfiles
                 installed = $false
             })
         } else {
@@ -163,6 +173,7 @@ try {
                 packs = @($model.Packs.Keys)
                 pageCount = $built.Stats.Pages; keyCount = $built.Stats.Keys
                 missingApps = $apps.Missing
+                missingProfiles = $missingProfiles
                 installed = $true
             })
         }

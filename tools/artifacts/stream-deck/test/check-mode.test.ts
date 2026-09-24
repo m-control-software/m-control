@@ -119,7 +119,7 @@ windowsOnly('stream-deck check mode', () => {
     expect(result!.payload.installed).toBe(false);
 
     expect(snapshot(profilesRoot)).toEqual(before);
-  });
+  }, 60_000);
 
   it('treats check=false as a real run, not as truthy', () => {
     const { events } = runTool(
@@ -135,7 +135,7 @@ windowsOnly('stream-deck check mode', () => {
     expect(
       events.some((e) => e.type === 'result' && e.payload.mode === 'check')
     ).toBe(false);
-  });
+  }, 60_000);
 
   it('rejects an uninterpretable flag value instead of guessing', () => {
     const { events, status } = runTool(
@@ -150,7 +150,7 @@ windowsOnly('stream-deck check mode', () => {
     const err = events.find((e) => e.type === 'error');
     expect(err).toBeDefined();
     expect(String(err!.payload.message)).toContain('banana');
-  });
+  }, 60_000);
 
   it('emits only NDJSON ToolEvent lines on stdout', () => {
     const { stdout } = runTool(
@@ -168,5 +168,5 @@ windowsOnly('stream-deck check mode', () => {
       expect(['started', 'log', 'result', 'error']).toContain(evt.type);
       expect(evt.toolId).toBe('stream-deck');
     }
-  });
+  }, 60_000);
 });

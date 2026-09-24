@@ -92,8 +92,23 @@ function New-DeckAction {
         'open' {
             # No Plugin block. Settings.path takes a bare command, a file path
             # or a URI scheme.
-            $target = Get-SpecProperty $Action 'target'
-            if (-not $target) { throw "open action requires 'target'." }
+            #
+            # 'file' is the pack-relative form, resolved here so no spec ever
+            # stores a machine-specific path. It exists alongside 'script'
+            # because some targets must launch through their own wrapper - a
+            # .vbs that starts pwsh hidden, say - which 'script' would replace
+            # with a visible console window.
+            $file = Get-SpecProperty $Action 'file'
+            if ($file) {
+                $full = Join-Path $Context.PackDir $file
+                if (-not (Test-Path -LiteralPath $full)) {
+                    throw "open action points at '$file', which does not exist in pack dir '$($Context.PackDir)'."
+                }
+                $target = (Resolve-Path -LiteralPath $full).Path
+            } else {
+                $target = Get-SpecProperty $Action 'target'
+            }
+            if (-not $target) { throw "open action requires 'target' or 'file'." }
             return New-ActionEnvelope -ActionId $ActionId -Name 'Open' `
                 -Uuid 'com.elgato.streamdeck.system.open' `
                 -Settings ([ordered]@{ path = $target })
@@ -113,8 +128,11 @@ function New-DeckAction {
             if (-not $appId) { throw "app action requires 'app'." }
             $exe = $Context.ResolvedApps[$appId]
             if (-not $exe) { throw "app action references unresolved app '$appId'." }
+            $bundleId = $null
+            $bundleMap = Get-SpecProperty $Context 'AppBundleIds'
+            if ($bundleMap -and $bundleMap.Contains($appId)) { $bundleId = $bundleMap[$appId] }
             return New-OpenAppAction -ActionId $ActionId -Title (Get-SpecProperty $Action 'title' $appId) `
-                -Exe $exe -AppArgs @(Get-SpecProperty $Action 'args' @())
+                -Exe $exe -AppArgs @(Get-SpecProperty $Action 'args' @()) -BundleId $bundleId
         }
 
         'script' {
@@ -182,7 +200,14 @@ function New-DeckAction {
             if (-not $target) { throw "profile action requires 'profile'." }
             $guid = $Context.SiblingProfiles[$target]
             if (-not $guid) {
-                throw "profile action targets '$target', which is not an existing Stream Deck profile on this machine."
+                # Sibling profiles are hand-maintained and may simply not exist
+                # yet on this machine. Aborting the whole generate would make
+                # the tool unusable on a fresh install, so emit an inert key -
+                # which is what the app itself shows for a deleted target - and
+                # let the caller report it alongside unresolved apps.
+                $missing = Get-SpecProperty $Context 'MissingProfiles'
+                if ($null -ne $missing -and -not $missing.Contains($target)) { $missing.Add($target) }
+                $guid = ''
             }
             return New-ActionEnvelope -ActionId $ActionId -Name 'Switch Profile' `
                 -Uuid 'com.elgato.streamdeck.profile.rotate' `
@@ -226,17 +251,22 @@ function New-DeckAction {
 
 function New-OpenAppAction {
     [CmdletBinding()] param(
-        [string]$ActionId, [string]$Title, [string]$Exe, [string[]]$AppArgs = @()
+        [string]$ActionId, [string]$Title, [string]$Exe, [string[]]$AppArgs = @(),
+        [string]$BundleId
     )
     # Do not rename $AppArgs to $args: that collides with PowerShell's automatic
     # per-function $args and silently binds an empty array instead.
+    # Store apps identify themselves by AppUserModelId rather than by path, and
+    # the app refuses to launch them unless is_bundle is set alongside it.
+    $isBundle = [bool]$BundleId
+    $id = if ($isBundle) { $BundleId } else { $Exe }
     return New-ActionEnvelope -ActionId $ActionId -Name 'Open Application' `
         -Uuid 'com.elgato.streamdeck.system.openapp' `
         -Plugin ([ordered]@{ Name = 'Open Application'; UUID = 'com.elgato.streamdeck.system.openapp'; Version = '1.0' }) `
         -Settings ([ordered]@{
             app_name = $Title; args = $AppArgs; bring_to_front = $true
-            bundle_id = $Exe; bundle_path = $Exe; exec = $Exe
-            is_bundle = $false; long_press = 'quit'; source = $Exe
+            bundle_id = $id; bundle_path = $Exe; exec = $Exe
+            is_bundle = $isBundle; long_press = 'quit'; source = $Exe
         })
 }
 

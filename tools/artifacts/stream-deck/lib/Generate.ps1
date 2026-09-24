@@ -27,6 +27,24 @@ function Write-DeckJson {
     [System.IO.File]::WriteAllText($Path, $json, (New-Object System.Text.UTF8Encoding($false)))
 }
 
+function Read-DeckJson {
+    <#
+        Reads JSON as UTF-8 regardless of host.
+
+        The mirror of the problem Write-DeckJson solves: Get-Content without
+        -Encoding decodes in the ANSI codepage under Windows PowerShell 5.1, so
+        a BOM-less UTF-8 file - which is what the Stream Deck app writes - comes
+        back mojibake. Returns $null when the file cannot be read or parsed.
+    #>
+    [CmdletBinding()] param([string]$Path)
+    try {
+        $text = [System.IO.File]::ReadAllText($Path, (New-Object System.Text.UTF8Encoding($false)))
+        return $text | ConvertFrom-Json
+    } catch {
+        return $null
+    }
+}
+
 function Get-StreamDeckProfilesRoot {
     <#
         Where bundles live. Overridable via config so the generator can be
@@ -69,7 +87,8 @@ function Get-ProfileBundles {
     foreach ($d in Get-ChildItem -LiteralPath $ProfilesRoot -Directory -Filter '*.sdProfile' -ErrorAction SilentlyContinue) {
         $mf = Join-Path $d.FullName 'manifest.json'
         if (-not (Test-Path -LiteralPath $mf)) { continue }
-        try { $j = Get-Content -LiteralPath $mf -Raw | ConvertFrom-Json } catch { continue }
+        $j = Read-DeckJson -Path $mf
+        if (-not $j) { continue }
         $name = Get-SpecProperty $j 'Name'
         if (-not $name) { continue }
         $out[$name] = @{

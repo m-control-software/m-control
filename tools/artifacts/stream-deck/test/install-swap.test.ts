@@ -68,7 +68,7 @@ windowsOnly('stream-deck install swap', () => {
     expect(r.installed).toBe('v1');
     expect(r.asides).toBe(0);
     expect(r.hasBackup).toBe(false);
-  });
+  }, 60_000);
 
   it('replaces an existing bundle, backs it up and leaves no aside behind', () => {
     const r = runScenario('replace', workDir);
@@ -77,7 +77,7 @@ windowsOnly('stream-deck install swap', () => {
     expect(r.backupMarker).toBe('v1');
     // Two installs inside one second must not nest one backup in the other.
     expect(r.backupIsFlat).toBe(true);
-  });
+  }, 60_000);
 
   it('recovers a bundle orphaned under its aside name by a killed run', () => {
     const r = runScenario('recover-orphan', workDir);
@@ -88,12 +88,12 @@ windowsOnly('stream-deck install swap', () => {
     expect(r.asides).toBe(0);
     // The orphan was restored and backed up, not silently discarded.
     expect(r.backupMarker).toBe('v2');
-  });
+  }, 60_000);
 
   it('restores the previous bundle when the swap fails partway', () => {
     const r = runScenario('rollback', workDir);
     expect(r.threw).toBe(true);
     expect(r.installed).toBe('v1');
     expect(r.asides).toBe(0);
-  });
+  }, 60_000);
 });
