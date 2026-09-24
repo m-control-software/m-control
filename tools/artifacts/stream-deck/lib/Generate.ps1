@@ -13,6 +13,20 @@
 
 Set-StrictMode -Version Latest
 
+function Write-DeckJson {
+    <#
+        Writes JSON as UTF-8 with NO byte-order mark.
+
+        Set-Content -Encoding utf8 is not portable: Windows PowerShell 5.1 emits
+        a BOM, PowerShell 7 does not. The Stream Deck app writes its manifests
+        without one, and 'powershell' resolves to 5.1 on Windows, so relying on
+        the parameter would put a BOM in every generated manifest.
+    #>
+    [CmdletBinding()] param([string]$Path, $Object)
+    $json = $Object | ConvertTo-Json -Depth 20 -Compress
+    [System.IO.File]::WriteAllText($Path, $json, (New-Object System.Text.UTF8Encoding($false)))
+}
+
 function Get-StreamDeckProfilesRoot {
     [CmdletBinding()] param()
     $root = Join-Path $env:APPDATA 'Elgato\StreamDeck\ProfilesV3'
@@ -186,8 +200,7 @@ function Build-DeckProfile {
             Icon        = ''
             Name        = ''
         }
-        Set-Content -LiteralPath (Join-Path $pageDir 'manifest.json') `
-            -Value ($pageManifest | ConvertTo-Json -Depth 20 -Compress) -NoNewline -Encoding utf8
+        Write-DeckJson -Path (Join-Path $pageDir 'manifest.json') -Object $pageManifest
         $stats.Pages++
     }
 
@@ -205,8 +218,7 @@ function Build-DeckProfile {
         }
         Version       = '3.0'
     }
-    Set-Content -LiteralPath (Join-Path $bundleDir 'manifest.json') `
-        -Value ($bundleManifest | ConvertTo-Json -Depth 20 -Compress) -NoNewline -Encoding utf8
+    Write-DeckJson -Path (Join-Path $bundleDir 'manifest.json') -Object $bundleManifest
 
     return @{ BundleDir = $bundleDir; Guid = $profileGuid; Stats = $stats }
 }
@@ -287,8 +299,11 @@ function Install-DeckProfile {
 
     if (Test-Path -LiteralPath $target) {
         $stamp = (Get-Date).ToString('yyyyMMdd-HHmmss')
-        $rollback = Join-Path ([string]::IsNullOrWhiteSpace($BackupDir) ? $env:TEMP : $BackupDir) `
-                              "StreamDeck-$Guid-backup-$stamp"
+        # if/else rather than a ternary: the manifest declares runtime
+        # 'powershell', which resolveSpawnCommand maps to Windows PowerShell 5.1
+        # on Windows, where ?: is a parse error that kills the whole file.
+        $backupRoot = if ([string]::IsNullOrWhiteSpace($BackupDir)) { $env:TEMP } else { $BackupDir }
+        $rollback = Join-Path $backupRoot "StreamDeck-$Guid-backup-$stamp"
         Copy-Item -LiteralPath $target -Destination $rollback -Recurse -Force
         Remove-Item -LiteralPath $target -Recurse -Force
     }

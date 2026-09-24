@@ -54,7 +54,7 @@ function Import-DeckSpec {
     catch { throw "Invalid JSON in spec '$Path': $($_.Exception.Message)" }
 
     foreach ($required in 'specVersion', 'pack') {
-        if (-not ($j.PSObject.Properties.Name -contains $required)) {
+        if ($null -eq $j.PSObject.Properties[$required]) {
             throw "Spec '$Path' is missing required field '$required'."
         }
     }
@@ -76,15 +76,26 @@ function Get-SpecProperty {
     <#
         StrictMode-safe property read. ConvertFrom-Json produces PSCustomObject,
         where touching an absent property throws under Set-StrictMode.
+
+        Indexes PSObject.Properties rather than enumerating .Name: under
+        StrictMode, member enumeration over an object with NO properties throws
+        "The property 'Name' cannot be found on this object". An empty JSON
+        object is not an edge case here - it is what `mctl run <tool>` sends as
+        ToolInput when no key=value pairs are given.
     #>
     [CmdletBinding()] param($Object, [string]$Name, $Default = $null)
     if ($null -eq $Object) { return $Default }
-    if ($Object.PSObject.Properties.Name -contains $Name) {
-        $v = $Object.$Name
-        if ($null -eq $v) { return $Default }
-        return $v
+
+    if ($Object -is [System.Collections.IDictionary]) {
+        if (-not $Object.Contains($Name)) { return $Default }
+        $dv = $Object[$Name]
+        if ($null -eq $dv) { return $Default }
+        return $dv
     }
-    return $Default
+
+    $prop = $Object.PSObject.Properties[$Name]
+    if ($null -eq $prop -or $null -eq $prop.Value) { return $Default }
+    return $prop.Value
 }
 
 function ConvertTo-Hashtable {

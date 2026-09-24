@@ -36,9 +36,10 @@ function Resolve-DeckApp {
         $expanded = Expand-AppPath $candidate
 
         if ($expanded -match '[*?]') {
-            $matches = @(Resolve-Path -Path $expanded -ErrorAction SilentlyContinue |
-                         Sort-Object -Property Path -Descending)
-            if ($matches.Count -gt 0) { return $matches[0].Path }
+            # Not $matches: the -match above populates that automatic variable.
+            $hits = @(Resolve-Path -Path $expanded -ErrorAction SilentlyContinue |
+                      Sort-Object -Property Path -Descending)
+            if ($hits.Count -gt 0) { return $hits[0].Path }
             continue
         }
 
