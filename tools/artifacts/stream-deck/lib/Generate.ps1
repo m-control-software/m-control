@@ -81,9 +81,16 @@ function Assert-StreamDeckClosed {
 }
 
 function Get-ProfileBundles {
-    <# name -> @{ Dir; Guid; Device } for every bundle on this machine. #>
+    <#
+        Every bundle on this machine, as
+        @{ Bundles = name -> @{ Dir; Guid; Device }; Duplicates = string[] }.
+
+        Duplicates are reported rather than resolved: only the caller knows
+        whether an ambiguous name is one the spec actually references.
+    #>
     [CmdletBinding()] param([string]$ProfilesRoot)
     $out = @{}
+    $dupes = [System.Collections.Generic.List[string]]::new()
     foreach ($d in Get-ChildItem -LiteralPath $ProfilesRoot -Directory -Filter '*.sdProfile' -ErrorAction SilentlyContinue) {
         $mf = Join-Path $d.FullName 'manifest.json'
         if (-not (Test-Path -LiteralPath $mf)) { continue }
@@ -91,13 +98,19 @@ function Get-ProfileBundles {
         if (-not $j) { continue }
         $name = Get-SpecProperty $j 'Name'
         if (-not $name) { continue }
+        if ($out.ContainsKey($name)) {
+            # Sibling profiles are referenced by name, so two bundles sharing one
+            # make every reference ambiguous - and which one wins here depends on
+            # directory enumeration order. Surface it; do not silently pick.
+            $dupes.Add("'$name' ($($out[$name].Guid), $($d.Name -replace '\.sdProfile$',''))")
+        }
         $out[$name] = @{
             Dir    = $d.FullName
             Guid   = ($d.Name -replace '\.sdProfile$', '')
             Device = Get-SpecProperty $j 'Device'
         }
     }
-    return $out
+    return @{ Bundles = $out; Duplicates = $dupes }
 }
 
 function Resolve-DeviceBlock {

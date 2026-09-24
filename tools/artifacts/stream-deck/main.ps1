@@ -107,7 +107,13 @@ try {
     }
 
     $profilesRoot = Get-StreamDeckProfilesRoot -Override (Get-ConfigValue $config 'profilesRoot')
-    $bundles      = Get-ProfileBundles -ProfilesRoot $profilesRoot
+    $scan         = Get-ProfileBundles -ProfilesRoot $profilesRoot
+    $bundles      = $scan.Bundles
+    if ($scan.Duplicates.Count -gt 0) {
+        Write-ToolLog -Level 'warn' `
+            -Message 'Two or more profiles share a name; references to them resolve to only one bundle. Rename one in the Stream Deck app.' `
+            -Data @{ duplicates = @($scan.Duplicates) }
+    }
     $device       = Resolve-DeviceBlock -Bundles $bundles -ProfileName $model.ProfileName `
                         -PreferModel (Get-ConfigValue $config 'deviceModel')
 
