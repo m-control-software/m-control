@@ -11,6 +11,11 @@
 > **Revised 2026-08-08** — the "generated artifact" pattern below replaced
 > the original plan to version Stream Deck profiles as `artifact`. This
 > narrowed the `artifact` kind and defused two open questions.
+>
+> **Revised 2026-09-24** — the MX Master 4 case is confirmed and built
+> (ADR-0011, `tools/artifacts/logi-options`), with two refinements to
+> "Generated artifacts" below: the generator must also *apply*, and the
+> spec-vs-live diff came for free.
 
 ## Context
 
@@ -134,6 +139,20 @@ later addition, not v1.
 
 Likely also the right shape for the MX Master 4 config, and possibly the
 IDE configs.
+
+**Confirmed for the MX Master 4 (2026-09-24, ADR-0011), with two refinements:**
+
+- **Some targets are live state, not files.** Logi Options+ keeps its
+  configuration in a document owned by a running agent, which rewrites it on
+  every save. The generator therefore has to be an *applier*: back up, stop
+  the agent, patch the targeted records, restart it, and verify what it kept.
+  It is still an ordinary `task`, but one with a device-visible side effect and
+  a hard dependency on the runner's 30 s timeout.
+- **The spec-vs-live diff is not a later addition when the generator can also
+  decompile.** Verifying an apply means decompiling what the target kept and
+  comparing it with the spec, and that same comparison is a drift report
+  (`mctl run logi-options check=true`). Whether stream-deck gets the same depends
+  on whether its profiles decompile as cleanly.
 
 ### Visibility
 
