@@ -1,0 +1,2249 @@
+{
+  "_comment": "Assignments exactly as the Options+ UI wrote them in the controlled experiments (docs/internals.md). E1: Global top button -> keyboard shortcut Ctrl+Shift+Esc. E2: Chrome profile as created (defaults). E3: Chrome thumb button -> custom gestures left=Ctrl+Shift+Tab, right=Ctrl+Tab.",
+  "optionsPlusBuild": "853130",
+  "e1_global_top_ctrl_shift_esc": {
+    "card": {
+      "attribute": "MACRO_PLAYBACK",
+      "icons": {
+        "icons": [
+          "Shortcut.png",
+          "Shortcut.svg"
+        ],
+        "uri": "pipeline://system_actions/"
+      },
+      "id": "card_global_presets_keyboard_shortcut",
+      "macro": {
+        "actionName": "keyboard_none",
+        "keystroke": {
+          "code": 41,
+          "displayCharacter": "Escape",
+          "modifiers": [
+            224,
+            225
+          ],
+          "virtualKeyId": "VK_ESCAPE"
+        },
+        "type": "KEYSTROKE"
+      },
+      "name": "ASSIGNMENT_NAME_KEYBOARD_SHORTCUT",
+      "tags": [
+        "PRESET_TAG_KEY_OR_BUTTON",
+        "PRESET_TAG_MACROS_UNSUPPORTED",
+        "PRESET_TAG_PRESENTER_BUTTON",
+        "PRESET_KEYBOARD_FUNCTIONS"
+      ],
+      "taskId": 65536
+    },
+    "cardId": "card_global_presets_keyboard_shortcut",
+    "slotId": "mx-master-4-2b042_c196",
+    "tags": [
+      "UI_PAGE_BUTTONS"
+    ]
+  },
+  "e1_global_top_original_mode_shift": {
+    "card": {
+      "attribute": "MACRO_PLAYBACK",
+      "icons": {
+        "icons": [
+          "ShiftWheelMode.png",
+          "ShiftWheelMode.svg"
+        ],
+        "uri": "pipeline://system_actions/"
+      },
+      "id": "card_global_presets_mode_shift",
+      "macro": {},
+      "name": "ASSIGNMENT_NAME_MODE_SHIFT",
+      "readOnly": true,
+      "tags": [
+        "PRESET_TAG_MOUSE_SMARTSHIFT",
+        "PRESET_TAG_NO_GESTURE"
+      ],
+      "taskId": 157
+    },
+    "cardId": "card_global_presets_mode_shift",
+    "slotId": "mx-master-4-2b042_c196",
+    "tags": [
+      "UI_PAGE_BUTTONS"
+    ]
+  },
+  "e2_chrome_profile_as_created": {
+    "applicationId": "application_id_google_chrome",
+    "assignments": [
+      {
+        "card": {
+          "attribute": "ONE_OF",
+          "continuous": true,
+          "icons": {
+            "icons": [
+              "Gestures.png",
+              "Gestures.svg"
+            ],
+            "uri": "pipeline://system_actions/"
+          },
+          "id": "card_global_presets_one_of_gesture_button",
+          "name": "ASSIGNMENT_NAME_GESTURE",
+          "nestedCards": {
+            "application_navigation": {
+              "attribute": "ADAPTER_4WAYS",
+              "continuous": true,
+              "gestureInfo": {
+                "directionLocked": true,
+                "x": {
+                  "actionDuration": {
+                    "maximumSensitivityActionDurationMs": 100,
+                    "minimumSensitivityActionDurationMs": 100
+                  },
+                  "invertable": true,
+                  "speedControl": true
+                },
+                "y": {
+                  "pauseBetweenActionsMs": 300,
+                  "speedControl": true
+                }
+              },
+              "id": "card_global_presets_one_of_gesture_button_application_navigation",
+              "name": "ASSIGNMENT_NAME_APPLICATION_NAVIGATION",
+              "nestedCards": {
+                "click": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_an_switch_applications",
+                  "macro": {
+                    "actionName": "Alt + Tab",
+                    "system": {
+                      "action": "SWITCH_APPS"
+                    },
+                    "type": "SYSTEM"
+                  },
+                  "name": "ASSIGNMENT_NAME_SWITCH_APPLICATIONS",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_KEY_OR_BUTTON"
+                  ],
+                  "taskId": 8
+                },
+                "down": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_an_hide_show_desktop",
+                  "macro": {
+                    "actionName": "Left Windows + D",
+                    "keystroke": {
+                      "code": 7,
+                      "modifiers": [
+                        227
+                      ]
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_HIDE_SHOW_DESKTOP",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 67
+                },
+                "horizontal": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "id": "inner_card_an_alt_key_pressed",
+                  "macro": {
+                    "actionName": "keyboard_none",
+                    "keystroke": {
+                      "modifiers": [
+                        226
+                      ]
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_KEYBOARD_SHORTCUT",
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 65536
+                },
+                "left": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_an_switch_application_left",
+                  "macro": {
+                    "actionName": "keyboard_none",
+                    "keystroke": {
+                      "code": 43,
+                      "displayCharacter": "Tab",
+                      "modifiers": [
+                        225
+                      ]
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_SWITCH_APPLICATIONS",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 8
+                },
+                "right": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_an_switch_application_right",
+                  "macro": {
+                    "actionName": "keyboard_none",
+                    "keystroke": {
+                      "code": 43,
+                      "displayCharacter": "Tab"
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_SWITCH_APPLICATIONS",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 8
+                },
+                "up": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_an_start_menu",
+                  "macro": {
+                    "actionName": "keyboard_none",
+                    "keystroke": {
+                      "displayCharacter": "Windows",
+                      "modifiers": [
+                        227
+                      ]
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_START_MENU",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 144
+                }
+              },
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_BUTTON",
+                "PRESET_TAG_GESTURE"
+              ],
+              "taskId": 65561
+            },
+            "arrange_windows": {
+              "attribute": "ADAPTER_4WAYS",
+              "continuous": true,
+              "gestureInfo": {
+                "directionLocked": true,
+                "x": {
+                  "actionDuration": {
+                    "maximumSensitivityActionDurationMs": 400,
+                    "minimumSensitivityActionDurationMs": 400
+                  },
+                  "speedControl": true
+                },
+                "y": {
+                  "pauseBetweenActionsMs": 300,
+                  "speedControl": true
+                }
+              },
+              "id": "card_global_presets_one_of_gesture_button_arrange_windows",
+              "name": "ASSIGNMENT_NAME_ARRANGE_WINDOWS",
+              "nestedCards": {
+                "click": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_aw_switch_applications",
+                  "macro": {
+                    "actionName": "Alt + Tab",
+                    "system": {
+                      "action": "SWITCH_APPS"
+                    },
+                    "type": "SYSTEM"
+                  },
+                  "name": "ASSIGNMENT_NAME_SWITCH_APPLICATIONS",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_KEY_OR_BUTTON"
+                  ],
+                  "taskId": 8
+                },
+                "down": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_aw_minimize_window",
+                  "macro": {
+                    "system": {
+                      "action": "MINIMIZE"
+                    },
+                    "type": "SYSTEM"
+                  },
+                  "name": "ASSIGNMENT_NAME_MINIMIZE_WINDOW",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 148
+                },
+                "horizontal": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "id": "inner_card_aw_windows_key_pressed",
+                  "macro": {
+                    "actionName": "keyboard_none",
+                    "keystroke": {
+                      "modifiers": [
+                        227
+                      ]
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_KEYBOARD_SHORTCUT",
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 65536
+                },
+                "left": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_aw_snap_left",
+                  "macro": {
+                    "actionName": "keyboard_none",
+                    "keystroke": {
+                      "code": 80,
+                      "displayCharacter": "Left"
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_SNAP_LEFT",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 159
+                },
+                "right": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_aw_snap_right",
+                  "macro": {
+                    "actionName": "keyboard_none",
+                    "keystroke": {
+                      "code": 79,
+                      "displayCharacter": "Right"
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_SNAP_RIGHT",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 266
+                },
+                "up": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_aw_maximize_window",
+                  "macro": {
+                    "system": {
+                      "action": "MAXIMIZE"
+                    },
+                    "type": "SYSTEM"
+                  },
+                  "name": "ASSIGNMENT_NAME_MAXIMIZE_WINDOW",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 149
+                }
+              },
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_BUTTON",
+                "PRESET_TAG_GESTURE"
+              ],
+              "taskId": 65592
+            },
+            "custom_gesture": {
+              "attribute": "ADAPTER_4WAYS",
+              "continuous": true,
+              "gestureInfo": {
+                "x": {
+                  "actionDuration": {
+                    "maximumSensitivityActionDurationMs": 200,
+                    "minimumSensitivityActionDurationMs": 200
+                  },
+                  "speedControl": true
+                },
+                "y": {
+                  "actionDuration": {
+                    "maximumSensitivityActionDurationMs": 200,
+                    "minimumSensitivityActionDurationMs": 200
+                  },
+                  "speedControl": true
+                }
+              },
+              "id": "card_global_presets_one_of_gesture_button_custom_gesture",
+              "name": "ASSIGNMENT_NAME_CUSTOM_GESTURE",
+              "nestedCards": {
+                "click": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_custom_click",
+                  "macro": {
+                    "doNothing": {},
+                    "type": "DO_NOTHING"
+                  },
+                  "name": "ASSIGNMENT_NAME_DONOTHING",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 82
+                },
+                "down": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_custom_down",
+                  "macro": {
+                    "doNothing": {},
+                    "type": "DO_NOTHING"
+                  },
+                  "name": "ASSIGNMENT_NAME_DONOTHING",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 82
+                },
+                "left": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_custom_left",
+                  "macro": {
+                    "doNothing": {},
+                    "type": "DO_NOTHING"
+                  },
+                  "name": "ASSIGNMENT_NAME_DONOTHING",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 82
+                },
+                "right": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_custom_right",
+                  "macro": {
+                    "doNothing": {},
+                    "type": "DO_NOTHING"
+                  },
+                  "name": "ASSIGNMENT_NAME_DONOTHING",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 82
+                },
+                "up": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_custom_up",
+                  "macro": {
+                    "doNothing": {},
+                    "type": "DO_NOTHING"
+                  },
+                  "name": "ASSIGNMENT_NAME_DONOTHING",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 82
+                }
+              },
+              "tags": [
+                "PRESET_TAG_BUTTON",
+                "PRESET_TAG_GESTURE",
+                "PRESET_TAG_CUSTOM_GESTURE"
+              ],
+              "taskId": 65550
+            },
+            "media_control": {
+              "attribute": "ADAPTER_4WAYS",
+              "continuous": true,
+              "gestureInfo": {
+                "x": {
+                  "actionDuration": {
+                    "maximumSensitivityActionDurationMs": 400,
+                    "minimumSensitivityActionDurationMs": 400
+                  },
+                  "speedControl": true
+                },
+                "y": {
+                  "speedControl": true,
+                  "speedFactor": 0.5
+                }
+              },
+              "id": "card_global_presets_one_of_gesture_button_media_control",
+              "name": "ASSIGNMENT_NAME_MEDIA_CONTROL",
+              "nestedCards": {
+                "click": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_mc_play_pause",
+                  "macro": {
+                    "media": {
+                      "usage": "PLAY_PAUSE"
+                    },
+                    "type": "MEDIA"
+                  },
+                  "name": "ASSIGNMENT_NAME_PLAY_PAUSE",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_KEY_OR_BUTTON"
+                  ],
+                  "taskId": 4
+                },
+                "down": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_mc_volume_down",
+                  "macro": {
+                    "media": {
+                      "usage": "VOLUME_DOWN"
+                    },
+                    "type": "MEDIA"
+                  },
+                  "name": "ASSIGNMENT_NAME_VOLUME_DOWN",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_KEY_OR_BUTTON",
+                    "PRESET_COMPUTER_FUNCTIONS"
+                  ],
+                  "taskId": 2
+                },
+                "left": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_mc_previous_track",
+                  "macro": {
+                    "media": {
+                      "usage": "PREVIOUS_TRACK"
+                    },
+                    "type": "MEDIA"
+                  },
+                  "name": "ASSIGNMENT_NAME_PREVIOUS_TRACK",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_KEY_OR_BUTTON"
+                  ],
+                  "taskId": 6
+                },
+                "right": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_mc_next_track",
+                  "macro": {
+                    "media": {
+                      "usage": "NEXT_TRACK"
+                    },
+                    "type": "MEDIA"
+                  },
+                  "name": "ASSIGNMENT_NAME_NEXT_TRACK",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_KEY_OR_BUTTON"
+                  ],
+                  "taskId": 5
+                },
+                "up": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_mc_volume_up",
+                  "macro": {
+                    "media": {
+                      "usage": "VOLUME_UP"
+                    },
+                    "type": "MEDIA"
+                  },
+                  "name": "ASSIGNMENT_NAME_VOLUME_UP",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_KEY_OR_BUTTON"
+                  ],
+                  "taskId": 1
+                }
+              },
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_BUTTON",
+                "PRESET_TAG_GESTURE"
+              ],
+              "taskId": 65584
+            },
+            "pan": {
+              "attribute": "ADAPTER_4WAYS",
+              "continuous": true,
+              "gestureInfo": {
+                "implementation": "CUSTOM_PAN",
+                "x": {
+                  "invertable": true,
+                  "speedControl": true
+                },
+                "y": {
+                  "invertable": true,
+                  "speedControl": true
+                }
+              },
+              "id": "card_global_presets_one_of_gesture_button_pan",
+              "name": "ASSIGNMENT_NAME_PAN",
+              "nestedCards": {
+                "click": {
+                  "continuous": true,
+                  "id": "inner_card_pan_middle_button",
+                  "name": "ASSIGNMENT_NAME_MIDDLE_BUTTON",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 58
+                },
+                "down": {
+                  "continuous": true,
+                  "id": "inner_card_pan_down",
+                  "name": "ASSIGNMENT_NAME_PAN",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 2934711
+                },
+                "left": {
+                  "continuous": true,
+                  "id": "inner_card_pan_left",
+                  "name": "ASSIGNMENT_NAME_PAN",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 2934711
+                },
+                "right": {
+                  "continuous": true,
+                  "id": "inner_card_pan_right",
+                  "name": "ASSIGNMENT_NAME_PAN",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 2934711
+                },
+                "up": {
+                  "continuous": true,
+                  "id": "inner_card_pan_up",
+                  "name": "ASSIGNMENT_NAME_PAN",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 2934711
+                }
+              },
+              "tags": [
+                "PRESET_TAG_BUTTON",
+                "PRESET_TAG_GESTURE"
+              ],
+              "taskId": 65555
+            },
+            "virtual_desktops": {
+              "attribute": "ADAPTER_4WAYS",
+              "continuous": true,
+              "gestureInfo": {
+                "x": {
+                  "actionDuration": {
+                    "maximumSensitivityActionDurationMs": 400,
+                    "minimumSensitivityActionDurationMs": 400
+                  },
+                  "speedControl": true
+                },
+                "y": {
+                  "pauseBetweenActionsMs": 300,
+                  "speedControl": true
+                }
+              },
+              "id": "card_global_presets_one_of_gesture_button_virtual_desktops",
+              "name": "ASSIGNMENT_NAME_VIRTUAL_DESKTOPS",
+              "nestedCards": {
+                "click": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_vd_task_view",
+                  "macro": {
+                    "system": {
+                      "action": "TASK_VIEW"
+                    },
+                    "type": "SYSTEM"
+                  },
+                  "name": "ASSIGNMENT_NAME_TASK_VIEW",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_KEY_OR_BUTTON"
+                  ],
+                  "taskId": 65619
+                },
+                "down": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_vd_hide_show_desktop",
+                  "macro": {
+                    "actionName": "Left Windows + D",
+                    "keystroke": {
+                      "code": 7,
+                      "modifiers": [
+                        227
+                      ]
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_HIDE_SHOW_DESKTOP",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 67
+                },
+                "left": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_vd_desktop_left",
+                  "macro": {
+                    "actionName": "keyboard_none",
+                    "keystroke": {
+                      "code": 80,
+                      "displayCharacter": "Left",
+                      "modifiers": [
+                        224,
+                        227
+                      ]
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_DESKTOP_LEFT",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 65605
+                },
+                "right": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_vd_desktop_right",
+                  "macro": {
+                    "actionName": "keyboard_none",
+                    "keystroke": {
+                      "code": 79,
+                      "displayCharacter": "Right",
+                      "modifiers": [
+                        224,
+                        227
+                      ]
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_DESKTOP_RIGHT",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 65604
+                },
+                "up": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_vd_start_menu",
+                  "macro": {
+                    "actionName": "keyboard_none",
+                    "keystroke": {
+                      "displayCharacter": "Windows",
+                      "modifiers": [
+                        227
+                      ]
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_START_MENU",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 144
+                }
+              },
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_BUTTON",
+                "PRESET_TAG_GESTURE"
+              ],
+              "taskId": 65607
+            },
+            "window_management": {
+              "attribute": "ADAPTER_4WAYS",
+              "continuous": true,
+              "gestureInfo": {
+                "directionLocked": true,
+                "x": {
+                  "actionDuration": {
+                    "maximumSensitivityActionDurationMs": 400,
+                    "minimumSensitivityActionDurationMs": 400
+                  },
+                  "speedControl": true
+                },
+                "y": {
+                  "pauseBetweenActionsMs": 300,
+                  "speedControl": true
+                }
+              },
+              "id": "card_global_presets_one_of_gesture_button_window_management",
+              "name": "ASSIGNMENT_NAME_WINDOW_MANAGEMENT",
+              "nestedCards": {
+                "click": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_wm_switch_applications",
+                  "macro": {
+                    "actionName": "Alt + Tab",
+                    "system": {
+                      "action": "SWITCH_APPS"
+                    },
+                    "type": "SYSTEM"
+                  },
+                  "name": "ASSIGNMENT_NAME_SWITCH_APPLICATIONS",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_KEY_OR_BUTTON"
+                  ],
+                  "taskId": 8
+                },
+                "down": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_wm_hide_show_desktop",
+                  "macro": {
+                    "actionName": "Left Windows + D",
+                    "keystroke": {
+                      "code": 7,
+                      "modifiers": [
+                        227
+                      ]
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_HIDE_SHOW_DESKTOP",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 67
+                },
+                "horizontal": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "id": "inner_card_wm_key_pressed",
+                  "macro": {
+                    "actionName": "keyboard_none",
+                    "keystroke": {
+                      "modifiers": [
+                        227
+                      ]
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_KEYBOARD_SHORTCUT",
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 65536
+                },
+                "left": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_wm_swap_left",
+                  "macro": {
+                    "actionName": "keyboard_none",
+                    "keystroke": {
+                      "code": 80,
+                      "displayCharacter": "Left"
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_SNAP_LEFT",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 159
+                },
+                "right": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_wm_swap_right",
+                  "macro": {
+                    "actionName": "keyboard_none",
+                    "keystroke": {
+                      "code": 79,
+                      "displayCharacter": "Right"
+                    },
+                    "type": "KEYSTROKE"
+                  },
+                  "name": "ASSIGNMENT_NAME_SNAP_RIGHT",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 266
+                },
+                "up": {
+                  "attribute": "MACRO_PLAYBACK",
+                  "continuous": true,
+                  "id": "inner_card_wm_maximize_window",
+                  "macro": {
+                    "system": {
+                      "action": "MAXIMIZE"
+                    },
+                    "type": "SYSTEM"
+                  },
+                  "name": "ASSIGNMENT_NAME_MAXIMIZE_WINDOW",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_EMBEDDED"
+                  ],
+                  "taskId": 149
+                }
+              },
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_BUTTON",
+                "PRESET_TAG_GESTURE"
+              ],
+              "taskId": 65568
+            },
+            "zoom_rotate": {
+              "attribute": "ADAPTER_4WAYS",
+              "continuous": true,
+              "gestureInfo": {
+                "implementation": "CUSTOM_ZOOM_ROTATE",
+                "x": {
+                  "speedControl": true
+                },
+                "y": {
+                  "speedControl": true
+                }
+              },
+              "id": "card_global_presets_one_of_gesture_button_zoom_rotate",
+              "name": "ASSIGNMENT_NAME_ZOOM_ROTATE",
+              "nestedCards": {
+                "click": {
+                  "continuous": true,
+                  "id": "inner_card_zr_zoom_reset",
+                  "name": "ASSIGNMENT_NAME_ZOOM_RESET",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 55
+                },
+                "down": {
+                  "continuous": true,
+                  "id": "inner_card_zr_zoom_out",
+                  "name": "ASSIGNMENT_NAME_ZOOM_OUT",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 53
+                },
+                "left": {
+                  "continuous": true,
+                  "id": "inner_card_zr_rotate_left",
+                  "name": "ASSIGNMENT_NAME_ROTATE",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 2934711
+                },
+                "right": {
+                  "continuous": true,
+                  "id": "inner_card_zr_rotate_right",
+                  "name": "ASSIGNMENT_NAME_ROTATE",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 2934711
+                },
+                "up": {
+                  "continuous": true,
+                  "id": "inner_card_zr_zoom_in",
+                  "name": "ASSIGNMENT_NAME_ZOOM_IN",
+                  "readOnly": true,
+                  "tags": [
+                    "PRESET_TAG_MISC"
+                  ],
+                  "taskId": 51
+                }
+              },
+              "tags": [
+                "PRESET_TAG_BUTTON",
+                "PRESET_TAG_GESTURE"
+              ],
+              "taskId": 65577
+            }
+          },
+          "nestedCardsOrder": [
+            "virtual_desktops",
+            "media_control",
+            "window_management",
+            "application_navigation",
+            "zoom_rotate",
+            "pan",
+            "arrange_windows",
+            "custom_gesture"
+          ],
+          "selectedNestedCard": "virtual_desktops",
+          "tags": [
+            "PRESET_TAG_GESTURE",
+            "PRESET_MOUSE_FUNCTIONS"
+          ],
+          "taskId": 65580
+        },
+        "cardId": "card_global_presets_one_of_gesture_button",
+        "slotId": "mx-master-4-2b042_c195",
+        "tags": [
+          "UI_PAGE_BUTTONS"
+        ]
+      },
+      {
+        "card": {
+          "attribute": "MACRO_PLAYBACK",
+          "icons": {
+            "icons": [
+              "ShiftWheelMode.png",
+              "ShiftWheelMode.svg"
+            ],
+            "uri": "pipeline://system_actions/"
+          },
+          "id": "card_global_presets_mode_shift",
+          "macro": {},
+          "name": "ASSIGNMENT_NAME_MODE_SHIFT",
+          "readOnly": true,
+          "tags": [
+            "PRESET_TAG_MOUSE_SMARTSHIFT",
+            "PRESET_TAG_NO_GESTURE",
+            "PRESET_MOUSE_FUNCTIONS"
+          ],
+          "taskId": 157
+        },
+        "cardId": "card_global_presets_mode_shift",
+        "slotId": "mx-master-4-2b042_c196",
+        "tags": [
+          "UI_PAGE_BUTTONS"
+        ]
+      },
+      {
+        "card": {
+          "attribute": "MACRO_PLAYBACK",
+          "icons": {
+            "icons": [
+              "ShowRadialMenu.png",
+              "ShowRadialMenu.svg"
+            ],
+            "uri": "pipeline://88b73d28-24d8-47bd-84a2-c45cad5640d3/actions.bundle/"
+          },
+          "id": "card_global_presets_show_radial_menu",
+          "macro": {
+            "system": {
+              "action": "SHOW_RADIAL_MENU"
+            },
+            "type": "SYSTEM"
+          },
+          "name": "ASSIGNMENT_NAME_SHOW_RADIAL_MENU",
+          "readOnly": true,
+          "tags": [
+            "PRESET_TAG_MX_DIDOT_ACTION_RING",
+            "PRESET_TAG_LPS_ACTION_RING",
+            "PRESET_MOUSE_FUNCTIONS",
+            "PRESET_KEYBOARD_FUNCTIONS"
+          ]
+        },
+        "cardId": "card_global_presets_show_radial_menu",
+        "slotId": "mx-master-4-2b042_c416",
+        "tags": [
+          "UI_PAGE_BUTTONS"
+        ]
+      },
+      {
+        "card": {
+          "attribute": "MACRO_PLAYBACK",
+          "icons": {
+            "icons": [
+              "MiddleClick.png",
+              "MiddleClick.svg"
+            ],
+            "uri": "pipeline://system_actions/"
+          },
+          "id": "card_global_presets_middle_button",
+          "macro": {
+            "actionName": "MB3",
+            "mouse": {
+              "action": "BUTTON",
+              "hidUsage": 3
+            },
+            "type": "MOUSE"
+          },
+          "name": "ASSIGNMENT_NAME_MIDDLE_BUTTON",
+          "readOnly": true,
+          "tags": [
+            "PRESET_TAG_MOUSE",
+            "PRESET_MOUSE_FUNCTIONS"
+          ],
+          "taskId": 58
+        },
+        "cardId": "card_global_presets_middle_button",
+        "slotId": "mx-master-4-2b042_c82",
+        "tags": [
+          "UI_PAGE_BUTTONS"
+        ]
+      },
+      {
+        "card": {
+          "applicationId": "application_id_google_chrome",
+          "attribute": "MACRO_PLAYBACK",
+          "id": "card_global_presets_win_back",
+          "macro": {
+            "mouse": {
+              "action": "WIN_BACK"
+            },
+            "type": "MOUSE"
+          },
+          "name": "ASSIGNMENT_NAME_BACK",
+          "readOnly": true,
+          "tags": [
+            "PRESET_TAG_KEY_OR_BUTTON",
+            "PRESET_TAG_MACROS_UNSUPPORTED"
+          ],
+          "taskId": 60
+        },
+        "cardId": "card_global_presets_win_back",
+        "slotId": "mx-master-4-2b042_c83",
+        "tags": [
+          "UI_PAGE_BUTTONS"
+        ]
+      },
+      {
+        "card": {
+          "applicationId": "application_id_google_chrome",
+          "attribute": "MACRO_PLAYBACK",
+          "id": "card_global_presets_win_forward",
+          "macro": {
+            "mouse": {
+              "action": "WIN_FORWARD"
+            },
+            "type": "MOUSE"
+          },
+          "name": "ASSIGNMENT_NAME_FORWARD",
+          "readOnly": true,
+          "tags": [
+            "PRESET_TAG_KEY_OR_BUTTON",
+            "PRESET_TAG_MACROS_UNSUPPORTED"
+          ],
+          "taskId": 62
+        },
+        "cardId": "card_global_presets_win_forward",
+        "slotId": "mx-master-4-2b042_c86",
+        "tags": [
+          "UI_PAGE_BUTTONS"
+        ]
+      },
+      {
+        "card": {
+          "attribute": "ADAPTER_2WAYS",
+          "gestureInfo": {
+            "x": {
+              "actionDuration": {
+                "maximumSensitivityActionDurationMs": 50,
+                "minimumSensitivityActionDurationMs": 50
+              },
+              "actionThreshold": {
+                "maximumSensitivityThreshold": 1,
+                "minimumSensitivityThreshold": 15
+              },
+              "invertable": true,
+              "speedControl": true
+            }
+          },
+          "icons": {
+            "icons": [
+              "NavigateTabs.png",
+              "NavigateTabs.svg"
+            ],
+            "uri": "pipeline://system_actions/"
+          },
+          "id": "card_global_presets_win_tab_navigation",
+          "name": "ASSIGNMENT_NAME_BROWSER_TAB_NAVIGATION",
+          "nestedCards": {
+            "left": {
+              "attribute": "MACRO_PLAYBACK",
+              "id": "inner_card_wt_tab_prev",
+              "macro": {
+                "actionName": "Ctrl + Shift + Tab",
+                "keystroke": {
+                  "code": 43,
+                  "modifiers": [
+                    225,
+                    224
+                  ]
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_BROWSER_TAB_PREV",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_BUTTON"
+              ]
+            },
+            "right": {
+              "attribute": "MACRO_PLAYBACK",
+              "id": "inner_card_wt_tab_next",
+              "macro": {
+                "actionName": "Ctrl + Tab",
+                "keystroke": {
+                  "code": 43,
+                  "modifiers": [
+                    224
+                  ]
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_BROWSER_TAB_NEXT",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_BUTTON"
+              ]
+            }
+          },
+          "readOnly": true,
+          "tags": [
+            "PRESET_TAG_THUMBWHEEL",
+            "PRESET_TAG_ANALOG_CONTROL",
+            "PRESET_MOUSE_FUNCTIONS"
+          ],
+          "taskId": 65560
+        },
+        "cardId": "card_global_presets_win_tab_navigation",
+        "slotId": "mx-master-4-2b042_thumb_wheel_adapter",
+        "tags": [
+          "UI_PAGE_BUTTONS"
+        ]
+      }
+    ],
+    "baseProfileId": "420fd454-0c36-499d-bde4-146823b16147",
+    "id": "application_id_google_chrome"
+  },
+  "e3_chrome_thumb_custom_gestures": {
+    "card": {
+      "attribute": "ONE_OF",
+      "continuous": true,
+      "icons": {
+        "icons": [
+          "Gestures.png",
+          "Gestures.svg"
+        ],
+        "uri": "pipeline://system_actions/"
+      },
+      "id": "card_global_presets_one_of_gesture_button",
+      "name": "ASSIGNMENT_NAME_GESTURE",
+      "nestedCards": {
+        "application_navigation": {
+          "attribute": "ADAPTER_4WAYS",
+          "continuous": true,
+          "gestureInfo": {
+            "directionLocked": true,
+            "x": {
+              "actionDuration": {
+                "maximumSensitivityActionDurationMs": 100,
+                "minimumSensitivityActionDurationMs": 100
+              },
+              "invertable": true,
+              "speedControl": true
+            },
+            "y": {
+              "pauseBetweenActionsMs": 300,
+              "speedControl": true
+            }
+          },
+          "id": "card_global_presets_one_of_gesture_button_application_navigation",
+          "name": "ASSIGNMENT_NAME_APPLICATION_NAVIGATION",
+          "nestedCards": {
+            "click": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_an_switch_applications",
+              "macro": {
+                "actionName": "Alt + Tab",
+                "system": {
+                  "action": "SWITCH_APPS"
+                },
+                "type": "SYSTEM"
+              },
+              "name": "ASSIGNMENT_NAME_SWITCH_APPLICATIONS",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_KEY_OR_BUTTON"
+              ],
+              "taskId": 8
+            },
+            "down": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_an_hide_show_desktop",
+              "macro": {
+                "actionName": "Left Windows + D",
+                "keystroke": {
+                  "code": 7,
+                  "modifiers": [
+                    227
+                  ]
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_HIDE_SHOW_DESKTOP",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 67
+            },
+            "horizontal": {
+              "attribute": "MACRO_PLAYBACK",
+              "id": "inner_card_an_alt_key_pressed",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "modifiers": [
+                    226
+                  ]
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_KEYBOARD_SHORTCUT",
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 65536
+            },
+            "left": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_an_switch_application_left",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "code": 43,
+                  "displayCharacter": "Tab",
+                  "modifiers": [
+                    225
+                  ]
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_SWITCH_APPLICATIONS",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 8
+            },
+            "right": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_an_switch_application_right",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "code": 43,
+                  "displayCharacter": "Tab"
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_SWITCH_APPLICATIONS",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 8
+            },
+            "up": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_an_start_menu",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "displayCharacter": "Windows",
+                  "modifiers": [
+                    227
+                  ]
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_START_MENU",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 144
+            }
+          },
+          "readOnly": true,
+          "tags": [
+            "PRESET_TAG_BUTTON",
+            "PRESET_TAG_GESTURE"
+          ],
+          "taskId": 65561
+        },
+        "arrange_windows": {
+          "attribute": "ADAPTER_4WAYS",
+          "continuous": true,
+          "gestureInfo": {
+            "directionLocked": true,
+            "x": {
+              "actionDuration": {
+                "maximumSensitivityActionDurationMs": 400,
+                "minimumSensitivityActionDurationMs": 400
+              },
+              "speedControl": true
+            },
+            "y": {
+              "pauseBetweenActionsMs": 300,
+              "speedControl": true
+            }
+          },
+          "id": "card_global_presets_one_of_gesture_button_arrange_windows",
+          "name": "ASSIGNMENT_NAME_ARRANGE_WINDOWS",
+          "nestedCards": {
+            "click": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_aw_switch_applications",
+              "macro": {
+                "actionName": "Alt + Tab",
+                "system": {
+                  "action": "SWITCH_APPS"
+                },
+                "type": "SYSTEM"
+              },
+              "name": "ASSIGNMENT_NAME_SWITCH_APPLICATIONS",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_KEY_OR_BUTTON"
+              ],
+              "taskId": 8
+            },
+            "down": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_aw_minimize_window",
+              "macro": {
+                "system": {
+                  "action": "MINIMIZE"
+                },
+                "type": "SYSTEM"
+              },
+              "name": "ASSIGNMENT_NAME_MINIMIZE_WINDOW",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 148
+            },
+            "horizontal": {
+              "attribute": "MACRO_PLAYBACK",
+              "id": "inner_card_aw_windows_key_pressed",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "modifiers": [
+                    227
+                  ]
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_KEYBOARD_SHORTCUT",
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 65536
+            },
+            "left": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_aw_snap_left",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "code": 80,
+                  "displayCharacter": "Left"
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_SNAP_LEFT",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 159
+            },
+            "right": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_aw_snap_right",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "code": 79,
+                  "displayCharacter": "Right"
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_SNAP_RIGHT",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 266
+            },
+            "up": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_aw_maximize_window",
+              "macro": {
+                "system": {
+                  "action": "MAXIMIZE"
+                },
+                "type": "SYSTEM"
+              },
+              "name": "ASSIGNMENT_NAME_MAXIMIZE_WINDOW",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 149
+            }
+          },
+          "readOnly": true,
+          "tags": [
+            "PRESET_TAG_BUTTON",
+            "PRESET_TAG_GESTURE"
+          ],
+          "taskId": 65592
+        },
+        "custom_gesture": {
+          "attribute": "ADAPTER_4WAYS",
+          "continuous": true,
+          "gestureInfo": {
+            "x": {
+              "actionDuration": {
+                "maximumSensitivityActionDurationMs": 200,
+                "minimumSensitivityActionDurationMs": 200
+              },
+              "speedControl": true
+            },
+            "y": {
+              "actionDuration": {
+                "maximumSensitivityActionDurationMs": 200,
+                "minimumSensitivityActionDurationMs": 200
+              },
+              "speedControl": true
+            }
+          },
+          "id": "card_global_presets_one_of_gesture_button_custom_gesture",
+          "name": "ASSIGNMENT_NAME_CUSTOM_GESTURE",
+          "nestedCards": {
+            "click": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_custom_click",
+              "macro": {
+                "doNothing": {},
+                "type": "DO_NOTHING"
+              },
+              "name": "ASSIGNMENT_NAME_DONOTHING",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_MISC"
+              ],
+              "taskId": 82
+            },
+            "down": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_custom_down",
+              "macro": {
+                "doNothing": {},
+                "type": "DO_NOTHING"
+              },
+              "name": "ASSIGNMENT_NAME_DONOTHING",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_MISC"
+              ],
+              "taskId": 82
+            },
+            "left": {
+              "attribute": "MACRO_PLAYBACK",
+              "icons": {
+                "icons": [
+                  "Shortcut.png",
+                  "Shortcut.svg"
+                ],
+                "uri": "pipeline://system_actions/"
+              },
+              "id": "card_global_presets_keyboard_shortcut",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "code": 43,
+                  "displayCharacter": "Tab",
+                  "modifiers": [
+                    224,
+                    225
+                  ],
+                  "virtualKeyId": "VK_TAB"
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_KEYBOARD_SHORTCUT",
+              "tags": [
+                "PRESET_TAG_KEY_OR_BUTTON",
+                "PRESET_TAG_MACROS_UNSUPPORTED",
+                "PRESET_TAG_PRESENTER_BUTTON",
+                "PRESET_KEYBOARD_FUNCTIONS"
+              ],
+              "taskId": 65536
+            },
+            "right": {
+              "attribute": "MACRO_PLAYBACK",
+              "icons": {
+                "icons": [
+                  "Shortcut.png",
+                  "Shortcut.svg"
+                ],
+                "uri": "pipeline://system_actions/"
+              },
+              "id": "card_global_presets_keyboard_shortcut",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "code": 43,
+                  "displayCharacter": "Tab",
+                  "modifiers": [
+                    224
+                  ],
+                  "virtualKeyId": "VK_TAB"
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_KEYBOARD_SHORTCUT",
+              "tags": [
+                "PRESET_TAG_KEY_OR_BUTTON",
+                "PRESET_TAG_MACROS_UNSUPPORTED",
+                "PRESET_TAG_PRESENTER_BUTTON",
+                "PRESET_KEYBOARD_FUNCTIONS"
+              ],
+              "taskId": 65536
+            },
+            "up": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_custom_up",
+              "macro": {
+                "doNothing": {},
+                "type": "DO_NOTHING"
+              },
+              "name": "ASSIGNMENT_NAME_DONOTHING",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_MISC"
+              ],
+              "taskId": 82
+            }
+          },
+          "selectedNestedCard": "right",
+          "tags": [
+            "PRESET_TAG_BUTTON",
+            "PRESET_TAG_GESTURE",
+            "PRESET_TAG_CUSTOM_GESTURE"
+          ],
+          "taskId": 65550
+        },
+        "media_control": {
+          "attribute": "ADAPTER_4WAYS",
+          "continuous": true,
+          "gestureInfo": {
+            "x": {
+              "actionDuration": {
+                "maximumSensitivityActionDurationMs": 400,
+                "minimumSensitivityActionDurationMs": 400
+              },
+              "speedControl": true
+            },
+            "y": {
+              "speedControl": true,
+              "speedFactor": 0.5
+            }
+          },
+          "id": "card_global_presets_one_of_gesture_button_media_control",
+          "name": "ASSIGNMENT_NAME_MEDIA_CONTROL",
+          "nestedCards": {
+            "click": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_mc_play_pause",
+              "macro": {
+                "media": {
+                  "usage": "PLAY_PAUSE"
+                },
+                "type": "MEDIA"
+              },
+              "name": "ASSIGNMENT_NAME_PLAY_PAUSE",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_KEY_OR_BUTTON"
+              ],
+              "taskId": 4
+            },
+            "down": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_mc_volume_down",
+              "macro": {
+                "media": {
+                  "usage": "VOLUME_DOWN"
+                },
+                "type": "MEDIA"
+              },
+              "name": "ASSIGNMENT_NAME_VOLUME_DOWN",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_KEY_OR_BUTTON",
+                "PRESET_COMPUTER_FUNCTIONS"
+              ],
+              "taskId": 2
+            },
+            "left": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_mc_previous_track",
+              "macro": {
+                "media": {
+                  "usage": "PREVIOUS_TRACK"
+                },
+                "type": "MEDIA"
+              },
+              "name": "ASSIGNMENT_NAME_PREVIOUS_TRACK",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_KEY_OR_BUTTON"
+              ],
+              "taskId": 6
+            },
+            "right": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_mc_next_track",
+              "macro": {
+                "media": {
+                  "usage": "NEXT_TRACK"
+                },
+                "type": "MEDIA"
+              },
+              "name": "ASSIGNMENT_NAME_NEXT_TRACK",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_KEY_OR_BUTTON"
+              ],
+              "taskId": 5
+            },
+            "up": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_mc_volume_up",
+              "macro": {
+                "media": {
+                  "usage": "VOLUME_UP"
+                },
+                "type": "MEDIA"
+              },
+              "name": "ASSIGNMENT_NAME_VOLUME_UP",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_KEY_OR_BUTTON"
+              ],
+              "taskId": 1
+            }
+          },
+          "readOnly": true,
+          "tags": [
+            "PRESET_TAG_BUTTON",
+            "PRESET_TAG_GESTURE"
+          ],
+          "taskId": 65584
+        },
+        "pan": {
+          "attribute": "ADAPTER_4WAYS",
+          "continuous": true,
+          "gestureInfo": {
+            "implementation": "CUSTOM_PAN",
+            "x": {
+              "invertable": true,
+              "speedControl": true
+            },
+            "y": {
+              "invertable": true,
+              "speedControl": true
+            }
+          },
+          "id": "card_global_presets_one_of_gesture_button_pan",
+          "name": "ASSIGNMENT_NAME_PAN",
+          "nestedCards": {
+            "click": {
+              "continuous": true,
+              "id": "inner_card_pan_middle_button",
+              "name": "ASSIGNMENT_NAME_MIDDLE_BUTTON",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_MISC"
+              ],
+              "taskId": 58
+            },
+            "down": {
+              "continuous": true,
+              "id": "inner_card_pan_down",
+              "name": "ASSIGNMENT_NAME_PAN",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_MISC"
+              ],
+              "taskId": 2934711
+            },
+            "left": {
+              "continuous": true,
+              "id": "inner_card_pan_left",
+              "name": "ASSIGNMENT_NAME_PAN",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_MISC"
+              ],
+              "taskId": 2934711
+            },
+            "right": {
+              "continuous": true,
+              "id": "inner_card_pan_right",
+              "name": "ASSIGNMENT_NAME_PAN",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_MISC"
+              ],
+              "taskId": 2934711
+            },
+            "up": {
+              "continuous": true,
+              "id": "inner_card_pan_up",
+              "name": "ASSIGNMENT_NAME_PAN",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_MISC"
+              ],
+              "taskId": 2934711
+            }
+          },
+          "tags": [
+            "PRESET_TAG_BUTTON",
+            "PRESET_TAG_GESTURE"
+          ],
+          "taskId": 65555
+        },
+        "virtual_desktops": {
+          "attribute": "ADAPTER_4WAYS",
+          "continuous": true,
+          "gestureInfo": {
+            "x": {
+              "actionDuration": {
+                "maximumSensitivityActionDurationMs": 400,
+                "minimumSensitivityActionDurationMs": 400
+              },
+              "speedControl": true
+            },
+            "y": {
+              "pauseBetweenActionsMs": 300,
+              "speedControl": true
+            }
+          },
+          "id": "card_global_presets_one_of_gesture_button_virtual_desktops",
+          "name": "ASSIGNMENT_NAME_VIRTUAL_DESKTOPS",
+          "nestedCards": {
+            "click": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_vd_task_view",
+              "macro": {
+                "system": {
+                  "action": "TASK_VIEW"
+                },
+                "type": "SYSTEM"
+              },
+              "name": "ASSIGNMENT_NAME_TASK_VIEW",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_KEY_OR_BUTTON"
+              ],
+              "taskId": 65619
+            },
+            "down": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_vd_hide_show_desktop",
+              "macro": {
+                "actionName": "Left Windows + D",
+                "keystroke": {
+                  "code": 7,
+                  "modifiers": [
+                    227
+                  ]
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_HIDE_SHOW_DESKTOP",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 67
+            },
+            "left": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_vd_desktop_left",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "code": 80,
+                  "displayCharacter": "Left",
+                  "modifiers": [
+                    224,
+                    227
+                  ]
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_DESKTOP_LEFT",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 65605
+            },
+            "right": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_vd_desktop_right",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "code": 79,
+                  "displayCharacter": "Right",
+                  "modifiers": [
+                    224,
+                    227
+                  ]
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_DESKTOP_RIGHT",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 65604
+            },
+            "up": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_vd_start_menu",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "displayCharacter": "Windows",
+                  "modifiers": [
+                    227
+                  ]
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_START_MENU",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 144
+            }
+          },
+          "readOnly": true,
+          "tags": [
+            "PRESET_TAG_BUTTON",
+            "PRESET_TAG_GESTURE"
+          ],
+          "taskId": 65607
+        },
+        "window_management": {
+          "attribute": "ADAPTER_4WAYS",
+          "continuous": true,
+          "gestureInfo": {
+            "directionLocked": true,
+            "x": {
+              "actionDuration": {
+                "maximumSensitivityActionDurationMs": 400,
+                "minimumSensitivityActionDurationMs": 400
+              },
+              "speedControl": true
+            },
+            "y": {
+              "pauseBetweenActionsMs": 300,
+              "speedControl": true
+            }
+          },
+          "id": "card_global_presets_one_of_gesture_button_window_management",
+          "name": "ASSIGNMENT_NAME_WINDOW_MANAGEMENT",
+          "nestedCards": {
+            "click": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_wm_switch_applications",
+              "macro": {
+                "actionName": "Alt + Tab",
+                "system": {
+                  "action": "SWITCH_APPS"
+                },
+                "type": "SYSTEM"
+              },
+              "name": "ASSIGNMENT_NAME_SWITCH_APPLICATIONS",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_KEY_OR_BUTTON"
+              ],
+              "taskId": 8
+            },
+            "down": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_wm_hide_show_desktop",
+              "macro": {
+                "actionName": "Left Windows + D",
+                "keystroke": {
+                  "code": 7,
+                  "modifiers": [
+                    227
+                  ]
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_HIDE_SHOW_DESKTOP",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 67
+            },
+            "horizontal": {
+              "attribute": "MACRO_PLAYBACK",
+              "id": "inner_card_wm_key_pressed",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "modifiers": [
+                    227
+                  ]
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_KEYBOARD_SHORTCUT",
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 65536
+            },
+            "left": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_wm_swap_left",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "code": 80,
+                  "displayCharacter": "Left"
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_SNAP_LEFT",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 159
+            },
+            "right": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_wm_swap_right",
+              "macro": {
+                "actionName": "keyboard_none",
+                "keystroke": {
+                  "code": 79,
+                  "displayCharacter": "Right"
+                },
+                "type": "KEYSTROKE"
+              },
+              "name": "ASSIGNMENT_NAME_SNAP_RIGHT",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 266
+            },
+            "up": {
+              "attribute": "MACRO_PLAYBACK",
+              "continuous": true,
+              "id": "inner_card_wm_maximize_window",
+              "macro": {
+                "system": {
+                  "action": "MAXIMIZE"
+                },
+                "type": "SYSTEM"
+              },
+              "name": "ASSIGNMENT_NAME_MAXIMIZE_WINDOW",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_EMBEDDED"
+              ],
+              "taskId": 149
+            }
+          },
+          "readOnly": true,
+          "tags": [
+            "PRESET_TAG_BUTTON",
+            "PRESET_TAG_GESTURE"
+          ],
+          "taskId": 65568
+        },
+        "zoom_rotate": {
+          "attribute": "ADAPTER_4WAYS",
+          "continuous": true,
+          "gestureInfo": {
+            "implementation": "CUSTOM_ZOOM_ROTATE",
+            "x": {
+              "speedControl": true
+            },
+            "y": {
+              "speedControl": true
+            }
+          },
+          "id": "card_global_presets_one_of_gesture_button_zoom_rotate",
+          "name": "ASSIGNMENT_NAME_ZOOM_ROTATE",
+          "nestedCards": {
+            "click": {
+              "continuous": true,
+              "id": "inner_card_zr_zoom_reset",
+              "name": "ASSIGNMENT_NAME_ZOOM_RESET",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_MISC"
+              ],
+              "taskId": 55
+            },
+            "down": {
+              "continuous": true,
+              "id": "inner_card_zr_zoom_out",
+              "name": "ASSIGNMENT_NAME_ZOOM_OUT",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_MISC"
+              ],
+              "taskId": 53
+            },
+            "left": {
+              "continuous": true,
+              "id": "inner_card_zr_rotate_left",
+              "name": "ASSIGNMENT_NAME_ROTATE",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_MISC"
+              ],
+              "taskId": 2934711
+            },
+            "right": {
+              "continuous": true,
+              "id": "inner_card_zr_rotate_right",
+              "name": "ASSIGNMENT_NAME_ROTATE",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_MISC"
+              ],
+              "taskId": 2934711
+            },
+            "up": {
+              "continuous": true,
+              "id": "inner_card_zr_zoom_in",
+              "name": "ASSIGNMENT_NAME_ZOOM_IN",
+              "readOnly": true,
+              "tags": [
+                "PRESET_TAG_MISC"
+              ],
+              "taskId": 51
+            }
+          },
+          "tags": [
+            "PRESET_TAG_BUTTON",
+            "PRESET_TAG_GESTURE"
+          ],
+          "taskId": 65577
+        }
+      },
+      "nestedCardsOrder": [
+        "virtual_desktops",
+        "media_control",
+        "window_management",
+        "application_navigation",
+        "zoom_rotate",
+        "pan",
+        "arrange_windows",
+        "custom_gesture"
+      ],
+      "selectedNestedCard": "custom_gesture",
+      "tags": [
+        "PRESET_TAG_GESTURE",
+        "PRESET_MOUSE_FUNCTIONS"
+      ],
+      "taskId": 65580
+    },
+    "cardId": "card_global_presets_one_of_gesture_button",
+    "slotId": "mx-master-4-2b042_c195",
+    "tags": [
+      "UI_PAGE_BUTTONS"
+    ]
+  }
+}

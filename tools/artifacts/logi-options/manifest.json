@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "id": "logi-options",
+  "version": "0.1.0",
+  "name": "Logi Options+ Profiles",
+  "description": "Applies Logitech Options+ mouse profiles (MX Master 4) from declarative *.logi.json packs; check, export, restore",
+  "runtime": "python",
+  "entry": "main.py",
+  "requiredConfig": [
+    "logi-options.packDirs",
+    "logi-options.dataDir",
+    "logi-options.backupDir"
+  ],
+  "tags": ["artifacts", "logitech", "mouse", "devices", "generator"]
+}

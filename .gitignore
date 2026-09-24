@@ -3,6 +3,7 @@ node_modules/
 
 # Build
 dist/
+__pycache__/
 
 # Logs
 *.log

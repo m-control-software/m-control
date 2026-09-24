@@ -1,0 +1,26 @@
+{
+  "specVersion": 1,
+  "pack": "example-rider",
+  "device": "mx-master-4",
+  "description": "Worked example (docs/spec-format.md). Request: 'MX Master 4 profile for Rider: thumb button = Ctrl+Shift+A, back = Alt+Left, forward = Alt+Right, gesture left/right = previous/next tab'. On the MX Master 4 the thumb button IS the gesture button, so 'thumb = Ctrl+Shift+A' and thumb gestures cannot both hold: gestures keep the thumb button and Ctrl+Shift+A (Find Action) moves to the haptic sense panel. Assumption: previous/next tab = Ctrl+PageUp / Ctrl+PageDown - Rider's active keymap could not be read from its config; adjust if yours differs.",
+  "profiles": [
+    {
+      "application": {
+        "executable": "rider64.exe",
+        "name": "Rider",
+        "searchPaths": ["%LOCALAPPDATA%\\Programs\\Rider\\bin"]
+      },
+      "buttons": {
+        "back": { "shortcut": "ALT+LEFT" },
+        "forward": { "shortcut": "ALT+RIGHT" },
+        "haptic-panel": { "shortcut": "CTRL+SHIFT+A" },
+        "thumb": {
+          "gestures": {
+            "left": { "shortcut": "CTRL+PAGEUP" },
+            "right": { "shortcut": "CTRL+PAGEDOWN" }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -21,6 +21,8 @@ A personal CLI orchestrator for developer productivity — discovers and runs st
 - ✅ `@m-control/mctl` — CLI: `mctl list`, `mctl run <id>`, `mctl --help`
 - ✅ Tool Protocol v1 — NDJSON stdout / JSON stdin / exit codes (ADR-0003)
 - ✅ `hello-world` tool in `tools/misc/hello-world/`
+- ✅ `logi-options` tool in `tools/artifacts/logi-options/` — MX Master 4 profiles from `*.logi.json` packs,
+  applied to the live Options+ agent (ADR-0011). Authoring: `.claude/skills/author-logi-profile/`
 - ✅ ncc bundle at `apps/mctl/dist/bundle/index.js` (single self-contained file)
 - ✅ ESLint + Prettier + TypeScript strict mode
 - ✅ GitHub Actions CI — typecheck, lint, build, smoke test on push/PR to main/develop

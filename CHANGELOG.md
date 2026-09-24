@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`logi-options` tool** (`tools/artifacts/logi-options/`, ADR-0011): Logitech MX Master 4
+  button, gesture, and per-app profiles from declarative `*.logi.json` packs. Options+
+  keeps its configuration in one JSON document owned by a running agent, so applying
+  is a guarded transaction: backup, stop agent, surgical patch, restart, decompile
+  what the agent kept, and roll back on mismatch. It is budgeted inside mctl's 30 s
+  kill timeout. `check=true` doubles as a spec-vs-live drift report, and
+  `mode=export` adopts changes made in the UI. The compiler reproduces UI-written
+  cards byte-for-byte from Logitech's installed catalogs (none are vendored).
+  Personal packs live outside the repo via `tools.logi-options.packDirs`. Includes
+  the reverse-engineering notes (`docs/internals.md`), a maintenance method for
+  Options+ updates, and the `author-logi-profile` Claude skill.
+
 - **`agent-status` v0.3: `cursor-ide` provider** — sessions inside the Cursor
   desktop app now show up. The Cursor API only lists cloud Background Agents, so
   IDE chats are read from Cursor's local SQLite state (`workspaceStorage` +
