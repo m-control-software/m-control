@@ -296,10 +296,37 @@ function New-DeckKey {
     return $action
 }
 
+function New-DeckUniquePath {
+    <#
+        Returns $Path, or $Path-2, -3 ... if it is already taken. The install
+        stamp has one-second resolution, so two runs in the same second would
+        otherwise share a backup path -- and Copy-Item -Recurse onto an existing
+        directory nests inside it rather than replacing it, silently corrupting
+        the older backup.
+    #>
+    [CmdletBinding()] param([Parameter(Mandatory)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) { return $Path }
+    $n = 2
+    while (Test-Path -LiteralPath "$Path-$n") { $n++ }
+    return "$Path-$n"
+}
+
 function Install-DeckProfile {
     <#
-        Swaps the staged bundle into ProfilesV3. Backs up the existing bundle
-        first and restores it if the swap fails partway.
+        Swaps the staged bundle into ProfilesV3.
+
+        Crash safety: the existing bundle is renamed aside within ProfilesV3
+        rather than deleted, so the window in which no bundle is installed is
+        two same-volume renames wide instead of a recursive delete plus a
+        directory move. This NARROWS that window, it does not close it --
+        Windows offers no atomic directory swap, and a kill lands as
+        TerminateProcess, so neither the catch below nor main.ps1's finally is
+        guaranteed to run. The off-volume backup therefore stays, and a stale
+        aside left by a killed run is recovered on the next install.
+
+        The aside name deliberately does not end in .sdProfile so the Stream
+        Deck app ignores it if it sees the directory mid-swap.
     #>
     [CmdletBinding()] param(
         [Parameter(Mandatory)][string]$StagedBundleDir,
@@ -309,26 +336,45 @@ function Install-DeckProfile {
     )
 
     $target = Join-Path $ProfilesRoot "$Guid.sdProfile"
+    $stamp = (Get-Date).ToString('yyyyMMdd-HHmmss')
     $rollback = $null
+    $aside = $null
+
+    # Recover from a run that was killed between the two renames: the bundle
+    # exists only under its aside name, so put it back before swapping again.
+    if (-not (Test-Path -LiteralPath $target)) {
+        $orphan = Get-ChildItem -LiteralPath $ProfilesRoot -Directory -Filter "$Guid.sdProfile.aside-*" -ErrorAction SilentlyContinue |
+            Sort-Object Name | Select-Object -Last 1
+        if ($orphan) { Move-Item -LiteralPath $orphan.FullName -Destination $target -Force }
+    }
 
     if (Test-Path -LiteralPath $target) {
-        $stamp = (Get-Date).ToString('yyyyMMdd-HHmmss')
         # if/else rather than a ternary: the manifest declares runtime
         # 'powershell', which resolveSpawnCommand maps to Windows PowerShell 5.1
         # on Windows, where ?: is a parse error that kills the whole file.
         $backupRoot = if ([string]::IsNullOrWhiteSpace($BackupDir)) { $env:TEMP } else { $BackupDir }
-        $rollback = Join-Path $backupRoot "StreamDeck-$Guid-backup-$stamp"
+        $rollback = New-DeckUniquePath (Join-Path $backupRoot "StreamDeck-$Guid-backup-$stamp")
         Copy-Item -LiteralPath $target -Destination $rollback -Recurse -Force
-        Remove-Item -LiteralPath $target -Recurse -Force
+
+        $aside = New-DeckUniquePath (Join-Path $ProfilesRoot "$Guid.sdProfile.aside-$stamp")
+        Move-Item -LiteralPath $target -Destination $aside -Force
     }
 
     try {
         Move-Item -LiteralPath $StagedBundleDir -Destination $target -Force
     } catch {
-        if ($rollback -and (Test-Path -LiteralPath $rollback)) {
+        if ($aside -and (Test-Path -LiteralPath $aside)) {
+            Move-Item -LiteralPath $aside -Destination $target -Force
+        } elseif ($rollback -and (Test-Path -LiteralPath $rollback)) {
             Copy-Item -LiteralPath $rollback -Destination $target -Recurse -Force
         }
         throw
+    }
+
+    # Swap succeeded; the aside copy is now redundant. The off-volume backup
+    # under $rollback is what the user keeps.
+    if ($aside -and (Test-Path -LiteralPath $aside)) {
+        Remove-Item -LiteralPath $aside -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     return @{ Target = $target; Backup = $rollback }
