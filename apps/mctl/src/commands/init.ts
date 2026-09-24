@@ -31,6 +31,11 @@ export function runInit(): void {
   }
   console.log('');
   console.log('Next steps:');
-  console.log('  1. Fill in credentials under "tools" in the config file');
-  console.log("  2. Run 'mctl list' to verify tool discovery");
+  console.log("  1. Run 'mctl list' to verify tool discovery");
+  console.log(
+    "  2. Run 'mctl doctor' - it names every tool's missing required config"
+  );
+  console.log(
+    '  3. Add those keys under "tools" in the config file (each tool\'s README lists its keys)'
+  );
 }

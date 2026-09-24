@@ -1,6 +1,10 @@
+import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  initConfig,
+  globalConfigPath,
   extractToolConfig,
   declaredConfigKeys,
   resolveToolsRoots,
@@ -119,9 +123,9 @@ describe('missingRequiredConfig', () => {
       configVersion: 1,
       tools: { azdo: { token: '' } },
     };
-    expect(missingRequiredConfig({ ...base, requiredConfig: ['azdo.token'] }, cfg)).toEqual([
-      'azdo.token',
-    ]);
+    expect(
+      missingRequiredConfig({ ...base, requiredConfig: ['azdo.token'] }, cfg)
+    ).toEqual(['azdo.token']);
   });
 
   it('ignores optional keys', () => {
@@ -170,7 +174,10 @@ describe('resolveTimeoutMs', () => {
 
   it('prefers a manifest budget over the configured default', () => {
     // The tool knows its own cost; the default only covers tools that are silent.
-    const cfg: MControlConfig = { configVersion: 1, timeouts: { default: 5_000 } };
+    const cfg: MControlConfig = {
+      configVersion: 1,
+      timeouts: { default: 5_000 },
+    };
     expect(resolveTimeoutMs({ ...manifest, timeoutMs: 120_000 }, cfg)).toBe(
       120_000
     );
@@ -236,5 +243,53 @@ describe('resolveToolsRoots', () => {
       path.resolve('/a'),
       path.resolve('/b'),
     ]);
+  });
+});
+
+describe('initConfig', () => {
+  const saved = {
+    HOME: process.env.HOME,
+    USERPROFILE: process.env.USERPROFILE,
+  };
+  let home: string;
+
+  afterEach(() => {
+    process.env.HOME = saved.HOME;
+    process.env.USERPROFILE = saved.USERPROFILE;
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
+  function useTempHome(): void {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), 'mctl-home-'));
+    // os.homedir() reads HOME on POSIX; core prefers USERPROFILE on Windows.
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+  }
+
+  it('writes a tool-agnostic config: no tool sections, only the given roots', () => {
+    useTempHome();
+    initConfig({ toolsRoots: ['/repo/tools'] });
+
+    const written = JSON.parse(fs.readFileSync(globalConfigPath(), 'utf-8'));
+    expect(written).toEqual({
+      configVersion: 1,
+      tools: {},
+      paths: { toolsRoots: ['/repo/tools'] },
+    });
+  });
+
+  it('never overwrites an existing config', () => {
+    useTempHome();
+    fs.mkdirSync(path.dirname(globalConfigPath()), { recursive: true });
+    fs.writeFileSync(
+      globalConfigPath(),
+      '{"configVersion":1,"tools":{"x":{}}}'
+    );
+
+    initConfig({ toolsRoots: ['/other'] });
+
+    expect(fs.readFileSync(globalConfigPath(), 'utf-8')).toBe(
+      '{"configVersion":1,"tools":{"x":{}}}'
+    );
   });
 });

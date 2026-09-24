@@ -115,7 +115,8 @@ spawn command (`resolveSpawnCommand`): node → the running Node binary; python 
      ternaries, no `??`, no PS7-only cmdlets); that is what `powershell` spawns
      on Windows.
 4. Give the tool a `README.md` (the template has one): usage, config keys,
-   external dependencies.
+   external dependencies. The README is where config keys are documented —
+   `mctl init` writes no tool sections.
 5. Tests go in `tools/<category>/<id>/test/*.test.ts` and spawn the tool as a
    process. Tests that need Windows or an installed app skip themselves
    elsewhere (CI is Ubuntu) — keep a platform-independent test for anything

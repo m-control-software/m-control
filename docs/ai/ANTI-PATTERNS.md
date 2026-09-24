@@ -93,11 +93,14 @@ const template = fs.readFileSync('config/template.json', 'utf-8');
 // ✅ GOOD
 const CONFIG_TEMPLATE = {
   version: '0.1.0',
-  tools: { ... }
+  tools: {}
 };
 ```
 
-**Status:** Fixed in v0.1.0
+**Status:** Fixed in v0.1.0. The unused `config/config.template.json` lingered
+(copied by the installers, read by nothing) until 2026-09-24, when it was
+removed and the embedded template lost its tool sections: `tools` is an open
+schema, so core ships no tool keys.
 
 ---
 

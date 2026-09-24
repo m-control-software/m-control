@@ -46,8 +46,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "yarn build failed" }
     Write-Host "OK Build successful" -ForegroundColor Green
 
-    $mctlBundle        = Join-Path $RepoRoot "apps\mctl\dist\bundle\index.js"
-    $configTemplateSrc = Join-Path $RepoRoot "config\config.template.json"
+    $mctlBundle = Join-Path $RepoRoot "apps\mctl\dist\bundle\index.js"
 
     if (-not (Test-Path $mctlBundle)) {
         throw "Bundle not found: $mctlBundle"
@@ -59,9 +58,10 @@ try {
         New-Item -ItemType Directory -Path $InstallPath -Force | Out-Null
     }
 
-    # Copy single-file bundle and config template
-    Copy-Item -Path $mctlBundle        -Destination "$InstallPath\mctl.js"               -Force
-    Copy-Item -Path $configTemplateSrc -Destination "$InstallPath\config.template.json"  -Force
+    # Copy the single-file bundle. Earlier installers also copied an unused
+    # config template here; drop the leftover.
+    Copy-Item -Path $mctlBundle -Destination "$InstallPath\mctl.js" -Force
+    Remove-Item -Path "$InstallPath\config.template.json" -Force -ErrorAction SilentlyContinue
     Write-Host "OK Files copied" -ForegroundColor Green
 
     # Wrappers point to mctl.js (ncc bundle — no node_modules required)
@@ -93,7 +93,7 @@ try {
         node $mctlBundle init
         if ($LASTEXITCODE -ne 0) { throw "mctl init failed" }
         Write-Host "OK Config initialized at: $configPath" -ForegroundColor Green
-        Write-Host "Edit the config file to add your credentials:" -ForegroundColor Cyan
+        Write-Host "Tool settings go under 'tools' in:" -ForegroundColor Cyan
         Write-Host "  $configPath" -ForegroundColor White
     } else {
         Write-Host "OK Config already exists" -ForegroundColor Green
@@ -122,8 +122,8 @@ try {
     Write-Host ""
     Write-Host "Next steps:" -ForegroundColor Cyan
     Write-Host "  1. Restart your terminal"
-    Write-Host "  2. Run 'mctl doctor' to verify the setup"
-    Write-Host "  3. Fill in credentials in: $configPath"
+    Write-Host "  2. Run 'mctl doctor' - it lists every tool's missing required config"
+    Write-Host "  3. Add those keys under 'tools' in: $configPath (each tool's README lists its keys)"
     Write-Host ""
 
 } catch {

@@ -35,8 +35,10 @@ Then:
    a ToolRequest and assert on events and exit code, including missing config
    and bad input. Skip cleanly where the platform or an installed app is missing.
 5. Write the tool's README.md (usage, config keys, dependencies, safety notes).
-6. Add an [Unreleased] entry to CHANGELOG.md, and the tool's config section
-   (empty values) to config/config.template.json if users must fill it in.
+6. Add an [Unreleased] entry to CHANGELOG.md. Document every config key in
+   the README; don't add a section to core's config template (it is
+   tool-agnostic). If the tool has requiredConfig, give it CI values in the
+   smoke-test step of .github/workflows/ci.yml.
 7. Run yarn build, yarn typecheck, yarn lint, yarn test, then
    `node apps/mctl/dist/bundle/index.js run <id> …` and `… doctor`.
 ```

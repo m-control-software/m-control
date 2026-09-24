@@ -205,15 +205,18 @@ Every tool SHOULD emit: `started` → (optional `log` events) → `result` or `e
 
 ### 3. Config
 
-Global config lives at `~/.m-control/config.json`:
+Global config lives at `~/.m-control/config.json`. `mctl init` writes it
+with no tool sections; each tool's section is added by hand, from the keys its
+README lists (`mctl doctor` names the required ones that are missing):
 
 ```json
 {
   "configVersion": 1,
   "tools": {
-    "azdo": { "token": "", "organization": "" },
-    "k8s":  { "defaultContext": "" }
-  }
+    "stream-deck":  { "profileName": "Work", "packDirs": ["C:\\packs\\work"] },
+    "agent-status": { "githubToken": "ghp_…" }
+  },
+  "paths": { "toolsRoots": ["C:\\src\\m-control\\tools"] }
 }
 ```
 

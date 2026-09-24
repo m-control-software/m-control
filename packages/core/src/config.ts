@@ -32,27 +32,15 @@ export function projectConfigPath(cwd: string = process.cwd()): string {
 // Template written on first init
 // ---------------------------------------------------------------------------
 
+/**
+ * Deliberately tool-agnostic: `tools` is an open schema, and a section here
+ * would be a tool-specific key in core that goes stale when the tool changes
+ * (or never existed). Each tool documents its keys in its README, and
+ * `mctl doctor` names the required ones that are missing.
+ */
 const CONFIG_TEMPLATE: MControlConfig = {
   configVersion: CONFIG_VERSION,
-  tools: {
-    azdo: {
-      token: '',
-      organization: '',
-    },
-    k8s: {
-      defaultContext: '',
-    },
-    obsidian: {
-      vaultPath: '',
-    },
-    'agent-status': {
-      cursorApiKey: '',
-      githubToken: '',
-      githubOwners: '',
-      claudeProjectsDir: '',
-      codexSessionsDir: '',
-    },
-  },
+  tools: {},
   paths: {
     toolsRoots: [],
   },

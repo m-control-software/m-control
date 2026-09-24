@@ -125,8 +125,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.claude/settings.json`; `.claude/settings.local.json` and
   `CLAUDE.local.md` are no longer tracked.
 
+- **`mctl init` writes a tool-agnostic config** — the embedded template no
+  longer contains sections for `azdo`, `k8s`, `obsidian` (never tools) or
+  `agent-status`. Core held tool-specific keys, contradicting the open schema,
+  and they went stale. Tools document their keys in their README; `mctl doctor`
+  names missing required ones. Existing configs are unaffected.
+
 ### Removed
 
+- `config/config.template.json` — copied into `~/.m-control/` by the
+  installers but read by nothing; the installers now delete the leftover copy.
 - Pre-monorepo design docs (`architecture/OVERVIEW.md` old version,
   `plugin-contract.md`, `context-model.md`, `diagrams/plugin-flow.mmd`) moved
   to `docs/archive/` with a superseded banner; a new `OVERVIEW.md` describes
