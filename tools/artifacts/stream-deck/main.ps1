@@ -5,8 +5,12 @@
     any work begins, and stdout carries NDJSON ToolEvent lines only.
 
     Usage (via mctl):
-      mctl run stream-deck            generate and install
-      mctl run stream-deck -- --check validate and report, write nothing
+      mctl run stream-deck              generate and install
+      mctl run stream-deck check=true   validate and report, write nothing
+
+    Flags arrive as ToolInput key=value pairs, not as argv: mctl's parseArgs
+    discards anything starting with '--', so a '--check' style flag would be
+    silently dropped and the tool would install for real.
 
     Exit codes: 0 success, 1 recoverable failure, 2 unrecoverable failure.
 #>
@@ -36,12 +40,40 @@ function Get-ConfigValue {
     return $Default
 }
 
+function ConvertTo-DeckBool {
+    <#
+        Parses a ToolInput flag. Values arrive as STRINGS, so a naive truthiness
+        test would treat "false" as true - exactly the wrong direction for a
+        safety flag that decides whether anything is written to disk.
+    #>
+    [CmdletBinding()] param($Value, [bool]$Default = $false)
+    if ($null -eq $Value) { return $Default }
+    if ($Value -is [bool]) { return $Value }
+
+    switch ("$Value".Trim().ToLowerInvariant()) {
+        ''      { return $Default }
+        'true'  { return $true }
+        '1'     { return $true }
+        'yes'   { return $true }
+        'on'    { return $true }
+        'false' { return $false }
+        '0'     { return $false }
+        'no'    { return $false }
+        'off'   { return $false }
+        default {
+            throw "Cannot interpret '$Value' as a boolean. Use check=true or check=false."
+        }
+    }
+}
+
 $exitCode = 0
 try {
     $request = Read-ToolRequest
 
-    $toolArgs = @(Get-SpecProperty $request 'args' @())
-    $checkOnly = $toolArgs -contains '--check' -or $toolArgs -contains '--dry-run'
+    # Not $input: that is a PowerShell automatic variable (the pipeline
+    # enumerator) and assigning it would shadow the real one.
+    $toolInput = Get-SpecProperty $request 'input'
+    $checkOnly = ConvertTo-DeckBool (Get-SpecProperty $toolInput 'check') $false
 
     $context = Get-SpecProperty $request 'context'
     $config  = Get-SpecProperty $context 'config'
@@ -74,7 +106,7 @@ try {
             -Data @{ missing = $apps.Missing }
     }
 
-    $profilesRoot = Get-StreamDeckProfilesRoot
+    $profilesRoot = Get-StreamDeckProfilesRoot -Override (Get-ConfigValue $config 'profilesRoot')
     $bundles      = Get-ProfileBundles -ProfilesRoot $profilesRoot
     $device       = Resolve-DeviceBlock -Bundles $bundles -ProfileName $model.ProfileName `
                         -PreferModel (Get-ConfigValue $config 'deviceModel')

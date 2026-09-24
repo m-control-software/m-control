@@ -28,7 +28,21 @@ function Write-DeckJson {
 }
 
 function Get-StreamDeckProfilesRoot {
-    [CmdletBinding()] param()
+    <#
+        Where bundles live. Overridable via config so the generator can be
+        pointed at a fixture directory under test, and so a non-default install
+        location does not require code changes.
+    #>
+    [CmdletBinding()] param([string]$Override)
+
+    if (-not [string]::IsNullOrWhiteSpace($Override)) {
+        $root = [Environment]::ExpandEnvironmentVariables($Override)
+        if (-not (Test-Path -LiteralPath $root)) {
+            throw "Configured stream-deck.profilesRoot does not exist: $root"
+        }
+        return $root
+    }
+
     $root = Join-Path $env:APPDATA 'Elgato\StreamDeck\ProfilesV3'
     if (-not (Test-Path -LiteralPath $root)) {
         throw "Stream Deck profiles folder not found: $root. Is the Stream Deck app installed and run at least once?"
