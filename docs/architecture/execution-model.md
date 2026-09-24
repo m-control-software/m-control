@@ -16,7 +16,8 @@ mctl run <id>
      │  reads: manifestVersion, id, runtime, entry
      ▼
 [Config] load ~/.m-control/config.json
-     │  extracts: required config keys for this tool
+     │  extracts: the keys this tool declares
+     │            (manifest.requiredConfig + manifest.optionalConfig)
      ▼
 [Runner] spawn child process
      │  writes: ToolRequest JSON → stdin

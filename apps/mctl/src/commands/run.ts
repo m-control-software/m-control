@@ -3,6 +3,7 @@ import {
   loadConfig,
   configExists,
   extractToolConfig,
+  declaredConfigKeys,
   createEventSink,
   getRunner,
   RunContext,
@@ -97,7 +98,7 @@ export async function runRun(args: string[]): Promise<void> {
   // -------------------------------------------------------------------------
   const toolConfig = extractToolConfig(
     config,
-    tool.manifest.requiredConfig ?? []
+    declaredConfigKeys(tool.manifest)
   );
 
   const context: RunContext = {

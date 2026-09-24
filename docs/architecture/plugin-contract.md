@@ -101,6 +101,7 @@ Every plugin MUST have `manifest.json`:
 | `type` | Yes | enum | "internal" or "external" |
 | `author` | No | string | Plugin author |
 | `requiredConfig` | No | string[] | Dot-notation config keys needed |
+| `optionalConfig` | No | string[] | Dot-notation config keys used when present |
 | `platform` | No | string[] | Supported platforms (default: all) |
 | `executable` | Conditional | string | For external: "python", "dotnet", etc. |
 | `entryPoint` | Conditional | string | For external: script/binary path |
@@ -285,9 +286,9 @@ if __name__ == '__main__':
 ## 🔐 Security Considerations
 
 ### Config Access
-- Plugins receive ONLY their required config
+- Plugins receive ONLY the config keys they declare
 - Never pass full config object
-- Orchestrator filters by `requiredConfig` field
+- Orchestrator filters by `requiredConfig` + `optionalConfig`
 
 ### Network Access
 - Internal plugins: Can make HTTP calls directly

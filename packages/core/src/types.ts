@@ -37,8 +37,22 @@ export interface ToolManifest {
    * Examples: "index.js", "main.py", "MyTool.exe"
    */
   entry: string;
-  /** Config keys this tool requires (dot-notation). Used for preflight checks. */
+  /**
+   * Config keys this tool needs in order to work (dot-notation).
+   *
+   * Listing a key here is what makes it visible to the tool: the orchestrator
+   * passes only the union of `requiredConfig` and `optionalConfig` in
+   * `RunContext.config`, so a key the tool reads but never declares is always
+   * undefined.
+   */
   requiredConfig?: string[];
+  /**
+   * Config keys the tool reads when present but works without (dot-notation).
+   *
+   * Same delivery as `requiredConfig`; kept separate so a future preflight can
+   * fail on a missing required key without also demanding the optional ones.
+   */
+  optionalConfig?: string[];
   /** Optional tags for filtering / future UI grouping. */
   tags?: string[];
 }
@@ -136,8 +150,9 @@ export interface RunContext {
   toolId: string;
   /**
    * Relevant config slice for this tool.
-   * Orchestrator extracts only what the tool's manifest.requiredConfig lists.
-   * Tools receive a flat key-value map, not the raw config structure.
+   * Orchestrator extracts only what the tool's manifest declares, in
+   * requiredConfig or optionalConfig. Tools receive a flat key-value map, not
+   * the raw config structure.
    */
   config: Record<string, unknown>;
   /**
@@ -247,7 +262,7 @@ export type ToolConfigSection = Record<string, unknown>;
 export interface MControlConfig {
   /** Schema version. Fail fast if this doesn't match expected version. */
   configVersion: 1;
-  /** Per-tool config sections. Keys referenced by manifest.requiredConfig. */
+  /** Per-tool config sections. Keys declared by a tool's manifest. */
   tools: Record<string, ToolConfigSection | undefined>;
   /** Orchestrator path configuration. */
   paths?: {

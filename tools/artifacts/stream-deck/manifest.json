@@ -10,5 +10,10 @@
     "stream-deck.profileName",
     "stream-deck.packDirs"
   ],
+  "optionalConfig": [
+    "stream-deck.profilesRoot",
+    "stream-deck.deviceModel",
+    "stream-deck.backupDir"
+  ],
   "tags": ["artifacts", "stream-deck", "generator", "devices"]
 }

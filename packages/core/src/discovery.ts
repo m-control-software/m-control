@@ -182,5 +182,16 @@ function validateManifest(raw: unknown, filePath: string): ToolManifest {
     err(`id "${String(obj['id'])}" must be kebab-case (e.g. "my-tool")`);
   }
 
+  // Config key lists are dot-paths handed to extractToolConfig. A bare string
+  // here would be iterated character by character instead of failing, so the
+  // shape is checked rather than trusted.
+  for (const field of ['requiredConfig', 'optionalConfig'] as const) {
+    const value = obj[field];
+    if (value === undefined) continue;
+    if (!Array.isArray(value) || value.some((k) => typeof k !== 'string')) {
+      err(`field "${field}" must be an array of dot-notation strings`);
+    }
+  }
+
   return obj as unknown as ToolManifest;
 }

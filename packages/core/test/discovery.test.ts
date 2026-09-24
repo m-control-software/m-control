@@ -74,6 +74,36 @@ describe('discoverTools', () => {
     expect(result.errors).toHaveLength(4);
   });
 
+  it('rejects config key lists that are not arrays of strings', () => {
+    // A bare string would be iterated character by character by
+    // extractToolConfig rather than failing, so the shape is checked.
+    writeManifest(path.join(root, 'str'), {
+      ...validManifest('str-tool'),
+      requiredConfig: 'azdo.token',
+    });
+    writeManifest(path.join(root, 'mixed'), {
+      ...validManifest('mixed-tool'),
+      optionalConfig: ['fine.key', 7],
+    });
+    writeManifest(path.join(root, 'good'), {
+      ...validManifest('good-tool'),
+      requiredConfig: ['a.b'],
+      optionalConfig: ['c.d'],
+    });
+
+    const result = discoverTools(root);
+    expect(result.tools.map((t) => t.manifest.id)).toEqual(['good-tool']);
+    expect(result.errors).toHaveLength(2);
+  });
+
+  it('keeps manifests that declare neither config list', () => {
+    writeManifest(path.join(root, 'plain'), validManifest('plain-tool'));
+
+    const result = discoverTools(root);
+    expect(result.errors).toHaveLength(0);
+    expect(result.tools[0].manifest.optionalConfig).toBeUndefined();
+  });
+
   it('scans multiple roots and reports duplicate ids (first root wins)', () => {
     const rootB = fs.mkdtempSync(path.join(os.tmpdir(), 'mctl-discovery-b-'));
     try {

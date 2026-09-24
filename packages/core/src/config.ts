@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { MControlConfig, CONFIG_VERSION } from './types';
+import { MControlConfig, ToolManifest, CONFIG_VERSION } from './types';
 import { ConfigError } from './errors';
 
 // ---------------------------------------------------------------------------
@@ -145,6 +145,22 @@ export function extractToolConfig(
   }
 
   return result;
+}
+
+/**
+ * The config keys a tool is allowed to see: everything its manifest declares,
+ * required or optional.
+ *
+ * A tool only receives keys it declares, so a key read but never declared is
+ * silently undefined at runtime. Keeping the union rule here means callers
+ * cannot accidentally honour one list and forget the other.
+ */
+export function declaredConfigKeys(manifest: ToolManifest): string[] {
+  const seen = new Set<string>([
+    ...(manifest.requiredConfig ?? []),
+    ...(manifest.optionalConfig ?? []),
+  ]);
+  return [...seen];
 }
 
 /**
