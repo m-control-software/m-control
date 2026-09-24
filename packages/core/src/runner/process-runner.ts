@@ -11,13 +11,14 @@ import {
   EXIT_CODES,
 } from '../types';
 import { RunnerError } from '../errors';
+import { DEFAULT_TIMEOUT_MS } from '../config';
 
 // ---------------------------------------------------------------------------
 // Defaults
 // ---------------------------------------------------------------------------
 
 const DEFAULTS: Required<RunnerOptions> = {
-  timeoutMs: 30_000,
+  timeoutMs: DEFAULT_TIMEOUT_MS,
   maxOutputBytes: 10 * 1024 * 1024, // 10 MB
   maxEvents: 10_000,
 };
@@ -185,7 +186,9 @@ async function* spawnAndStream(
       kind: 'event',
       event: makeErrorEvent(
         toolId,
-        `Tool exceeded timeout of ${opts.timeoutMs}ms`,
+        `Tool exceeded timeout of ${opts.timeoutMs}ms. If it needs longer, ` +
+          `raise it in ~/.m-control/config.json under ` +
+          `timeouts.tools["${toolId}"] (milliseconds).`,
         'RUNNER_TIMEOUT'
       ),
     });

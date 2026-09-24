@@ -148,6 +148,40 @@ export function extractToolConfig(
 }
 
 /**
+ * Built-in run budget, used when neither the manifest nor the config says
+ * otherwise. Kept here so core and the CLI cannot drift apart.
+ */
+export const DEFAULT_TIMEOUT_MS = 30_000;
+
+/**
+ * Resolve the wall-clock budget for one run.
+ *
+ * Precedence, highest first:
+ *   1. config.timeouts.tools[id] - the user's explicit decision for this tool
+ *   2. manifest.timeoutMs        - what the tool author says it costs
+ *   3. config.timeouts.default   - the user's blanket preference
+ *   4. DEFAULT_TIMEOUT_MS
+ *
+ * A tool declaring more than the configured default is honoured: the default
+ * is a floor for tools that never said what they need, not a cap on the ones
+ * that did. Non-positive or non-finite values are ignored rather than obeyed,
+ * since a zero budget would kill every run instantly.
+ */
+export function resolveTimeoutMs(
+  manifest: ToolManifest,
+  config: MControlConfig
+): number {
+  const usable = (v: unknown): v is number =>
+    typeof v === 'number' && Number.isFinite(v) && v > 0;
+
+  const perTool = config.timeouts?.tools?.[manifest.id];
+  if (usable(perTool)) return perTool;
+  if (usable(manifest.timeoutMs)) return manifest.timeoutMs;
+  if (usable(config.timeouts?.default)) return config.timeouts.default;
+  return DEFAULT_TIMEOUT_MS;
+}
+
+/**
  * The config keys a tool is allowed to see: everything its manifest declares,
  * required or optional.
  *

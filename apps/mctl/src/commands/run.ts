@@ -4,6 +4,7 @@ import {
   configExists,
   extractToolConfig,
   declaredConfigKeys,
+  resolveTimeoutMs,
   createEventSink,
   getRunner,
   RunContext,
@@ -116,7 +117,7 @@ export async function runRun(args: string[]): Promise<void> {
   const sink = createEventSink(jsonMode);
 
   const runnerOptions: RunnerOptions = {
-    timeoutMs: 30_000,
+    timeoutMs: resolveTimeoutMs(tool.manifest, config),
     maxOutputBytes: 10 * 1024 * 1024,
     maxEvents: 10_000,
   };

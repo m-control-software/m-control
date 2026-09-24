@@ -146,6 +146,24 @@ Levels: `debug | info | warn | error`
 
 Guardrail hits surface as `ErrorEvent` with `code: 'RUNNER_GUARDRAIL'`.
 
+### Resolving `timeoutMs`
+
+The 30s default suits a tool that calls an API. It does not suit one that
+renders 93 icons or drives a desktop app, so the budget is per tool.
+`mctl run` resolves it highest-precedence first:
+
+| Source | Meaning |
+|--------|---------|
+| `config.timeouts.tools["<id>"]` | the user's decision for this tool, on this machine |
+| `manifest.timeoutMs` | what the tool author measured it to cost |
+| `config.timeouts.default` | the user's blanket preference |
+| built-in `30_000` | |
+
+A manifest budget wins over `timeouts.default`: the default covers tools that
+never said what they need, it is not a cap on the ones that did. Values that
+are not positive finite numbers are rejected at discovery, because a zero
+budget would kill every run instantly.
+
 ---
 
 ## Runner Interface

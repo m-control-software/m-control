@@ -102,6 +102,7 @@ Every plugin MUST have `manifest.json`:
 | `author` | No | string | Plugin author |
 | `requiredConfig` | No | string[] | Dot-notation config keys needed |
 | `optionalConfig` | No | string[] | Dot-notation config keys used when present |
+| `timeoutMs` | No | number | Run budget in ms; overrides the 30s default (see execution-model.md) |
 | `platform` | No | string[] | Supported platforms (default: all) |
 | `executable` | Conditional | string | For external: "python", "dotnet", etc. |
 | `entryPoint` | Conditional | string | For external: script/binary path |

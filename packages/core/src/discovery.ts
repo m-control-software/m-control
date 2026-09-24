@@ -193,5 +193,15 @@ function validateManifest(raw: unknown, filePath: string): ToolManifest {
     }
   }
 
+  // A zero or negative budget would kill every run instantly, and a string
+  // would be passed straight to setTimeout and coerced to 0. Fail at discovery
+  // instead, where the manifest path is in the message.
+  if (obj['timeoutMs'] !== undefined) {
+    const t = obj['timeoutMs'];
+    if (typeof t !== 'number' || !Number.isFinite(t) || t <= 0) {
+      err(`field "timeoutMs" must be a positive number of milliseconds`);
+    }
+  }
+
   return obj as unknown as ToolManifest;
 }

@@ -53,6 +53,14 @@ export interface ToolManifest {
    * fail on a missing required key without also demanding the optional ones.
    */
   optionalConfig?: string[];
+  /**
+   * Wall-clock budget for one run, in milliseconds.
+   *
+   * The tool declares what it costs, because the author knows and the user
+   * would otherwise only find out from a failed run. A user can still override
+   * it per tool via config.timeouts. Omitted means the orchestrator default.
+   */
+  timeoutMs?: number;
   /** Optional tags for filtering / future UI grouping. */
   tags?: string[];
 }
@@ -279,6 +287,17 @@ export interface MControlConfig {
    * Defaults are chosen per platform by the runner.
    */
   runtimes?: Partial<Record<ToolRuntime, string>>;
+  /**
+   * Wall-clock run budgets in milliseconds.
+   *
+   * `tools` is keyed by tool id and wins over everything, so a slow machine can
+   * be accommodated without editing a manifest. `default` replaces the built-in
+   * for tools that declare no budget of their own.
+   */
+  timeouts?: {
+    default?: number;
+    tools?: Record<string, number>;
+  };
 }
 
 export const CONFIG_VERSION = 1 as const;

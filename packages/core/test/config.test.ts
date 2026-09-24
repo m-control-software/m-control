@@ -4,6 +4,8 @@ import {
   extractToolConfig,
   declaredConfigKeys,
   resolveToolsRoots,
+  resolveTimeoutMs,
+  DEFAULT_TIMEOUT_MS,
 } from '../src/config';
 import { MControlConfig, ToolManifest } from '../src/types';
 
@@ -81,6 +83,72 @@ describe('declaredConfigKeys', () => {
       optionalConfig: ['a.b'],
     };
     expect(declaredConfigKeys(manifest)).toEqual(['a.b']);
+  });
+});
+
+describe('resolveTimeoutMs', () => {
+  const manifest: ToolManifest = {
+    manifestVersion: 1,
+    id: 'slow-tool',
+    version: '0.1.0',
+    name: 'Slow',
+    description: 'slow',
+    runtime: 'powershell',
+    entry: 'main.ps1',
+  };
+  const bare: MControlConfig = { configVersion: 1 };
+
+  it('falls back to the built-in when nothing declares a budget', () => {
+    expect(resolveTimeoutMs(manifest, bare)).toBe(DEFAULT_TIMEOUT_MS);
+  });
+
+  it('uses the manifest budget over the built-in', () => {
+    // The regression this guards: stream-deck's full 93-key render plus install
+    // took 20.6s locally and exceeded the hardcoded 30s under mctl.
+    expect(resolveTimeoutMs({ ...manifest, timeoutMs: 120_000 }, bare)).toBe(
+      120_000
+    );
+  });
+
+  it('lets a per-tool config entry override the manifest', () => {
+    const cfg: MControlConfig = {
+      configVersion: 1,
+      timeouts: { default: 45_000, tools: { 'slow-tool': 200_000 } },
+    };
+    expect(resolveTimeoutMs({ ...manifest, timeoutMs: 120_000 }, cfg)).toBe(
+      200_000
+    );
+  });
+
+  it('prefers a manifest budget over the configured default', () => {
+    // The tool knows its own cost; the default only covers tools that are silent.
+    const cfg: MControlConfig = { configVersion: 1, timeouts: { default: 5_000 } };
+    expect(resolveTimeoutMs({ ...manifest, timeoutMs: 120_000 }, cfg)).toBe(
+      120_000
+    );
+    expect(resolveTimeoutMs(manifest, cfg)).toBe(5_000);
+  });
+
+  it('ignores values that would make every run fail instantly', () => {
+    const cfg: MControlConfig = {
+      configVersion: 1,
+      timeouts: { tools: { 'slow-tool': 0 } },
+    };
+    expect(resolveTimeoutMs(manifest, cfg)).toBe(DEFAULT_TIMEOUT_MS);
+    expect(resolveTimeoutMs({ ...manifest, timeoutMs: -1 }, bare)).toBe(
+      DEFAULT_TIMEOUT_MS
+    );
+    expect(resolveTimeoutMs({ ...manifest, timeoutMs: NaN }, bare)).toBe(
+      DEFAULT_TIMEOUT_MS
+    );
+  });
+
+  it('only applies a per-tool entry to that tool', () => {
+    const cfg: MControlConfig = {
+      configVersion: 1,
+      timeouts: { tools: { 'other-tool': 200_000 } },
+    };
+    expect(resolveTimeoutMs(manifest, cfg)).toBe(DEFAULT_TIMEOUT_MS);
   });
 });
 
