@@ -139,6 +139,11 @@ that export falls back to.
 1. **Per-tool runner timeout.** An optional manifest `timeoutMs` (additive, in
    the spirit of ADR-0010's optional fields) would remove the budget arithmetic.
    Not needed while applies take ~15 s.
+   **Update:** `timeoutMs` landed in core with the Stream Deck work (ADR-0010,
+   "Corrections"). logi-options now declares `timeoutMs: 30000`, not to get
+   more time but to pin the 30 s its arithmetic assumes: an undeclared tool
+   falls under the user's `config.timeouts.default`. The budget arithmetic
+   stays; `test/budget.test.ts` keeps the two numbers equal.
 2. **Second machine.** Portability is argued from the data. Run `check=true`
    on the first real cross-machine apply, and record the result in `docs/internals.md`.
 3. **Device settings** (pointer speed, SmartShift, haptics). They live only in
@@ -158,4 +163,4 @@ that export falls back to.
 - `tools/artifacts/logi-options/docs/internals.md` — storage, model, evidence (experiments E0–E6)
 - `tools/artifacts/logi-options/docs/spec-format.md` — the authoring reference
 - `tools/artifacts/logi-options/lib/transaction.py` — the budgeted transaction
-- `apps/mctl/src/commands/run.ts` — hard-coded runner timeout
+- `packages/core/src/config.ts` — `resolveTimeoutMs`, the run-budget precedence (hard-coded in `apps/mctl/src/commands/run.ts` when this ADR was written)

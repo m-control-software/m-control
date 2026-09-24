@@ -55,16 +55,20 @@ Rules that kept the original research safe:
 
 ## The time budget
 
-`mctl run` kills a tool after 30 s (hard-coded in `apps/mctl/src/commands/run.ts`),
-and on Windows that kill runs no cleanup. `lib/transaction.py`:
+`mctl run` kills a tool when its run budget runs out, and on Windows that kill
+runs no cleanup. The manifest declares `timeoutMs: 30000`, and
+`RUNNER_TIMEOUT_S` in `lib/transaction.py` must match it (`test/budget.test.ts`
+enforces this). Declaring it matters: without it, a user's
+`config.timeouts.default` would set the budget instead. `lib/transaction.py`:
 - keeps its own 26 s deadline,
 - refuses to stop the agent with less than 12 s left,
 - keeps the stop → write → start window to a few seconds, and restarts the agent in `finally` (also on Ctrl+C),
 - after that, only waits for the agent's re-save. A kill there is harmless.
 
 If a machine is slow enough that applies report `verified: false` routinely, the
-fix is a per-tool timeout in the manifest (open question in ADR-0011), not a
-longer sleep.
+fix is a longer budget, not a longer sleep: raise `timeoutMs` in the manifest and
+`RUNNER_TIMEOUT_S`/`BUDGET_S` together (or, for one machine only, set
+`timeouts.tools["logi-options"]` and scale `BUDGET_S` to it).
 
 ## Adding a device
 

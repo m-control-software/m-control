@@ -70,8 +70,9 @@ only `packDirs` is needed in practice.
 - After the agent restarts, what it kept is decompiled and compared with the specs.
   A mismatch is rolled back automatically.
 - Refuses, rather than guesses, if Options+ changed its storage or JSON writer. See [docs/maintenance.md](docs/maintenance.md).
-- Stays inside mctl's 30 s kill timeout (the kill runs no cleanup on Windows).
-  The agent is only stopped when enough time remains to restart it.
+- Stays inside the 30 s run budget its manifest declares (`timeoutMs`); the kill
+  runs no cleanup on Windows. The agent is only stopped when enough time remains
+  to restart it. Don't lower `timeouts.tools["logi-options"]` below that.
 
 ## Runtime and dependencies
 

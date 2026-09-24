@@ -3,9 +3,9 @@
     preview -> backup -> [stop agent -> re-read -> mutate -> write -> start agent]
     -> wait for the agent to load and re-save -> verify -> rollback if wrong
 
-Why the budget matters: `mctl run` hard-codes timeoutMs 30 000
-(apps/mctl/src/commands/run.ts) and on Windows the runner's kill is
-TerminateProcess - no `finally` runs. A kill inside the bracketed window would
+Why the budget matters: manifest.json declares timeoutMs 30 000, which `mctl run`
+enforces unless the user overrides it per tool (config.timeouts.tools), and on
+Windows the runner's kill is TerminateProcess - no `finally` runs. A kill inside the bracketed window would
 leave the agent stopped (mouse on default buttons until the next login). So the
 window is short (seconds), and it is never entered unless enough of the budget
 remains to finish it. A kill after the agent is back up is harmless.
@@ -22,7 +22,7 @@ import docdiff
 import store as st
 from errors import StoreError, VerifyError
 
-RUNNER_TIMEOUT_S = 30.0  # mctl's hard-coded runner timeout
+RUNNER_TIMEOUT_S = 30.0  # must match manifest.json timeoutMs
 BUDGET_S = 26.0          # this tool's own deadline: margin for interpreter start-up and the runner
 CRITICAL_MIN_S = 12.0    # minimum budget left before stopping the agent (stop ~1 s, write <1 s, start ~2 s)
 

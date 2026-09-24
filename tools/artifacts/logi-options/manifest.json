@@ -6,6 +6,7 @@
   "description": "Applies Logitech Options+ mouse profiles (MX Master 4) from declarative *.logi.json packs; check, export, restore",
   "runtime": "python",
   "entry": "main.py",
+  "timeoutMs": 30000,
   "requiredConfig": [
     "logi-options.packDirs"
   ],
