@@ -1,0 +1,108 @@
+{
+  "specVersion": 1,
+  "pack": "shared",
+  "profile": "Work",
+  "accent": "utility",
+
+  "palette": {
+    "accent-teal": "#2DC4A0",
+    "accent-amber": "#FF6000",
+    "apps": "#E8A838",
+    "stacks": "#4E94E0",
+    "state": "#DB609E",
+    "utility": "#767E8E",
+    "nav": "#606978",
+    "accent-charcoal": "#2A2A2E",
+    "meet": "#6264A7"
+  },
+
+  "apps": {
+    "pwsh": {
+      "command": "pwsh.exe",
+      "candidates": [
+        "%PROGRAMFILES%\\PowerShell\\7\\pwsh.exe",
+        "%LOCALAPPDATA%\\Microsoft\\WindowsApps\\pwsh.exe"
+      ]
+    }
+  },
+
+  "plugins": {
+    "mutedeck-mute": {
+      "uuid": "com.mutedeck.plugin.togglemute",
+      "name": "Mute",
+      "linkedTitle": false,
+      "stateCount": 3,
+      "settings": {},
+      "manifest": { "Name": "MuteDeck", "UUID": "com.mutedeck.plugin", "Version": "12.6.0.0" }
+    },
+    "mutedeck-camera": {
+      "uuid": "com.mutedeck.plugin.togglevideo",
+      "name": "Video / Camera",
+      "linkedTitle": false,
+      "stateCount": 3,
+      "settings": {},
+      "manifest": { "Name": "MuteDeck", "UUID": "com.mutedeck.plugin", "Version": "12.6.0.0" }
+    }
+  },
+
+  "requires": {
+    "plugins": ["com.mutedeck.plugin"]
+  },
+
+  "pages": {
+    "home": {
+      "label": "Home",
+      "accent": "utility",
+      "keys": {
+        "4,0": {
+          "title": "ToDo",
+          "icon": { "glyph": "checkbox-list" },
+          "action": { "type": "website", "url": "ms-todo://x?path=today" }
+        },
+        "1,1": {
+          "title": "Clip",
+          "icon": { "glyph": "clipboard" },
+          "action": {
+            "type": "hotkey",
+            "hotkeys": [
+              { "cmd": true, "modifiers": 8, "native": 86, "qt": 86, "vkey": 86 }
+            ]
+          }
+        },
+        "2,1": {
+          "title": "Snip",
+          "icon": { "glyph": "crop" },
+          "action": {
+            "type": "hotkey",
+            "hotkeys": [
+              { "cmd": true, "shift": true, "modifiers": 9, "native": 83, "qt": 83, "vkey": 83 }
+            ]
+          }
+        },
+        "0,2": {
+          "title": "Mute",
+          "action": { "type": "plugin", "plugin": "mutedeck-mute" },
+          "states": [
+            { "title": "Mute",   "icon": { "glyph": "microphone" },       "accent": "utility" },
+            { "title": "Unmute", "icon": { "glyph": "microphone-slash" }, "accent": "utility" },
+            { "title": "Mute",   "icon": { "glyph": "microphone" },       "accent": "nav" }
+          ]
+        },
+        "1,2": {
+          "title": "Camera",
+          "action": { "type": "plugin", "plugin": "mutedeck-camera" },
+          "states": [
+            { "title": "Camera",  "icon": { "glyph": "camera-on" },    "accent": "utility" },
+            { "title": "Cam Off", "icon": { "glyph": "camera-slash" }, "accent": "utility" },
+            { "title": "Camera",  "icon": { "glyph": "camera-on" },    "accent": "nav" }
+          ]
+        },
+        "3,2": {
+          "title": "Lock",
+          "icon": { "glyph": "padlock" },
+          "action": { "type": "open", "target": "rundll32.exe user32.dll,LockWorkStation" }
+        }
+      }
+    }
+  }
+}

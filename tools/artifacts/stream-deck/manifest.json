@@ -1,0 +1,14 @@
+{
+  "manifestVersion": 1,
+  "id": "stream-deck",
+  "version": "0.1.0",
+  "name": "Stream Deck Profile Generator",
+  "description": "Generates an Elgato Stream Deck profile from declarative *.deck.json specs contributed by one or more packs",
+  "runtime": "powershell",
+  "entry": "main.ps1",
+  "requiredConfig": [
+    "stream-deck.profileName",
+    "stream-deck.packDirs"
+  ],
+  "tags": ["artifacts", "stream-deck", "generator", "devices"]
+}
