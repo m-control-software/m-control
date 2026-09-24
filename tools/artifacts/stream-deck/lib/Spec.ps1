@@ -154,6 +154,11 @@ function Merge-DeckSpec {
         $profile = Get-SpecProperty $spec 'profile'
         if ($profile -and -not $model.ProfileName) { $model.ProfileName = $profile }
 
+        # Palettes accumulate across packs, so a pack declares the accents its
+        # own keys use. Keep client- and person-specific accent names in those
+        # packs: ADR-0009 makes m-control the repo that stays free of client
+        # material, and a palette key is still a client name. A pack that
+        # forgets to declare one fails loudly in Resolve-DeckColor.
         foreach ($name in (ConvertTo-Hashtable (Get-SpecProperty $spec 'palette')).Keys) {
             $model.Palette[$name] = (Get-SpecProperty $spec 'palette').$name
         }

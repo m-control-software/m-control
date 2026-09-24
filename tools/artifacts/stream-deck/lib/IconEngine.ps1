@@ -157,7 +157,7 @@ function Composite-Image($g, [string]$path, [double]$scaleFrac) {
     $src.Dispose()
 }
 
-# Monochrome marks (e.g. the FP logo, whose native charcoal is invisible here) are recoloured
+# Monochrome marks (e.g. a dark logo whose native charcoal is invisible here) are recoloured
 # to white while preserving alpha.
 function Composite-ImageWhite($g, [string]$path, [double]$scaleFrac) {
     $img = [System.Drawing.Image]::FromFile($path)

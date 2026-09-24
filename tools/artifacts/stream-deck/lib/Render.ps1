@@ -8,8 +8,8 @@
     Icon forms:
       { "glyph": "folder" }                              vector glyph
       { "badge": "AB" }                                  letter/emoji badge
-      { "image": "icons/acme-logo.png", "scale": 0.56 }    real logo
-      { "image": "icons/acme-mark.png", "mono": true }     mono mark recoloured white
+      { "image": "icons/acme-logo.png", "scale": 0.56 }  real logo
+      { "image": "icons/acme-mark.png", "mono": true }   mono mark recoloured white
 
     'image' is always relative to the pack that declared the key. That is the
     portability rule: no spec ever contains a machine-specific absolute path.

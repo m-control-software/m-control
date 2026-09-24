@@ -5,14 +5,11 @@
   "accent": "utility",
 
   "palette": {
-    "accent-teal": "#2DC4A0",
-    "accent-amber": "#FF6000",
     "apps": "#E8A838",
     "stacks": "#4E94E0",
     "state": "#DB609E",
     "utility": "#767E8E",
     "nav": "#606978",
-    "accent-charcoal": "#2A2A2E",
     "meet": "#6264A7"
   },
 
