@@ -1,105 +1,926 @@
 {
-  "specVersion": 1,
-  "pack": "shared",
-  "profile": "Work",
-  "accent": "utility",
+    "specVersion":  1,
+    "pack":  "shared",
+    "profile":  "Work",
+    "accent":  "utility",
+    "palette":  {
+                    "apps":  "#E8A838",
+                    "meet":  "#6264A7",
+                    "nav":  "#606978",
+                    "state":  "#DB609E",
+                    "utility":  "#767E8E"
+                },
+    "apps":  {
+                 "pwsh":  {
+                              "command":  "pwsh.exe",
+                              "candidates":  [
+                                                 "%PROGRAMFILES%\\PowerShell\\7\\pwsh.exe",
+                                                 "%LOCALAPPDATA%\\Microsoft\\WindowsApps\\pwsh.exe"
+                                             ]
+                          },
+                 "vs2022":  {
+                                "candidates":  [
+                                                   "%PROGRAMFILES%\\Microsoft Visual Studio\\2022\\*\\Common7\\IDE\\devenv.exe"
+                                               ]
+                            },
+                 "vscode":  {
+                                "command":  "code",
+                                "candidates":  [
+                                                   "%LOCALAPPDATA%\\Programs\\Microsoft VS Code\\Code.exe",
+                                                   "%PROGRAMFILES%\\Microsoft VS Code\\Code.exe"
+                                               ]
+                            },
+                 "totalcmd":  {
+                                  "candidates":  [
+                                                     "%PROGRAMFILES%\\totalcmd\\TOTALCMD64.EXE",
+                                                     "%PROGRAMFILES(x86)%\\totalcmd\\TOTALCMD.EXE"
+                                                 ]
+                              },
+                 "cursor":  {
+                                "candidates":  [
+                                                   "%LOCALAPPDATA%\\Programs\\cursor\\Cursor.exe"
+                                               ]
+                            },
+                 "paint":  {
+                               "command":  "mspaint.exe",
+                               "candidates":  [
+                                                  "%LOCALAPPDATA%\\Microsoft\\WindowsApps\\mspaint.exe",
+                                                  "%SYSTEMROOT%\\System32\\mspaint.exe"
+                                              ]
+                           },
+                 "obsidian":  {
+                                  "candidates":  [
+                                                     "%LOCALAPPDATA%\\Programs\\Obsidian\\Obsidian.exe"
+                                                 ]
+                              },
+                 "docker":  {
+                                "candidates":  [
+                                                   "%PROGRAMFILES%\\Docker\\Docker\\Docker Desktop.exe"
+                                               ]
+                            },
+                 "rider":  {
+                               "candidates":  [
+                                                  "%LOCALAPPDATA%\\Programs\\Rider\\bin\\rider64.exe",
+                                                  "%PROGRAMFILES%\\JetBrains\\*\\bin\\rider64.exe"
+                                              ]
+                           },
+                 "snip":  {
+                              "appx":  {
+                                           "package":  "Microsoft.ScreenSketch",
+                                           "exe":  "SnippingTool\\SnippingTool.exe",
+                                           "aumid":  "Microsoft.ScreenSketch_8wekyb3d8bbwe!App"
+                                       },
+                              "candidates":  [
+                                                 "%LOCALAPPDATA%\\Microsoft\\WindowsApps\\SnippingTool.exe"
+                                             ]
+                          }
+             },
+    "plugins":  {
+                    "mutedeck-mute":  {
+                                          "uuid":  "com.mutedeck.plugin.togglemute",
+                                          "name":  "Mute",
+                                          "linkedTitle":  false,
+                                          "stateCount":  3,
+                                          "settings":  {
 
-  "palette": {
-    "apps": "#E8A838",
-    "stacks": "#4E94E0",
-    "state": "#DB609E",
-    "utility": "#767E8E",
-    "nav": "#606978",
-    "meet": "#6264A7"
-  },
+                                                       },
+                                          "manifest":  {
+                                                           "Name":  "MuteDeck",
+                                                           "UUID":  "com.mutedeck.plugin",
+                                                           "Version":  "12.6.0.0"
+                                                       }
+                                      },
+                    "mutedeck-camera":  {
+                                            "uuid":  "com.mutedeck.plugin.togglevideo",
+                                            "name":  "Video / Camera",
+                                            "linkedTitle":  false,
+                                            "stateCount":  3,
+                                            "settings":  {
 
-  "apps": {
-    "pwsh": {
-      "command": "pwsh.exe",
-      "candidates": [
-        "%PROGRAMFILES%\\PowerShell\\7\\pwsh.exe",
-        "%LOCALAPPDATA%\\Microsoft\\WindowsApps\\pwsh.exe"
-      ]
-    }
-  },
+                                                         },
+                                            "manifest":  {
+                                                             "Name":  "MuteDeck",
+                                                             "UUID":  "com.mutedeck.plugin",
+                                                             "Version":  "12.6.0.0"
+                                                         }
+                                        },
+                    "mutedeck-sharing":  {
+                                             "uuid":  "com.mutedeck.plugin.togglesharing",
+                                             "name":  "Share",
+                                             "linkedTitle":  false,
+                                             "stateCount":  3,
+                                             "settings":  {
 
-  "plugins": {
-    "mutedeck-mute": {
-      "uuid": "com.mutedeck.plugin.togglemute",
-      "name": "Mute",
-      "linkedTitle": false,
-      "stateCount": 3,
-      "settings": {},
-      "manifest": { "Name": "MuteDeck", "UUID": "com.mutedeck.plugin", "Version": "12.6.0.0" }
-    },
-    "mutedeck-camera": {
-      "uuid": "com.mutedeck.plugin.togglevideo",
-      "name": "Video / Camera",
-      "linkedTitle": false,
-      "stateCount": 3,
-      "settings": {},
-      "manifest": { "Name": "MuteDeck", "UUID": "com.mutedeck.plugin", "Version": "12.6.0.0" }
-    }
-  },
+                                                          },
+                                             "manifest":  {
+                                                              "Name":  "MuteDeck",
+                                                              "UUID":  "com.mutedeck.plugin",
+                                                              "Version":  "12.6.0.0"
+                                                          }
+                                         },
+                    "mutedeck-ptt":  {
+                                         "uuid":  "com.mutedeck.plugin.push-to-talk",
+                                         "name":  "Push to Talk",
+                                         "linkedTitle":  false,
+                                         "stateCount":  2,
+                                         "settings":  {
 
-  "requires": {
-    "plugins": ["com.mutedeck.plugin"]
-  },
+                                                      },
+                                         "manifest":  {
+                                                          "Name":  "MuteDeck",
+                                                          "UUID":  "com.mutedeck.plugin",
+                                                          "Version":  "12.6.0.0"
+                                                      }
+                                     },
+                    "mutedeck-front":  {
+                                           "uuid":  "com.mutedeck.plugin.bring-to-front",
+                                           "name":  "Bring to Front",
+                                           "linkedTitle":  false,
+                                           "stateCount":  1,
+                                           "settings":  {
 
-  "pages": {
-    "home": {
-      "label": "Home",
-      "accent": "utility",
-      "keys": {
-        "4,0": {
-          "title": "ToDo",
-          "icon": { "glyph": "checkbox-list" },
-          "action": { "type": "website", "url": "ms-todo://x?path=today" }
-        },
-        "1,1": {
-          "title": "Clip",
-          "icon": { "glyph": "clipboard" },
-          "action": {
-            "type": "hotkey",
-            "hotkeys": [
-              { "cmd": true, "modifiers": 8, "native": 86, "qt": 86, "vkey": 86 }
-            ]
-          }
-        },
-        "2,1": {
-          "title": "Snip",
-          "icon": { "glyph": "crop" },
-          "action": {
-            "type": "hotkey",
-            "hotkeys": [
-              { "cmd": true, "shift": true, "modifiers": 9, "native": 83, "qt": 83, "vkey": 83 }
-            ]
-          }
-        },
-        "0,2": {
-          "title": "Mute",
-          "action": { "type": "plugin", "plugin": "mutedeck-mute" },
-          "states": [
-            { "title": "Mute",   "icon": { "glyph": "microphone" },       "accent": "utility" },
-            { "title": "Unmute", "icon": { "glyph": "microphone-slash" }, "accent": "utility" },
-            { "title": "Mute",   "icon": { "glyph": "microphone" },       "accent": "nav" }
-          ]
-        },
-        "1,2": {
-          "title": "Camera",
-          "action": { "type": "plugin", "plugin": "mutedeck-camera" },
-          "states": [
-            { "title": "Camera",  "icon": { "glyph": "camera-on" },    "accent": "utility" },
-            { "title": "Cam Off", "icon": { "glyph": "camera-slash" }, "accent": "utility" },
-            { "title": "Camera",  "icon": { "glyph": "camera-on" },    "accent": "nav" }
-          ]
-        },
-        "3,2": {
-          "title": "Lock",
-          "icon": { "glyph": "padlock" },
-          "action": { "type": "open", "target": "rundll32.exe user32.dll,LockWorkStation" }
-        }
-      }
-    }
-  }
+                                                        },
+                                           "manifest":  {
+                                                            "Name":  "MuteDeck",
+                                                            "UUID":  "com.mutedeck.plugin",
+                                                            "Version":  "12.6.0.0"
+                                                        }
+                                       },
+                    "mutedeck-leave":  {
+                                           "uuid":  "com.mutedeck.plugin.leavemeeting",
+                                           "name":  "Leave Meeting",
+                                           "linkedTitle":  false,
+                                           "stateCount":  2,
+                                           "settings":  {
+
+                                                        },
+                                           "manifest":  {
+                                                            "Name":  "MuteDeck",
+                                                            "UUID":  "com.mutedeck.plugin",
+                                                            "Version":  "12.6.0.0"
+                                                        }
+                                       },
+                    "mutedeck-custom":  {
+                                            "uuid":  "com.mutedeck.plugin.custom-action",
+                                            "name":  "Custom Action",
+                                            "linkedTitle":  false,
+                                            "stateCount":  1,
+                                            "settings":  {
+
+                                                         },
+                                            "manifest":  {
+                                                             "Name":  "MuteDeck",
+                                                             "UUID":  "com.mutedeck.plugin",
+                                                             "Version":  "12.6.0.0"
+                                                         }
+                                        },
+                    "audio-mute":  {
+                                       "uuid":  "com.fredemmott.micmutetoggle.toggle",
+                                       "name":  "Toggle Mute",
+                                       "linkedTitle":  false,
+                                       "stateCount":  2,
+                                       "settings":  {
+                                                        "deviceContainer":  "dynamicDevices",
+                                                        "deviceID":  "com.fredemmott.sdmute.deviceIds.defaultOutput",
+                                                        "deviceLabel":  "Default Output",
+                                                        "feedbackSounds":  true,
+                                                        "fuzzyMatching":  false,
+                                                        "toggleKind":  "ToggleOnly"
+                                                    },
+                                       "manifest":  {
+                                                        "Name":  "Audio Mute",
+                                                        "UUID":  "com.fredemmott.micmutetoggle",
+                                                        "Version":  "1.0"
+                                                    }
+                                   }
+                },
+    "requires":  {
+                     "plugins":  [
+                                     "com.fredemmott.micmutetoggle",
+                                     "com.mutedeck.plugin"
+                                 ]
+                 },
+    "pages":  {
+                  "apps":  {
+                               "label":  "Apps",
+                               "keys":  {
+                                            "0,0":  {
+                                                        "title":  "Gmail",
+                                                        "icon":  {
+                                                                     "image":  "icons/gmail.png",
+                                                                     "scale":  0.52
+                                                                 },
+                                                        "accent":  "apps",
+                                                        "action":  {
+                                                                       "type":  "website",
+                                                                       "url":  "https://mail.google.com/mail/u/0/#inbox"
+                                                                   }
+                                                    },
+                                            "0,1":  {
+                                                        "title":  "VS 2022",
+                                                        "icon":  {
+                                                                     "image":  "icons/vs2022.png"
+                                                                 },
+                                                        "accent":  "apps",
+                                                        "action":  {
+                                                                       "type":  "app",
+                                                                       "app":  "vs2022",
+                                                                       "title":  "VS 2022"
+                                                                   }
+                                                    },
+                                            "0,2":  {
+                                                        "title":  "MS To Do",
+                                                        "icon":  {
+                                                                     "glyph":  "checkbox-list"
+                                                                 },
+                                                        "accent":  "apps",
+                                                        "action":  {
+                                                                       "type":  "website",
+                                                                       "url":  "ms-todo:"
+                                                                   }
+                                                    },
+                                            "1,0":  {
+                                                        "title":  "Medium",
+                                                        "icon":  {
+                                                                     "badge":  "M"
+                                                                 },
+                                                        "accent":  "apps",
+                                                        "action":  {
+                                                                       "type":  "website",
+                                                                       "url":  "https://medium.com/"
+                                                                   }
+                                                    },
+                                            "1,1":  {
+                                                        "title":  "VS Code",
+                                                        "icon":  {
+                                                                     "image":  "icons/vscode.png"
+                                                                 },
+                                                        "accent":  "apps",
+                                                        "action":  {
+                                                                       "type":  "app",
+                                                                       "app":  "vscode",
+                                                                       "title":  "VS Code"
+                                                                   }
+                                                    },
+                                            "1,2":  {
+                                                        "title":  "Total Cmd",
+                                                        "icon":  {
+                                                                     "image":  "icons/totalcmd.png"
+                                                                 },
+                                                        "accent":  "apps",
+                                                        "action":  {
+                                                                       "type":  "app",
+                                                                       "app":  "totalcmd",
+                                                                       "title":  "Total Cmd"
+                                                                   }
+                                                    },
+                                            "2,1":  {
+                                                        "title":  "Cursor",
+                                                        "icon":  {
+                                                                     "image":  "icons/cursor.png"
+                                                                 },
+                                                        "accent":  "apps",
+                                                        "action":  {
+                                                                       "type":  "app",
+                                                                       "app":  "cursor",
+                                                                       "title":  "Cursor"
+                                                                   }
+                                                    },
+                                            "2,2":  {
+                                                        "title":  "Paint",
+                                                        "icon":  {
+                                                                     "image":  "icons/paint.png"
+                                                                 },
+                                                        "accent":  "apps",
+                                                        "action":  {
+                                                                       "type":  "app",
+                                                                       "app":  "paint",
+                                                                       "title":  "Paint"
+                                                                   }
+                                                    },
+                                            "3,0":  {
+                                                        "title":  "Obsidian",
+                                                        "icon":  {
+                                                                     "image":  "icons/obsidian.png"
+                                                                 },
+                                                        "accent":  "apps",
+                                                        "action":  {
+                                                                       "type":  "app",
+                                                                       "app":  "obsidian",
+                                                                       "title":  "Obsidian"
+                                                                   }
+                                                    },
+                                            "3,1":  {
+                                                        "title":  "Docker",
+                                                        "icon":  {
+                                                                     "image":  "icons/docker.png"
+                                                                 },
+                                                        "accent":  "apps",
+                                                        "action":  {
+                                                                       "type":  "app",
+                                                                       "app":  "docker",
+                                                                       "title":  "Docker"
+                                                                   }
+                                                    },
+                                            "4,0":  {
+                                                        "title":  "Rider",
+                                                        "icon":  {
+                                                                     "image":  "icons/rider.png"
+                                                                 },
+                                                        "accent":  "apps",
+                                                        "action":  {
+                                                                       "type":  "app",
+                                                                       "app":  "rider",
+                                                                       "title":  "Rider"
+                                                                   }
+                                                    },
+                                            "4,1":  {
+                                                        "title":  "Snip",
+                                                        "icon":  {
+                                                                     "image":  "icons/snip.png",
+                                                                     "scale":  0.56
+                                                                 },
+                                                        "accent":  "apps",
+                                                        "action":  {
+                                                                       "type":  "app",
+                                                                       "app":  "snip",
+                                                                       "title":  "Screenshot"
+                                                                   }
+                                                    }
+                                        },
+                               "accent":  "apps",
+                               "folder":  {
+                                              "parent":  "home",
+                                              "slot":  "3,0",
+                                              "title":  "Apps",
+                                              "icon":  {
+                                                           "glyph":  "folder"
+                                                       },
+                                              "accent":  "apps"
+                                          }
+                           },
+                  "home":  {
+                               "label":  "Home",
+                               "keys":  {
+                                            "0,2":  {
+                                                        "title":  "Mute",
+                                                        "icon":  {
+                                                                     "glyph":  "microphone"
+                                                                 },
+                                                        "accent":  "utility",
+                                                        "action":  {
+                                                                       "type":  "plugin",
+                                                                       "plugin":  "mutedeck-mute"
+                                                                   },
+                                                        "states":  [
+                                                                       {
+                                                                           "title":  "Mute",
+                                                                           "icon":  {
+                                                                                        "glyph":  "microphone"
+                                                                                    },
+                                                                           "accent":  "utility"
+                                                                       },
+                                                                       {
+                                                                           "title":  "Unmute",
+                                                                           "icon":  {
+                                                                                        "glyph":  "microphone-slash"
+                                                                                    },
+                                                                           "accent":  "utility"
+                                                                       },
+                                                                       {
+                                                                           "title":  "Mute",
+                                                                           "icon":  {
+                                                                                        "glyph":  "microphone"
+                                                                                    },
+                                                                           "accent":  "nav"
+                                                                       }
+                                                                   ]
+                                                    },
+                                            "1,1":  {
+                                                        "title":  "Clip",
+                                                        "icon":  {
+                                                                     "glyph":  "clipboard"
+                                                                 },
+                                                        "accent":  "utility",
+                                                        "action":  {
+                                                                       "type":  "hotkey",
+                                                                       "hotkeys":  [
+                                                                                       {
+                                                                                           "cmd":  true,
+                                                                                           "modifiers":  8,
+                                                                                           "native":  86,
+                                                                                           "qt":  86,
+                                                                                           "vkey":  86
+                                                                                       }
+                                                                                   ]
+                                                                   }
+                                                    },
+                                            "1,2":  {
+                                                        "title":  "Camera",
+                                                        "icon":  {
+                                                                     "glyph":  "camera-on"
+                                                                 },
+                                                        "accent":  "utility",
+                                                        "action":  {
+                                                                       "type":  "plugin",
+                                                                       "plugin":  "mutedeck-camera"
+                                                                   },
+                                                        "states":  [
+                                                                       {
+                                                                           "title":  "Camera",
+                                                                           "icon":  {
+                                                                                        "glyph":  "camera-on"
+                                                                                    },
+                                                                           "accent":  "utility"
+                                                                       },
+                                                                       {
+                                                                           "title":  "Cam Off",
+                                                                           "icon":  {
+                                                                                        "glyph":  "camera-slash"
+                                                                                    },
+                                                                           "accent":  "utility"
+                                                                       },
+                                                                       {
+                                                                           "title":  "Camera",
+                                                                           "icon":  {
+                                                                                        "glyph":  "camera-on"
+                                                                                    },
+                                                                           "accent":  "nav"
+                                                                       }
+                                                                   ]
+                                                    },
+                                            "2,1":  {
+                                                        "title":  "Snip",
+                                                        "icon":  {
+                                                                     "image":  "icons/snip.png",
+                                                                     "scale":  0.48
+                                                                 },
+                                                        "accent":  "utility",
+                                                        "action":  {
+                                                                       "type":  "hotkey",
+                                                                       "hotkeys":  [
+                                                                                       {
+                                                                                           "cmd":  true,
+                                                                                           "shift":  true,
+                                                                                           "modifiers":  9,
+                                                                                           "native":  83,
+                                                                                           "qt":  83,
+                                                                                           "vkey":  83
+                                                                                       }
+                                                                                   ]
+                                                                   }
+                                                    },
+                                            "2,2":  {
+                                                        "title":  "Start",
+                                                        "icon":  {
+                                                                     "glyph":  "play"
+                                                                 },
+                                                        "accent":  "utility",
+                                                        "unconfigured":  true,
+                                                        "action":  {
+                                                                       "type":  "website",
+                                                                       "url":  "about:blank"
+                                                                   }
+                                                    },
+                                            "3,2":  {
+                                                        "title":  "Lock",
+                                                        "icon":  {
+                                                                     "glyph":  "padlock"
+                                                                 },
+                                                        "accent":  "utility",
+                                                        "action":  {
+                                                                       "type":  "open",
+                                                                       "target":  "rundll32.exe user32.dll,LockWorkStation"
+                                                                   }
+                                                    },
+                                            "4,0":  {
+                                                        "title":  "ToDo",
+                                                        "icon":  {
+                                                                     "glyph":  "checkbox-list"
+                                                                 },
+                                                        "accent":  "utility",
+                                                        "action":  {
+                                                                       "type":  "website",
+                                                                       "url":  "ms-todo://x?path=today"
+                                                                   }
+                                                    }
+                                        }
+                           },
+                  "state":  {
+                                "label":  "STATE",
+                                "keys":  {
+                                             "0,0":  {
+                                                         "title":  "Prev",
+                                                         "icon":  {
+                                                                      "glyph":  "skip-back"
+                                                                  },
+                                                         "accent":  "state",
+                                                         "action":  {
+                                                                        "type":  "multimedia",
+                                                                        "index":  0
+                                                                    }
+                                                     },
+                                             "0,1":  {
+                                                         "title":  "Lock",
+                                                         "icon":  {
+                                                                      "glyph":  "padlock"
+                                                                  },
+                                                         "accent":  "state",
+                                                         "action":  {
+                                                                        "type":  "open",
+                                                                        "target":  "rundll32.exe user32.dll,LockWorkStation"
+                                                                    }
+                                                     },
+                                             "0,2":  {
+                                                         "title":  "Mute",
+                                                         "icon":  {
+                                                                      "glyph":  "microphone"
+                                                                  },
+                                                         "accent":  "state",
+                                                         "action":  {
+                                                                        "type":  "plugin",
+                                                                        "plugin":  "mutedeck-mute"
+                                                                    },
+                                                         "states":  [
+                                                                        {
+                                                                            "title":  "Mute",
+                                                                            "icon":  {
+                                                                                         "glyph":  "microphone"
+                                                                                     },
+                                                                            "accent":  "state"
+                                                                        },
+                                                                        {
+                                                                            "title":  "Unmute",
+                                                                            "icon":  {
+                                                                                         "glyph":  "microphone-slash"
+                                                                                     },
+                                                                            "accent":  "state"
+                                                                        },
+                                                                        {
+                                                                            "title":  "Mute",
+                                                                            "icon":  {
+                                                                                         "glyph":  "microphone"
+                                                                                     },
+                                                                            "accent":  "nav"
+                                                                        }
+                                                                    ]
+                                                     },
+                                             "1,0":  {
+                                                         "title":  "Play/Pause",
+                                                         "icon":  {
+                                                                      "glyph":  "play-pause"
+                                                                  },
+                                                         "accent":  "state",
+                                                         "action":  {
+                                                                        "type":  "multimedia",
+                                                                        "index":  1
+                                                                    }
+                                                     },
+                                             "1,2":  {
+                                                         "title":  "Spk Mute",
+                                                         "icon":  {
+                                                                      "glyph":  "speaker-mute"
+                                                                  },
+                                                         "accent":  "state",
+                                                         "action":  {
+                                                                        "type":  "plugin",
+                                                                        "plugin":  "audio-mute"
+                                                                    },
+                                                         "states":  [
+                                                                        {
+                                                                            "title":  "Unmute",
+                                                                            "icon":  {
+                                                                                         "glyph":  "speaker-mute"
+                                                                                     },
+                                                                            "accent":  "state"
+                                                                        },
+                                                                        {
+                                                                            "title":  "Mute",
+                                                                            "icon":  {
+                                                                                         "glyph":  "speaker-out"
+                                                                                     },
+                                                                            "accent":  "state"
+                                                                        }
+                                                                    ]
+                                                     },
+                                             "2,0":  {
+                                                         "title":  "Next",
+                                                         "icon":  {
+                                                                      "glyph":  "skip-fwd"
+                                                                  },
+                                                         "accent":  "state",
+                                                         "action":  {
+                                                                        "type":  "multimedia",
+                                                                        "index":  2
+                                                                    }
+                                                     },
+                                             "2,1":  {
+                                                         "title":  "Night",
+                                                         "icon":  {
+                                                                      "glyph":  "sun"
+                                                                  },
+                                                         "accent":  "state",
+                                                         "action":  {
+                                                                        "type":  "open",
+                                                                        "target":  "explorer.exe ms-settings:nightlight"
+                                                                    }
+                                                     },
+                                             "3,0":  {
+                                                         "title":  "Vol +",
+                                                         "icon":  {
+                                                                      "glyph":  "speaker-plus"
+                                                                  },
+                                                         "accent":  "state",
+                                                         "action":  {
+                                                                        "type":  "multimedia",
+                                                                        "index":  5
+                                                                    }
+                                                     },
+                                             "3,1":  {
+                                                         "title":  "Sound",
+                                                         "icon":  {
+                                                                      "glyph":  "speaker-out"
+                                                                  },
+                                                         "accent":  "state",
+                                                         "action":  {
+                                                                        "type":  "open",
+                                                                        "target":  "explorer.exe ms-settings:sound"
+                                                                    }
+                                                     },
+                                             "4,0":  {
+                                                         "title":  "Vol -",
+                                                         "icon":  {
+                                                                      "glyph":  "speaker-minus"
+                                                                  },
+                                                         "accent":  "state",
+                                                         "action":  {
+                                                                        "type":  "multimedia",
+                                                                        "index":  6
+                                                                    }
+                                                     }
+                                         },
+                                "accent":  "state",
+                                "folder":  {
+                                               "parent":  "home",
+                                               "slot":  "4,1",
+                                               "title":  "State",
+                                               "icon":  {
+                                                            "glyph":  "folder"
+                                                        },
+                                               "accent":  "state"
+                                           }
+                            },
+                  "meet":  {
+                               "label":  "Meet",
+                               "keys":  {
+                                            "0,0":  {
+                                                        "title":  "Mute",
+                                                        "icon":  {
+                                                                     "glyph":  "microphone"
+                                                                 },
+                                                        "accent":  "meet",
+                                                        "action":  {
+                                                                       "type":  "plugin",
+                                                                       "plugin":  "mutedeck-mute"
+                                                                   },
+                                                        "states":  [
+                                                                       {
+                                                                           "title":  "Mute",
+                                                                           "icon":  {
+                                                                                        "glyph":  "microphone"
+                                                                                    },
+                                                                           "accent":  "meet"
+                                                                       },
+                                                                       {
+                                                                           "title":  "Unmute",
+                                                                           "icon":  {
+                                                                                        "glyph":  "microphone-slash"
+                                                                                    },
+                                                                           "accent":  "meet"
+                                                                       },
+                                                                       {
+                                                                           "title":  "Mute",
+                                                                           "icon":  {
+                                                                                        "glyph":  "microphone"
+                                                                                    },
+                                                                           "accent":  "nav"
+                                                                       }
+                                                                   ]
+                                                    },
+                                            "0,1":  {
+                                                        "title":  "Raise Hand",
+                                                        "icon":  {
+                                                                     "badge":  "✋"
+                                                                 },
+                                                        "accent":  "meet",
+                                                        "action":  {
+                                                                       "type":  "plugin",
+                                                                       "plugin":  "mutedeck-custom",
+                                                                       "settings":  {
+                                                                                        "custom_action_name":  "raise-hand"
+                                                                                    }
+                                                                   }
+                                                    },
+                                            "1,0":  {
+                                                        "title":  "Share",
+                                                        "icon":  {
+                                                                     "glyph":  "screen"
+                                                                 },
+                                                        "accent":  "meet",
+                                                        "action":  {
+                                                                       "type":  "plugin",
+                                                                       "plugin":  "mutedeck-sharing"
+                                                                   },
+                                                        "states":  [
+                                                                       {
+                                                                           "title":  "Share",
+                                                                           "icon":  {
+                                                                                        "glyph":  "screen"
+                                                                                    },
+                                                                           "accent":  "meet"
+                                                                       },
+                                                                       {
+                                                                           "title":  "Sharing",
+                                                                           "icon":  {
+                                                                                        "glyph":  "screen-slash"
+                                                                                    },
+                                                                           "accent":  "meet"
+                                                                       },
+                                                                       {
+                                                                           "title":  "Share",
+                                                                           "icon":  {
+                                                                                        "glyph":  "screen"
+                                                                                    },
+                                                                           "accent":  "meet"
+                                                                       }
+                                                                   ]
+                                                    },
+                                            "1,1":  {
+                                                        "title":  "Chat",
+                                                        "icon":  {
+                                                                     "badge":  "💬"
+                                                                 },
+                                                        "accent":  "meet",
+                                                        "action":  {
+                                                                       "type":  "plugin",
+                                                                       "plugin":  "mutedeck-custom",
+                                                                       "settings":  {
+                                                                                        "custom_action_name":  "toggle-chat"
+                                                                                    }
+                                                                   }
+                                                    },
+                                            "2,0":  {
+                                                        "title":  "PTT",
+                                                        "icon":  {
+                                                                     "glyph":  "push-talk"
+                                                                 },
+                                                        "accent":  "meet",
+                                                        "action":  {
+                                                                       "type":  "plugin",
+                                                                       "plugin":  "mutedeck-ptt"
+                                                                   },
+                                                        "states":  [
+                                                                       {
+                                                                           "title":  "Talking",
+                                                                           "icon":  {
+                                                                                        "glyph":  "push-talk"
+                                                                                    },
+                                                                           "accent":  "meet"
+                                                                       },
+                                                                       {
+                                                                           "title":  "PTT",
+                                                                           "icon":  {
+                                                                                        "glyph":  "microphone"
+                                                                                    },
+                                                                           "accent":  "meet"
+                                                                       }
+                                                                   ]
+                                                    },
+                                            "2,1":  {
+                                                        "title":  "Thumbs Up",
+                                                        "icon":  {
+                                                                     "badge":  "👍"
+                                                                 },
+                                                        "accent":  "meet",
+                                                        "action":  {
+                                                                       "type":  "plugin",
+                                                                       "plugin":  "mutedeck-custom",
+                                                                       "settings":  {
+                                                                                        "custom_action_name":  "react-thumbs-up"
+                                                                                    }
+                                                                   }
+                                                    },
+                                            "3,0":  {
+                                                        "title":  "Focus",
+                                                        "icon":  {
+                                                                     "glyph":  "window-front"
+                                                                 },
+                                                        "accent":  "meet",
+                                                        "action":  {
+                                                                       "type":  "plugin",
+                                                                       "plugin":  "mutedeck-front"
+                                                                   }
+                                                    },
+                                            "3,1":  {
+                                                        "title":  "Heart",
+                                                        "icon":  {
+                                                                     "badge":  "❤"
+                                                                 },
+                                                        "accent":  "meet",
+                                                        "action":  {
+                                                                       "type":  "plugin",
+                                                                       "plugin":  "mutedeck-custom",
+                                                                       "settings":  {
+                                                                                        "custom_action_name":  "react-heart"
+                                                                                    }
+                                                                   }
+                                                    },
+                                            "4,0":  {
+                                                        "title":  "Leave",
+                                                        "icon":  {
+                                                                     "glyph":  "phone-hang"
+                                                                 },
+                                                        "accent":  "meet",
+                                                        "action":  {
+                                                                       "type":  "plugin",
+                                                                       "plugin":  "mutedeck-leave"
+                                                                   },
+                                                        "states":  [
+                                                                       {
+                                                                           "title":  "Leave",
+                                                                           "icon":  {
+                                                                                        "glyph":  "phone-hang"
+                                                                                    },
+                                                                           "accent":  "meet"
+                                                                       },
+                                                                       {
+                                                                           "title":  "Leave",
+                                                                           "icon":  {
+                                                                                        "glyph":  "phone-hang"
+                                                                                    },
+                                                                           "accent":  "meet"
+                                                                       }
+                                                                   ]
+                                                    }
+                                        },
+                               "accent":  "meet",
+                               "folder":  {
+                                              "parent":  "home",
+                                              "slot":  "0,1",
+                                              "title":  "Meet",
+                                              "icon":  {
+                                                           "glyph":  "headset"
+                                                       },
+                                              "accent":  "meet"
+                                          }
+                           },
+                  "profileswitcher":  {
+                                          "label":  "ProfileSwitcher",
+                                          "keys":  {
+                                                       "0,0":  {
+                                                                   "title":  "Work",
+                                                                   "icon":  {
+                                                                                "badge":  "WK"
+                                                                            },
+                                                                   "accent":  "utility",
+                                                                   "action":  {
+                                                                                  "type":  "profile",
+                                                                                  "profile":  "Work"
+                                                                              }
+                                                               },
+                                                       "1,0":  {
+                                                                   "title":  "Teams",
+                                                                   "icon":  {
+                                                                                "badge":  "TM"
+                                                                            },
+                                                                   "accent":  "utility",
+                                                                   "action":  {
+                                                                                  "type":  "profile",
+                                                                                  "profile":  "Teams"
+                                                                              }
+                                                               },
+                                                       "2,0":  {
+                                                                   "title":  "Files",
+                                                                   "icon":  {
+                                                                                "badge":  "FE"
+                                                                            },
+                                                                   "accent":  "utility",
+                                                                   "action":  {
+                                                                                  "type":  "profile",
+                                                                                  "profile":  "FileExplorer View"
+                                                                              }
+                                                               }
+                                                   },
+                                          "accent":  "utility",
+                                          "folder":  {
+                                                         "parent":  "home",
+                                                         "slot":  "4,2",
+                                                         "title":  "Switch",
+                                                         "icon":  {
+                                                                      "glyph":  "restart"
+                                                                  },
+                                                         "accent":  "utility"
+                                                     }
+                                      }
+              }
 }
