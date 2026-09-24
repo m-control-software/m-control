@@ -13,7 +13,7 @@ and, longer term, a product for developer teams (`docs/VISION.md`).
 
 | Path | What it is |
 |------|------------|
-| `packages/core` | `@m-control/core` — runtime library: types, discovery, config, runner, event sinks. No CLI, no `process.argv`, no console output. Public API = `src/index.ts`. |
+| `packages/core` | `@m-control/core` — runtime library: types, discovery, config, runner, event sinks. No CLI concerns. Public API = `src/index.ts`. |
 | `apps/mctl` | `@m-control/mctl` — the CLI (`init`, `list`, `run`, `doctor`). Bundled by ncc into `apps/mctl/dist/bundle/index.js`. |
 | `tools/<category>/<id>/` | Standalone tool processes in any runtime. **Not** npm packages, not in workspaces. |
 | `templates/node-tool`, `templates/python-tool` | Copy-paste starting points for new tools. |
@@ -126,8 +126,9 @@ spawn command (`resolveSpawnCommand`): node → the running Node binary; python 
   `ManifestError`, `DiscoveryError`, `RunnerError`, `RunnerGuardrailError`,
   `NotImplementedError`), never a raw `Error`. Messages say what to do next.
 - Never swallow an error: rethrow with context, or surface it as a warning.
-- `packages/core`: no console output and no `process.exit`; report through
-  return values, errors, and the `EventSink` interface.
+- `packages/core`: no `console.*`, no `process.exit`, no `process.argv`.
+  Terminal writes stay in the `EventSink` implementations and the runner's
+  stderr forwarding (see `docs/architecture/constraints.md` §1).
 - `apps/mctl`: tool events are rendered only through an `EventSink`
   (`createEventSink`). Command output of mctl itself (`list`, `doctor`, `init`,
   usage errors) is plain console output — that is the CLI's UI.

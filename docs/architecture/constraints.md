@@ -1,486 +1,143 @@
 # Architectural Constraints
 
-The "Constitution" of m-control. These are inviolable rules that must be followed at all times.
-
-## 🚫 NEVER DO THIS
-
-### Security
-
-#### ❌ NEVER store credentials in plaintext logs
-```typescript
-// BAD
-console.log('Token:', config.azdo.token);
-logger.info('Auth:', { token: user.token });
-
-// GOOD
-logger.info('Authenticated', { userId: user.id }); // No token
-```
-
-#### ❌ NEVER hardcode API endpoints or credentials
-```typescript
-// BAD
-const AZDO_URL = 'https://dev.azure.com/myorg';
-const API_KEY = 'abc123xyz';
-
-// GOOD
-const AZDO_URL = config.azdo.organization; // From config
-const API_KEY = config.azdo.token; // From secure config
-```
-
-#### ❌ NEVER commit secrets to git
-```bash
-# ALWAYS in .gitignore:
-config.json
-.env
-*.key
-*.pem
-```
-
-#### ❌ NEVER log full error objects in production
-```typescript
-// BAD
-catch (error) {
-  logger.error(error); // Might contain sensitive data
-}
-
-// GOOD
-catch (error) {
-  logger.error('Operation failed', { 
-    message: error.message,
-    code: error.code 
-    // No stack trace, no sensitive data
-  });
-}
-```
+The hard rules of m-control. Each one is followed by the current code; if the
+code and this document disagree, one of them is a bug — fix it or amend the
+rule in an ADR. `AGENTS.md` carries the condensed version for day-to-day work.
 
 ---
 
-### Architecture
+## 1. Boundaries
 
-#### ❌ NEVER couple plugins to orchestrator internals
-```typescript
-// BAD - Plugin directly imports orchestrator code
-import { internalState } from '../../core/state';
+- **Core is a library.** `packages/core` has no CLI concerns: no
+  `process.argv`, no `process.exit`, no `console.*`. It reports through return
+  values and the error hierarchy. It writes to the terminal in exactly two
+  places: the `EventSink` implementations (`events.ts`), and the runner
+  forwarding a tool's stderr plus its own `[runner:<id>]` diagnostics to
+  stderr. Keep it that way. Its public API is exactly what `src/index.ts`
+  exports.
+- **The CLI owns the terminal.** `apps/mctl` renders tool events only through
+  an `EventSink` (`createEventSink`). Its own command output (`list`, `doctor`,
+  `init`, usage errors) is plain console output — that is the CLI's UI, not
+  logging.
+- **Import core by package name.** `@m-control/core`, never
+  `packages/core/src/…`.
+- **Tools are processes, not modules.** A tool depends only on Tool Protocol v1
+  (`execution-model.md`) — never on core internals, never on another tool.
+  Crashes stay in the tool's process.
+- **Tools are not workspaces.** Nothing under `tools/` is an npm package or
+  has a build step. Node tools are plain `.js`; Python tools are stdlib-only.
 
-// GOOD - Plugin uses only public contracts
-export async function execute(context: PluginContext) {
-  const config = context.getConfig();
-}
-```
+## 2. Contracts
 
-#### ❌ NEVER break plugin isolation (shared mutable state)
-```typescript
-// BAD - Global state shared between plugins
-let globalCounter = 0; // Plugins can interfere
+- **stdout is protocol.** A tool writes only NDJSON `ToolEvent` lines to
+  stdout. Human text goes into `log` events or stderr. One stray `print`
+  corrupts the stream.
+- **stdin is read to EOF** and parsed as one `ToolRequest` before any work.
+- **Exit codes mean something.** `0` success, `1` expected failure after an
+  `error` event, `≥2` crash. An `error` event followed by exit 0 is invalid.
+- **Options come from `input`.** mctl passes `key=value` arguments as input
+  strings and consumes `--flags` itself; a tool must never parse argv.
+- **Versioned schemas.** A breaking change to `ToolManifest` or
+  `MControlConfig` needs a new `manifestVersion`/`configVersion` and a
+  migration. Adding an optional field is not breaking. Validation fails fast
+  with the file path and the fix in the message.
+- **Open config schema.** Tool settings live under `tools.<section>.*`. Core
+  never gains a tool-specific type or key; a tool only receives the keys its
+  manifest declares (`requiredConfig` + `optionalConfig`).
 
-// GOOD - Each plugin gets its own context
-export async function execute(context: PluginContext) {
-  const state = context.getState(); // Isolated
-}
-```
+## 3. Security and data
 
-#### ❌ NEVER hardcode file paths
-```typescript
-// BAD
-const configPath = 'C:\\Users\\Michal\\.m-control\\config.json';
+- **No secrets in output.** Tokens and keys never appear in `log`/`result`
+  events, stderr, error messages, or files under version control.
+- **No credentials or endpoints in code.** They come from config.
+- **Never commit `config.json`** or other personal state. `.gitignore` covers
+  `config.json` and `.env`.
+- **Personal and client data stays out of the repo.** Specs, packs, names and
+  machine paths live in directories the user points a tool at through config
+  (e.g. `tools.logi-options.packDirs`, `tools.stream-deck.packDirs`). See
+  ADR-0009.
+- **Credentials are plaintext in `~/.m-control/config.json` today.** OS
+  keychain storage is future work; don't build features that make the
+  plaintext file more exposed (e.g. syncing it).
 
-// GOOD
-const configPath = path.join(getConfigDir(), 'config.json');
-```
+## 4. Tools that change live state
 
-#### ❌ NEVER assume Windows or Linux exclusively
-```typescript
-// BAD
-const separator = '\\'; // Windows only
+Established by stream-deck and logi-options (ADR-0010, ADR-0011):
 
-// GOOD
-const separator = path.sep; // Cross-platform
-```
+- **Offer a dry run** (`check=true`) that validates and reports what would
+  change without touching anything.
+- **Back up before writing**, and keep the backup location configurable.
+- **Verify after writing**, and roll back or fail loudly on mismatch.
+- **Fit the run budget.** Declare `timeoutMs` in the manifest when the tool
+  needs anything other than the 30 s default, and never leave external state
+  broken if the runner kills the tool mid-way.
+- **Be idempotent.** Applying the same spec twice is a no-op the second time.
 
----
+## 5. Errors and messages
 
-### Configuration
+- **Use the error hierarchy** in `packages/` and `apps/`: `ConfigError`,
+  `ManifestError`, `DiscoveryError`, `RunnerError`, `RunnerGuardrailError`,
+  `NotImplementedError` — never a raw `Error` (see `.claude/rules/errors.md`).
+  Inside a tool, any failure ends as an `error` event with a `code` and an
+  honest `recoverable` flag.
+- **Messages say what to do next**, not just what went wrong:
+  `configVersion mismatch: expected 1, got 2. Delete ~/.m-control/config.json and run mctl init.`
+- **Never swallow an error.** Rethrow with context, or surface it as a warning
+  (as discovery does for an invalid manifest). An empty `catch {}` is a bug.
 
-#### ❌ NEVER change config schema without migration
-```typescript
-// BAD - Breaking change
-interface Config {
-  // Removed 'azdo' field - existing configs break!
-  tools: { k8s: {...} }
-}
+## 6. Portability
 
-// GOOD - Add migration
-function migrateConfig(old: ConfigV1): ConfigV2 {
-  return {
-    ...old,
-    version: '2.0',
-    tools: {
-      azdo: old.azdo || {}, // Preserve old data
-      ...old.tools
-    }
-  };
-}
-```
+- **Windows is primary, Linux is supported, macOS should not break.** Build
+  paths with `path.join`/`path.resolve`, find the home directory through
+  `os.homedir()` (or `USERPROFILE` on Windows, as core does), and never
+  hardcode a user's path.
+- **PowerShell tools must run under Windows PowerShell 5.1**, because that is
+  what the `powershell` runtime spawns on Windows.
+- **Interpreters are overridable** per machine via `config.runtimes`; don't
+  assume a specific install location.
 
-#### ❌ NEVER remove config fields without deprecation period
-```typescript
-// BAD
-// Removed config.azdo.organization immediately
+## 7. Performance
 
-// GOOD
-// v1.0: Mark as deprecated
-// v1.5: Show warning if used
-// v2.0: Remove (with migration)
-```
+- Synchronous filesystem reads are fine for small, startup-time files (config,
+  manifests) — the CLI is short-lived. Use streams or async I/O for anything
+  large or unbounded, and never make blocking network calls.
+- Tools stream progress as `log` events during long operations; they don't go
+  silent until the end.
 
-#### ❌ NEVER store config outside ~/.m-control/
-```typescript
-// BAD
-const config = readFileSync('/var/lib/m-control/config.json');
+## 8. Testing
 
-// GOOD
-const configDir = process.platform === 'win32'
-  ? path.join(process.env.USERPROFILE, '.m-control')
-  : path.join(os.homedir(), '.m-control');
-```
-
----
-
-### Code Quality
-
-#### ❌ NEVER use console.log/console.error in production code
-```typescript
-// BAD
-console.log('User logged in');
-console.error('Failed:', error);
-
-// GOOD
-logger.info('User logged in', { userId });
-logger.error('Operation failed', { error: error.message });
-```
-
-#### ❌ NEVER use `any` type without justification comment
-```typescript
-// BAD
-function process(data: any) { ... }
-
-// GOOD
-function process(data: unknown) { ... }
-
-// ACCEPTABLE (with comment)
-function legacyAdapter(data: any) { // External API has no types
-  ...
-}
-```
-
-#### ❌ NEVER ignore errors silently
-```typescript
-// BAD
-try {
-  await riskyOperation();
-} catch (e) {
-  // Silent failure - user has no idea what happened
-}
-
-// GOOD
-try {
-  await riskyOperation();
-} catch (e) {
-  logger.error('Operation failed', { error: e.message });
-  throw new ToolError('Failed to X', 'OPERATION_FAILED', true);
-}
-```
-
-#### ❌ NEVER block the event loop
-```typescript
-// BAD
-function processLargeFile(path: string) {
-  const content = fs.readFileSync(path); // Blocks!
-  return parse(content);
-}
-
-// GOOD
-async function processLargeFile(path: string) {
-  const content = await fs.promises.readFile(path);
-  return parse(content);
-}
-```
+- Vitest, from the repo root (`yarn test`). Core is tested from TypeScript
+  sources; tools are tested by spawning them as processes.
+- Critical paths need tests: manifest validation, config loading and
+  extraction, tools-root resolution, the runner's protocol handling and
+  guardrails, and every tool's protocol behaviour.
+- Test missing, empty and invalid config.
+- Tests that need Windows or an installed app skip themselves elsewhere; CI is
+  Ubuntu, so keep a platform-independent test for anything that can be checked
+  without them (see `tools/artifacts/logi-options/test/budget.test.ts`).
 
 ---
 
-### Performance
+## Enforcement
 
-#### ❌ NEVER load entire large files into memory
-```typescript
-// BAD
-const logContent = fs.readFileSync('huge-log.txt', 'utf-8');
-const lines = logContent.split('\n');
+What is actually enforced, so nobody relies on a check that doesn't exist:
 
-// GOOD
-const stream = fs.createReadStream('huge-log.txt');
-const lines = readline.createInterface({ input: stream });
-for await (const line of lines) {
-  processLine(line);
-}
-```
+| Where | What |
+|-------|------|
+| TypeScript | `strict` mode for `packages/` and `apps/` |
+| ESLint | `eslint:recommended`, `@typescript-eslint/recommended`, Prettier; `no-explicit-any` is a warning; `no-console` is **off** (see §1) |
+| Discovery | Manifest schema, runtime, kebab-case id, config-key shape, `timeoutMs` |
+| Runner | Timeout, output size, and event-count guardrails |
+| CI | Install (frozen lockfile), build, typecheck, lint, test, smoke test |
+| Review | Everything else in this document |
 
-#### ❌ NEVER make synchronous network calls
-```typescript
-// BAD
-const result = https.request(url); // Blocking
+Tools under `tools/` are not linted or type-checked; their tests are the guard.
 
-// GOOD
-const result = await fetch(url); // Async
-```
+## Changing this document
 
----
+Add a rule when a real failure shows it's needed, and write it so it matches
+the code. A rule that the codebase can't or won't follow is worse than no
+rule: agents will either obey it and break things, or learn to ignore the
+whole document.
 
-### User Experience
-
-#### ❌ NEVER show raw error messages to users
-```typescript
-// BAD
-catch (error) {
-  console.error(error.stack); // Scary technical jargon
-}
-
-// GOOD
-catch (error) {
-  console.error('Failed to connect to Azure DevOps.');
-  console.error('Check your token in ~/.m-control/config.json');
-  logger.debug('Full error:', error); // For debugging
-}
-```
-
-#### ❌ NEVER make operations non-idempotent if they should be
-```typescript
-// BAD
-function createNote(title: string) {
-  // Creates duplicate if called twice
-}
-
-// GOOD
-function createNote(title: string) {
-  if (noteExists(title)) {
-    return existingNote;
-  }
-  return createNew(title);
-}
-```
-
----
-
-## ✅ ALWAYS DO THIS
-
-### Code
-
-#### ✅ ALWAYS use structured logging
-```typescript
-// Include context for debugging
-logger.info('Command executed', {
-  commandId: 'azdo-review',
-  duration: 1234,
-  success: true,
-  userId: 'user-123'
-});
-```
-
-#### ✅ ALWAYS validate user input
-```typescript
-function setApiToken(token: string) {
-  if (!token || token.trim().length === 0) {
-    throw new Error('Token cannot be empty');
-  }
-  if (token.length < 20) {
-    throw new Error('Token appears invalid (too short)');
-  }
-  // Proceed
-}
-```
-
-#### ✅ ALWAYS handle errors gracefully
-```typescript
-async function fetchData() {
-  try {
-    const result = await api.call();
-    return result;
-  } catch (error) {
-    if (error.code === 'NETWORK_ERROR') {
-      throw new ToolError(
-        'Network connection failed. Check your internet.',
-        'NETWORK_ERROR',
-        true // recoverable
-      );
-    }
-    throw error; // Re-throw unexpected errors
-  }
-}
-```
-
-#### ✅ ALWAYS think: "Does this work local AND cloud?"
-```typescript
-// Design for both modes from the start
-async function getConfig() {
-  if (cloudMode) {
-    return await fetchCloudConfig();
-  } else {
-    return await loadLocalConfig();
-  }
-}
-```
-
----
-
-### Documentation
-
-#### ✅ ALWAYS update ADR when making architectural decision
-```bash
-# Created plugin system? Write ADR.
-cp docs/adr/TEMPLATE.md docs/adr/0002-plugin-system.md
-```
-
-#### ✅ ALWAYS document "why" not just "what"
-```typescript
-// BAD comment
-// Set timeout to 30 seconds
-
-// GOOD comment  
-// Azure DevOps API sometimes takes >10s to respond
-// 30s timeout balances user experience vs reliability
-const TIMEOUT_MS = 30_000;
-```
-
-#### ✅ ALWAYS add to ANTI-PATTERNS.md when something goes wrong
-```markdown
-## Don't use console.log for errors
-
-**Why:** We tried this. Debugging production issues was impossible.
-No context, no structure, couldn't search logs.
-
-**Use instead:** Structured logger
-```
-
----
-
-### User Experience
-
-#### ✅ ALWAYS provide helpful error messages
-```typescript
-// BAD
-throw new Error('Invalid config');
-
-// GOOD
-throw new Error(
-  'Config is missing required field "azdo.token".\n' +
-  'Add your Azure DevOps PAT to ~/.m-control/config.json'
-);
-```
-
-#### ✅ ALWAYS show progress for long operations
-```typescript
-async function processLargeDataset() {
-  console.log('Processing... this may take a minute');
-  
-  for (let i = 0; i < items.length; i++) {
-    if (i % 100 === 0) {
-      console.log(`Progress: ${i}/${items.length}`);
-    }
-    await processItem(items[i]);
-  }
-  
-  console.log('Done!');
-}
-```
-
-#### ✅ ALWAYS make commands idempotent where possible
-```typescript
-// Running twice should be safe
-async function syncConfig() {
-  const local = await loadLocal();
-  const remote = await fetchRemote();
-  
-  if (isEqual(local, remote)) {
-    console.log('Already in sync');
-    return;
-  }
-  
-  await uploadToRemote(local);
-}
-```
-
----
-
-### Testing
-
-#### ✅ ALWAYS write tests for critical paths
-- Config migration
-- Auth flows
-- External tool execution
-- Error handling
-
-#### ✅ ALWAYS test both local and cloud modes (when implemented)
-
-#### ✅ ALWAYS test with empty/missing/invalid config
-
----
-
-## 🎯 Principles
-
-These constraints derive from these core principles:
-
-1. **Security First** - User data and credentials are sacred
-2. **Fail Fast** - Better to error than silently corrupt
-3. **User Empathy** - Clear errors, helpful messages
-4. **Extensibility** - Plugins shouldn't break orchestrator
-5. **Hybrid Native** - Local and cloud are equal citizens
-
----
-
-## 🔄 Updating This Document
-
-**Add constraint when:**
-- Production bug caused by violation
-- Security issue discovered
-- Painful refactor could have been prevented
-- Team (or AI) repeatedly makes same mistake
-
-**Format:**
-```markdown
-#### ❌ NEVER [what not to do]
-[Bad example]
-
-#### ✅ ALWAYS [what to do instead]
-[Good example]
-```
-
----
-
-## 🚨 Enforcement
-
-### During Development
-- ESLint rules (where possible)
-- Code review (manual check)
-- AI prompts reference this file
-
-### During Runtime
-- Config validation on load
-- Input validation at boundaries
-- Error handling in all public APIs
-
-### During Build
-- TypeScript strict mode
-- No `any` without comment (linter rule)
-- No console.log in src/ (linter rule)
-
----
-
-**When in doubt, ask:** "Does this violate a constraint?"
-
-If yes → Don't do it.  
-If unsure → Discuss in ADR before implementing.
-
----
-
-**Last updated:** 2025-02-18  
-**Reviewed by:** Michał + Claude  
-**Next review:** When major constraint added
+**Last updated:** 2026-09-24

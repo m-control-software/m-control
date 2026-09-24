@@ -1,485 +1,139 @@
 # Coding Guidelines
 
-Code style and patterns for m-control development.
+Style and patterns for m-control code. The hard rules are in
+`docs/architecture/constraints.md` and `AGENTS.md`; this file covers how to
+write code that fits in. These are guidelines: break one when it makes the
+code clearer, and say why in a comment.
 
-## 🎯 Principles
+## Principles
 
-1. **Clarity over Cleverness** - Readable > Clever
-2. **Fail Fast** - Validate early, error clearly
-3. **Explicit over Implicit** - Be obvious
-4. **Future-Proof** - Think: local AND cloud
-5. **User-Centric** - Error messages for humans, not machines
-
----
-
-## 📝 TypeScript Style
-
-### Type Annotations
-
-```typescript
-// ✅ GOOD - Explicit function signatures
-export async function fetchPullRequest(
-  prId: number,
-  organization: string
-): Promise<PullRequest> {
-  // ...
-}
-
-// ❌ BAD - Inferred return type (unclear)
-export async function fetchPullRequest(prId, organization) {
-  // ...
-}
-```
-
-### Any Type
-
-```typescript
-// ❌ BAD - No justification
-function process(data: any) { ... }
-
-// ✅ GOOD - Unknown with narrowing
-function process(data: unknown) {
-  if (typeof data === 'string') {
-    // Use as string
-  }
-}
-
-// ✅ ACCEPTABLE - With justification
-function legacyAdapter(data: any) { 
-  // External API has no types available
-  // TODO: Create interface from API docs
-  ...
-}
-```
-
-### Async/Await
-
-```typescript
-// ✅ GOOD - Async/await
-async function loadData() {
-  const data = await fetchFromAPI();
-  return process(data);
-}
-
-// ❌ BAD - Callbacks
-function loadData(callback) {
-  fetchFromAPI((data) => {
-    process(data, (result) => {
-      callback(result);
-    });
-  });
-}
-```
+1. **Clarity over cleverness.**
+2. **Fail fast** — validate at the boundary, with a message that says what to do.
+3. **Explicit over implicit** — typed signatures, named constants.
+4. **Comment why, not what.** Most comments in this repo explain a constraint
+   or a past failure; that's the bar.
 
 ---
 
-## 🗂️ File Organization
+## TypeScript (`packages/`, `apps/`)
 
-### Import Order
-
-```typescript
-// 1. Node.js built-ins
-import * as fs from 'fs';
-import * as path from 'path';
-
-// 2. External dependencies
-import prompts from 'prompts';
-
-// 3. Internal - absolute imports (future)
-// import { Config } from '@/core/config';
-
-// 4. Internal - relative imports
-import { Command } from './types';
-import { loadConfig } from '../core/config';
-```
-
-### File Naming
-
-```
-kebab-case.ts         ✅ For TypeScript files
-PascalCase.ts         ❌ No (except React components - not applicable here)
-snake_case.ts         ❌ No
-camelCase.ts          ❌ No
-```
-
-**Examples:**
-- `azdo-review.ts` ✅
-- `pull-request.service.ts` ✅
-- `AZDOReview.ts` ❌
-- `azdo_review.ts` ❌
-
----
-
-## 🏗️ Code Structure
-
-### Function Length
-
-**Aim:** <50 lines per function
+### Types
 
 ```typescript
-// ✅ GOOD - Focused, single responsibility
-async function validateConfig(config: Config): Promise<void> {
-  if (!config.azdo?.token) {
-    throw new Error('AZDO token required');
-  }
-  if (!config.azdo?.organization) {
-    throw new Error('AZDO organization required');
-  }
-}
+// Explicit signatures on exported functions
+export function resolveTimeoutMs(
+  manifest: ToolManifest,
+  config: MControlConfig
+): number { … }
 
-// ❌ BAD - Too much in one function
-async function processEverything() {
-  // 200 lines of mixed concerns
+// unknown + narrowing, not any
+function readTimeout(raw: unknown): number | undefined {
+  return typeof raw === 'number' && Number.isFinite(raw) && raw > 0
+    ? raw
+    : undefined;
 }
 ```
 
-### Extract Magic Numbers
+- `any` only with a comment saying why (ESLint warns).
+- Contracts live in `packages/core/src/types.ts`. A literal type
+  (`manifestVersion: 1`) beats `number` when only one value is valid.
+- `async`/`await` for asynchronous work; the runner exposes
+  `AsyncIterable<ToolEvent>` so callers can stream.
+
+### Errors
 
 ```typescript
-// ✅ GOOD
-const DEFAULT_TIMEOUT_MS = 30_000;
-const MAX_RETRIES = 3;
+import { ConfigError } from '@m-control/core';
 
-await fetchWithRetry(url, MAX_RETRIES, DEFAULT_TIMEOUT_MS);
-
-// ❌ BAD
-await fetchWithRetry(url, 3, 30000); // What do these mean?
-```
-
-### Early Returns
-
-```typescript
-// ✅ GOOD - Early validation
-function process(data: string | null): string {
-  if (!data) {
-    throw new Error('Data required');
-  }
-  if (data.length === 0) {
-    return '';
-  }
-  
-  // Main logic
-  return data.toUpperCase();
-}
-
-// ❌ BAD - Nested conditionals
-function process(data: string | null): string {
-  if (data) {
-    if (data.length > 0) {
-      return data.toUpperCase();
-    } else {
-      return '';
-    }
-  } else {
-    throw new Error('Data required');
-  }
-}
-```
-
----
-
-## 🛡️ Error Handling
-
-### Custom Error Types
-
-```typescript
-// Define error types
-class ToolError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public recoverable: boolean
-  ) {
-    super(message);
-    this.name = 'ToolError';
-  }
-}
-
-// Use specific errors
-throw new ToolError(
-  'Azure DevOps token is invalid',
-  'AUTH_ERROR',
-  true // User can fix by updating config
-);
-```
-
-### Try-Catch Patterns
-
-```typescript
-// ✅ GOOD - Specific error handling
-async function fetchData() {
-  try {
-    return await api.call();
-  } catch (error) {
-    if (error.code === 'ECONNREFUSED') {
-      throw new ToolError(
-        'Cannot connect to API. Check your network.',
-        'NETWORK_ERROR',
-        true
-      );
-    }
-    // Re-throw unexpected errors
-    throw error;
-  }
-}
-
-// ❌ BAD - Silent failures
-async function fetchData() {
-  try {
-    return await api.call();
-  } catch (error) {
-    return null; // What happened? User has no idea!
-  }
-}
-```
-
-### Error Messages
-
-```typescript
-// ✅ GOOD - Helpful, actionable
-throw new Error(
-  'Config file not found at ~/.m-control/config.json\n' +
-  'Run "mctl" to initialize configuration.'
+// Actionable: what's wrong, where, and how to fix it
+throw new ConfigError(
+  `configVersion mismatch in ${filePath}: expected 1, got ${String(v)}. ` +
+    `Delete the file and run 'mctl init'.`
 );
 
-// ❌ BAD - Cryptic
-throw new Error('Config missing');
+// Adding context when rethrowing
+try {
+  raw = fs.readFileSync(filePath, 'utf-8');
+} catch (err) {
+  throw new ConfigError(
+    `Cannot read ${filePath}: ${err instanceof Error ? err.message : String(err)}`
+  );
+}
 ```
+
+- Pick the class by cause (`ConfigError`, `ManifestError`, `DiscoveryError`,
+  `RunnerError`, `RunnerGuardrailError`, `NotImplementedError`). Never a raw
+  `Error`; never an empty `catch`.
+- Collect-and-report beats throw-on-first when one bad item shouldn't block the
+  rest — discovery returns `{ tools, errors }` instead of failing on one
+  invalid manifest.
+
+### Output
+
+- In core: no `console.*`. Tool events go through an `EventSink`.
+- In mctl commands: plain `console.log`/`console.error` for the command's own
+  output; `process.stderr.write` for warnings that must not mix with stdout;
+  `process.exit(1)` on failure so scripts can rely on the exit code.
+
+### Files, names, exports
+
+- Files and folders: `kebab-case.ts` (`process-runner.ts`, `node-runner.ts`).
+- Variables and functions: `camelCase`; booleans read as questions
+  (`isWindows`, `hasOptionsPlus`).
+- Types, interfaces, classes: `PascalCase`.
+- True constants: `UPPER_SNAKE_CASE` (`DEFAULT_TIMEOUT_MS`, `EXIT_CODES`).
+  Put a number in a named constant when its meaning isn't obvious at the call
+  site.
+- Named exports only in libraries. New public API is re-exported from
+  `packages/core/src/index.ts`.
+- Import order: Node built-ins, external packages, `@m-control/core`, then
+  relative imports.
+
+### Structure
+
+- Small functions with one job. Early returns over nested conditionals.
+- Keep a function under ~50 lines unless splitting it would scatter one idea.
+- Section banners (`// ----- Config -----`) are the house style for long files.
 
 ---
 
-## 📊 Logging
+## Tools (`tools/`)
 
-### Structured Logging
-
-```typescript
-// ✅ GOOD (future pattern)
-logger.info('PR review generated', {
-  prId: 123,
-  duration: 1234,
-  success: true,
-  userId: 'user-abc'
-});
-
-// ❌ BAD - Unstructured
-console.log('PR review generated for PR 123 in 1234ms by user-abc');
-```
-
-### Log Levels
-
-- **debug:** Detailed diagnostic info (verbose)
-- **info:** General informational messages
-- **warn:** Warning - something unexpected but not critical
-- **error:** Error occurred, operation failed
-
-```typescript
-logger.debug('Fetching PR diff', { prId });
-logger.info('PR diff retrieved', { files: 12 });
-logger.warn('Large diff detected', { files: 100 });
-logger.error('Failed to fetch PR', { error: err.message });
-```
-
-### What NOT to Log
-
-```typescript
-// ❌ NEVER log secrets
-logger.info('Auth', { token: config.token }); // NO!
-
-// ❌ NEVER log full errors in production (stack traces)
-logger.error('Failed', { error }); // Might leak sensitive info
-
-// ✅ GOOD - Log safe context
-logger.error('Failed to authenticate', { 
-  service: 'azdo',
-  statusCode: 401 
-});
-```
+- Start from `templates/node-tool` or `templates/python-tool`; the reference
+  implementations are `tools/misc/hello-world/index.js` and
+  `tools/misc/hello-python/main.py`.
+- Keep the protocol plumbing (`emit`, `started`, `log`, `result`, `error`) in
+  one small block at the top, or in a `lib/protocol.*` module once the tool
+  has several files (as logi-options and stream-deck do).
+- Put the tool id in one constant and use it for every event's `toolId`.
+- Validate `input` and `context.config` first, and fail with a recoverable
+  `error` event naming the key and where to set it.
+- Error `code`s are `UPPER_SNAKE_CASE` and stable — scripts match on them.
+- Larger tools split into `lib/`, keep reverse-engineering notes and formats in
+  `docs/`, and document usage, config, and dependencies in `README.md`.
 
 ---
 
-## 🧪 Testing (Future)
+## Tests
 
-### Test File Naming
-
-```
-src/
-  commands/
-    hello-world.ts
-    hello-world.spec.ts      ✅ Co-located test
-```
-
-### Test Structure
-
-```typescript
-describe('hello-world', () => {
-  it('should print hello world', async () => {
-    // Arrange
-    const spy = jest.spyOn(console, 'log');
-    
-    // Act
-    await execute();
-    
-    // Assert
-    expect(spy).toHaveBeenCalledWith('Hello World!');
-  });
-});
-```
+- Vitest. `describe`/`it`, Arrange–Act–Assert, one behaviour per test.
+- Location: `packages/<pkg>/test/*.test.ts`, `apps/<app>/test/*.test.ts`,
+  `tools/<category>/<id>/test/*.test.ts` (not co-located with sources).
+- Core tests import from `../src/…` directly — no build needed.
+- Tool tests spawn the tool with a `ToolRequest` on stdin and assert on the
+  NDJSON events and the exit code. Use temp directories and fixtures; never
+  touch real user state. Skip, don't fail, when the platform or an installed
+  app is missing.
 
 ---
 
-## 🎨 Naming Conventions
+## Before you commit
 
-### Variables & Functions
+- [ ] `yarn build`, `yarn typecheck`, `yarn lint`, `yarn test` pass from the root
+- [ ] No raw `Error`, no empty `catch`, no `any` without a reason
+- [ ] No hardcoded paths, credentials, or personal data
+- [ ] Error messages say how to fix the problem
+- [ ] Contract changes are reflected in `AGENTS.md`, `execution-model.md`,
+      and `CHANGELOG.md`
 
-```typescript
-// camelCase
-const userName = 'Michał';
-function getUserById(id: string) { ... }
-
-// Boolean - prefix with is/has/should
-const isAuthenticated = true;
-const hasPermission = false;
-function shouldRetry() { ... }
-```
-
-### Constants
-
-```typescript
-// UPPER_SNAKE_CASE for true constants
-const MAX_RETRIES = 3;
-const DEFAULT_TIMEOUT_MS = 30_000;
-
-// camelCase for config-driven values
-const apiEndpoint = config.get('api.endpoint');
-```
-
-### Classes & Interfaces
-
-```typescript
-// PascalCase
-class ConfigService { ... }
-interface PluginContext { ... }
-type CommandHandler = () => Promise<void>;
-```
-
-### Files & Folders
-
-```typescript
-// kebab-case
-src/commands/azdo-review.ts
-src/core/config-service.ts
-
-// No PascalCase, snake_case, or camelCase in file names
-```
-
----
-
-## 📦 Module Exports
-
-### Prefer Named Exports
-
-```typescript
-// ✅ GOOD
-export async function execute() { ... }
-export interface Config { ... }
-
-// ❌ BAD (for libraries, not CLI tools)
-export default function execute() { ... }
-```
-
----
-
-## 🔧 Configuration
-
-### Environment-Specific Code
-
-```typescript
-// ✅ GOOD - Detect platform
-const configDir = process.platform === 'win32'
-  ? path.join(process.env.USERPROFILE!, '.m-control')
-  : path.join(os.homedir(), '.m-control');
-
-// ❌ BAD - Hardcoded Windows path
-const configDir = 'C:\\Users\\Michal\\.m-control';
-```
-
-### Path Handling
-
-```typescript
-// ✅ GOOD - Cross-platform
-const filePath = path.join(baseDir, 'subdir', 'file.json');
-
-// ❌ BAD - Windows-specific
-const filePath = baseDir + '\\subdir\\file.json';
-```
-
----
-
-## 💬 Comments
-
-### When to Comment
-
-```typescript
-// ✅ GOOD - Explain WHY (non-obvious reasoning)
-// Azure DevOps API rate limit is 200 req/min
-// We throttle to 150 req/min to stay safe
-const RATE_LIMIT = 150;
-
-// ❌ BAD - Explain WHAT (obvious from code)
-// Set rate limit to 150
-const RATE_LIMIT = 150;
-```
-
-### TODOs
-
-```typescript
-// ✅ GOOD - Specific TODO
-// TODO(michał): Implement retry logic before v0.5
-
-// ❌ BAD - Vague TODO
-// TODO: Fix this
-```
-
----
-
-## 🎯 Best Practices Summary
-
-### DO:
-- ✅ Explicit types in function signatures
-- ✅ Async/await (not callbacks)
-- ✅ Early validation and returns
-- ✅ Structured logging
-- ✅ User-friendly error messages
-- ✅ Extract magic numbers to constants
-- ✅ Comment WHY, not WHAT
-
-### DON'T:
-- ❌ Use `any` without justification
-- ❌ Silent failures (catch without handling)
-- ❌ Hardcoded paths or credentials
-- ❌ console.log in production
-- ❌ Nested conditionals >3 levels
-- ❌ Functions >50 lines
-
----
-
-## 🔄 Code Review Checklist
-
-Before committing:
-- [ ] Follows naming conventions
-- [ ] No `console.log` (use logger)
-- [ ] No `any` without comment
-- [ ] Error handling present
-- [ ] User-friendly error messages
-- [ ] No hardcoded paths/credentials
-- [ ] Cross-platform compatible
-- [ ] `npm run format` passed
-- [ ] `npm run lint` passed
-
----
-
-**These are guidelines, not laws. Use judgment.**
-
-If breaking a guideline makes code clearer → do it and document why.
-
-**Last updated:** 2025-02-18
+**Last updated:** 2026-09-24
