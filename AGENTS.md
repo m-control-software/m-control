@@ -56,6 +56,8 @@ workspace is linted; tools are not.
 - Optional: `requiredConfig`, `optionalConfig` (arrays of dot-paths),
   `timeoutMs` (positive number), `tags`.
 - An invalid manifest is skipped with a warning; it never breaks discovery.
+  `packages/core/test/repo-manifests.test.ts` fails CI for any invalid
+  manifest in `tools/` or `templates/`.
 
 **Tool Protocol v1** — full spec in `docs/architecture/execution-model.md`:
 
