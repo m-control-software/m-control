@@ -41,9 +41,30 @@ jobs:
 
       - name: Smoke test
         run: |
-          node apps/mctl/dist/bundle/index.js --help
-          node apps/mctl/dist/bundle/index.js init
-          node apps/mctl/dist/bundle/index.js list
-          node apps/mctl/dist/bundle/index.js doctor
-          node apps/mctl/dist/bundle/index.js run hello-world name=CI
-          node apps/mctl/dist/bundle/index.js run hello-python name=CI
+          mctl() { node apps/mctl/dist/bundle/index.js "$@"; }
+          mctl --help
+          mctl init
+          mctl list
+
+          # A fresh config leaves the requiredConfig of stream-deck and
+          # logi-options unset, and doctor must report that as a failure.
+          if mctl doctor; then
+            echo "::error::doctor passed on a fresh config; its required-config check is not working"
+            exit 1
+          fi
+
+          # Supply those keys (pointing at the repo's own example packs); now
+          # every check must pass.
+          node -e '
+            const fs = require("fs");
+            const file = require("os").homedir() + "/.m-control/config.json";
+            const config = JSON.parse(fs.readFileSync(file, "utf-8"));
+            const root = process.cwd() + "/tools/artifacts";
+            config.tools["stream-deck"] = { profileName: "CI", packDirs: [root + "/stream-deck/specs"] };
+            config.tools["logi-options"] = { packDirs: [root + "/logi-options/examples"] };
+            fs.writeFileSync(file, JSON.stringify(config, null, 2));
+          '
+          mctl doctor
+
+          mctl run hello-world name=CI
+          mctl run hello-python name=CI
