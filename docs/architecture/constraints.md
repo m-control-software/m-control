@@ -79,7 +79,7 @@ Established by stream-deck and logi-options (ADR-0010, ADR-0011):
 
 - **Use the error hierarchy** in `packages/` and `apps/`: `ConfigError`,
   `ManifestError`, `DiscoveryError`, `RunnerError`, `RunnerGuardrailError`,
-  `NotImplementedError` — never a raw `Error` (see `.claude/rules/errors.md`).
+  `NotImplementedError` — never a raw `Error`.
   Inside a tool, any failure ends as an `error` event with a `code` and an
   honest `recoverable` flag.
 - **Messages say what to do next**, not just what went wrong:
@@ -122,18 +122,21 @@ Established by stream-deck and logi-options (ADR-0010, ADR-0011):
 
 ## Enforcement
 
-What is actually enforced, so nobody relies on a check that doesn't exist:
+What is actually enforced, so nobody relies on a check that doesn't exist. All
+of it runs in `yarn verify`, which CI runs verbatim.
 
 | Where | What |
 |-------|------|
-| TypeScript | `strict` mode for `packages/` and `apps/` |
-| ESLint | `eslint:recommended`, `@typescript-eslint/recommended`, Prettier; `no-explicit-any` is a warning; `no-console` is **off** (see §1) |
-| Discovery | Manifest schema, runtime, kebab-case id, config-key shape, `timeoutMs` |
+| TypeScript | `strict` for `packages/`, `apps/`, and (root `tsconfig.json`) every test file and `test-support/` |
+| ESLint + Prettier | All TS/JS: workspaces, tests, scripts, hooks, tool and template JS. `no-explicit-any` warns; `no-console` is **off** (see §1) |
+| ruff | All Python: py310 target, pyflakes, pycodestyle, bugbear, pyupgrade |
+| PSScriptAnalyzer | All `.ps1`: syntax, commands and types checked against Windows PowerShell 5.1; no `Write-Host` in tools |
+| Discovery + schema | Manifest shape, runtime, kebab-case id, config-key shape, `timeoutMs`, `tags`; `manifest.v1.schema.json` must agree (`test/manifest-schema.test.ts`) |
+| `test/conformance.test.ts` | Per tool: layout, README documents every config key, listed in `AGENTS.md`, smoke config; a malformed request and missing required config both end in a well-formed `error` |
+| `test/docs.test.ts` | Relative links resolve; paths quoted in agent docs exist; skills are valid and indexed |
 | Runner | Timeout, output size, and event-count guardrails |
-| CI | Install (frozen lockfile), build, typecheck, lint, test, smoke test |
-| Review | Everything else in this document |
-
-Tools under `tools/` are not linted or type-checked; their tests are the guard.
+| `scripts/smoke.mjs` | The built bundle end to end, in a throwaway HOME |
+| Review (`REVIEW.md`) | Everything else in this document |
 
 ## Changing this document
 
@@ -142,4 +145,4 @@ the code. A rule that the codebase can't or won't follow is worse than no
 rule: agents will either obey it and break things, or learn to ignore the
 whole document.
 
-**Last updated:** 2026-09-24
+**Last updated:** 2026-09-25

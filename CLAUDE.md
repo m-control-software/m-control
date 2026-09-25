@@ -7,13 +7,13 @@ there, not here. This file only adds what is specific to Claude Code.
 
 ## Claude Code specifics
 
-- `.claude/rules/*.md` — focused rule files (monorepo, errors, tool protocol)
-  that restate parts of `AGENTS.md` for quick reference; `AGENTS.md` wins if
-  they ever disagree.
-- `.claude/skills/<name>/SKILL.md` — project skills (see
-  `.claude/skills/README.md`). Current: `author-logi-profile`.
-- `.claude/settings.json` — shared permissions for this repo.
+- `.claude/skills/<name>/SKILL.md` — project skills, loaded automatically.
+  The list, and what each one drives, is in `AGENTS.md` → "Procedures
+  (skills)"; conventions for writing one are in `.claude/skills/README.md`.
+- `.claude/hooks/` — `session-start.mjs` installs dependencies and builds core
+  in cloud sessions; `format-edited-file.mjs` runs Prettier on TS/JS you edit.
+  Registered in `.claude/settings.json`.
+- `.claude/settings.json` — shared permissions and hooks for this repo.
   `.claude/settings.local.json` and `CLAUDE.local.md` are personal and
   git-ignored.
-- `docs/ai/PROMPTS/` — reusable prompts (implement a tool, design review,
-  write an ADR, import a Stream Deck setup).
+- Before reporting work as done, run `yarn verify` and quote its summary line.

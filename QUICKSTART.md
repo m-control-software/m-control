@@ -104,78 +104,22 @@ mctl run hello-world
 
 ## Development workflow
 
-### Type-check only (fast feedback)
-
 ```bash
-yarn typecheck
+yarn verify                              # everything CI checks (resume: --from=<step>)
+node apps/mctl/dist/bundle/index.js list # run without installing
 ```
 
-### Lint
-
-```bash
-yarn lint
-```
-
-### Test
-
-```bash
-yarn test
-```
-
-### Full build
-
-```bash
-yarn build
-```
-
-### Watch mode (core only)
-
-```bash
-yarn workspace @m-control/core dev
-```
-
-### Run without installing
-
-```bash
-node apps/mctl/dist/bundle/index.js <command>
-```
+The full command list is in `AGENTS.md` → "Commands".
 
 ## Adding a new tool
 
-1. Copy the boilerplate:
-   ```bash
-   cp -r templates/node-tool tools/<category>/<tool-id>   # or templates/python-tool
-   ```
+```bash
+yarn new:tool --id=my-tool --category=misc --runtime=node --description="What it does"
+node apps/mctl/dist/bundle/index.js run my-tool
+```
 
-2. Edit `tools/<category>/<tool-id>/manifest.json` — every field below is required:
-   ```json
-   {
-     "manifestVersion": 1,
-     "id": "my-tool",
-     "version": "0.1.0",
-     "name": "My Tool",
-     "description": "One line shown by mctl list",
-     "runtime": "node",
-     "entry": "index.js"
-   }
-   ```
-   Optional: `requiredConfig` / `optionalConfig` (config keys the tool may
-   read), `timeoutMs` (if it needs more than 30 s), `tags`.
-
-3. Implement `tools/<category>/<tool-id>/index.js` following the Tool Protocol:
-   - Read all of `stdin` before doing work (JSON `ToolRequest`)
-   - Emit NDJSON `ToolEvent` lines to `stdout`
-   - Never use `console.log` to stdout (breaks the NDJSON parser)
-
-4. No registration needed — `discoverTools()` finds tools automatically.
-
-5. Test:
-   ```bash
-   node apps/mctl/dist/bundle/index.js run my-tool
-   ```
-
-See `AGENTS.md` → "Adding a tool" for the full checklist and
-`docs/architecture/execution-model.md` for the protocol spec.
+No registration needed: discovery finds it. Then follow `AGENTS.md` →
+"Adding a tool" (config keys, tests, README); `yarn verify` checks the result.
 
 ## Project docs
 
@@ -187,4 +131,5 @@ See `AGENTS.md` → "Adding a tool" for the full checklist and
 | `docs/architecture/execution-model.md` | Tool Protocol v1 spec |
 | `docs/ai/CODING-GUIDELINES.md` | Patterns and naming conventions |
 | `docs/adr/` | Architecture Decision Records |
-| `CONTRIBUTING.md` | Branching strategy, CI, commit conventions |
+| `CONTRIBUTING.md` | Branching strategy, CI, commit conventions, releases |
+| `REVIEW.md` | What reviewers check beyond `yarn verify` |

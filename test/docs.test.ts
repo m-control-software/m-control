@@ -40,15 +40,16 @@ function markdownFiles(dir = REPO_ROOT): string[] {
   return out;
 }
 
-function withoutCodeBlocks(text: string): string {
-  return text.replace(/```[\s\S]*?```/g, '');
+/** Fenced blocks and inline code hold examples, not links. */
+function withoutCode(text: string): string {
+  return text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
 }
 
 describe('markdown links', () => {
   it.each(markdownFiles().map((f) => [path.relative(REPO_ROOT, f), f]))(
     '%s: relative links resolve',
     (_rel, file) => {
-      const text = withoutCodeBlocks(fs.readFileSync(file, 'utf-8'));
+      const text = withoutCode(fs.readFileSync(file, 'utf-8'));
       const broken: string[] = [];
       for (const [, target] of text.matchAll(
         /\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g

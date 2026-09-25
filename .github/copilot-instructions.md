@@ -5,11 +5,17 @@ AI agent: layout, commands, contracts (manifest, Tool Protocol v1, config),
 how to add a tool, and code rules. This file is only a pointer. Change rules in
 `AGENTS.md`, not here.
 
+Multi-step procedures (add a tool, change a contract, write an ADR, cut a
+release, author device profiles) are in `.claude/skills/<name>/SKILL.md`;
+`AGENTS.md` → "Procedures (skills)" says which to read. Run `yarn verify`
+before calling work done — CI runs the same script.
+
 The rules that are most often broken:
 
-- Build and test from the repo root: `yarn build` (core before mctl), `yarn test`.
+- Build and test from the repo root; `yarn verify` runs everything CI does.
 - Tool stdout is NDJSON `ToolEvent` lines only; tools read one JSON
   `ToolRequest` from stdin to EOF before doing anything.
 - Throw the error hierarchy exported by `@m-control/core`, never a raw `Error`.
 - Import core only as `@m-control/core`, never via internal paths.
 - Never add tool-specific config types to core. Config is an open schema under `tools.*`.
+- New tools come from `yarn new:tool`, never a hand copy of a template.

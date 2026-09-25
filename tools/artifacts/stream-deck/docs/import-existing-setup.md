@@ -28,9 +28,10 @@ Some buttons reference scripts that live OUTSIDE that directory.
   the design is wrong somewhere, say so instead of forcing my setup into it.
 - docs/adr/0009-repository-topology-and-personal-work-split.md — the
   work/personal repo split and what `visibility` means.
-- docs/architecture/execution-model.md and .claude/rules/tool-protocol.md —
-  the Tool Protocol, if any of my scripts should become m-control tools.
-- CLAUDE.md — repo conventions.
+- docs/architecture/execution-model.md — the Tool Protocol, if any of my
+  scripts should become m-control tools (then use the add-tool procedure).
+- AGENTS.md — repo conventions.
+- tools/artifacts/stream-deck/docs/spec-format.md — the spec format.
 
 ## Work in phases. Do not skip to implementation.
 
@@ -116,8 +117,8 @@ Stop here and wait for my approval.
 
 ### Phase 4 — Implement (only after I approve)
 
-Build it per the approved plan, following CLAUDE.md conventions and the
-error-handling rules in .claude/rules/errors.md.
+Build it per the approved plan, following the conventions and code rules
+in AGENTS.md.
 
 ## Constraints
 

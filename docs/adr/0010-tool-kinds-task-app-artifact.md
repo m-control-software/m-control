@@ -409,8 +409,8 @@ Suggested order, smallest useful increment first:
 
 1. Add optional `kind`, `visibility`, `requires` to `ToolManifest`
    (`packages/core/src/types.ts`) and validate them in `validateManifest()`
-   — unknown values must fail with an actionable `ManifestError` per
-   `.claude/rules/errors.md`, not be silently ignored.
+   — unknown values must fail with an actionable `ManifestError` (`AGENTS.md` →
+   "Code rules"), not be silently ignored.
 2. `mctl list --profile work|personal` + a default profile in config.
    Filtering happens in the CLI; `discoverTools()` stays kind-agnostic.
 3. Extend `mctl doctor` to check `requires.bin` via `PATH` lookup.
@@ -435,4 +435,4 @@ depends on.
 - `packages/core/src/config.ts` — `resolveTimeoutMs()`, the per-tool budget
   added in response to correction 1
 - `tools/artifacts/stream-deck/` — the build these corrections came from
-- `.claude/rules/tool-protocol.md` — stdout/stdin rules for `task` tools
+- `docs/architecture/execution-model.md` — stdout/stdin rules for `task` tools

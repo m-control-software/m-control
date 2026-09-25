@@ -52,8 +52,11 @@ Merge rules (`lib/Spec.ps1`):
   installed profiles share a name the tool warns, because references to them
   become ambiguous.
 
-Personal and client packs stay outside this repo. To migrate a hand-built
-setup, use `docs/ai/PROMPTS/import-streamdeck.md`.
+The full format — every field, action type and icon form — is
+[docs/spec-format.md](docs/spec-format.md). Personal and client packs stay
+outside this repo. To migrate a hand-built setup, use
+[docs/import-existing-setup.md](docs/import-existing-setup.md). With Claude
+Code, the `author-deck-profile` skill drives both.
 
 ## Safety
 

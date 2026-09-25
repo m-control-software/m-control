@@ -14,10 +14,12 @@ This document describes how to work with the m-control project: branching, CI, c
 
 ### Prerequisites
 
-- Node.js 18+
-- Yarn 1.22+
+- Node.js 20+ (22 recommended, `.nvmrc`)
+- Yarn 1.22 (pinned by `packageManager`)
 - Git
 - Python 3.10+ (for Python tools and their tests)
+- Optional, for the full `yarn verify`: PowerShell 7 (`pwsh`); then
+  `yarn setup:linters` installs ruff and PSScriptAnalyzer at the pinned versions
 
 ### Setup
 
@@ -30,23 +32,8 @@ yarn build
 
 ### Development workflow
 
-```bash
-yarn typecheck             # type-check all packages (build core first)
-yarn lint                  # lint all packages
-yarn test                  # Vitest
-yarn build                 # full build (core then mctl)
-yarn workspace @m-control/core dev   # watch mode for core
-```
-
-To run without installing:
-
-```bash
-node apps/mctl/dist/bundle/index.js --help
-node apps/mctl/dist/bundle/index.js init
-node apps/mctl/dist/bundle/index.js list
-node apps/mctl/dist/bundle/index.js run hello-world
-node apps/mctl/dist/bundle/index.js doctor
-```
+The commands, and what `yarn verify` runs, are in `AGENTS.md` → "Commands".
+`yarn verify` passing is the bar before anything reaches `main`.
 
 ## Branching strategy
 
@@ -105,17 +92,9 @@ The failing step prints `yarn verify --from=<step>`; fix and resume there.
 
 ## Adding a new tool
 
-1. Copy the boilerplate:
-   ```bash
-   cp -r templates/node-tool tools/<category>/<tool-id>   # or templates/python-tool
-   ```
-
-2. Fill in `manifest.json` and implement the entry file following Tool Protocol v1.
-
-3. Add tests, a `README.md`, and a `CHANGELOG.md` entry.
-
-The full checklist is in `AGENTS.md` → "Adding a tool"; the protocol spec is
-`docs/architecture/execution-model.md`.
+`yarn new:tool --id=<id> --category=<category> --runtime=<node|python> --description="…"`,
+then follow `AGENTS.md` → "Adding a tool" (the `add-tool` skill runs it with a
+design gate).
 
 ## Architecture decisions
 
@@ -129,95 +108,44 @@ Create an Architecture Decision Record when:
 
 ### How to create an ADR
 
-```bash
-cp docs/adr/TEMPLATE.md docs/adr/XXXX-short-title.md
-# Fill in all sections, then commit
-```
-
-Next ADR number: check `docs/adr/` and increment.
-
-See `docs/ai/PROMPTS/write-adr.md` for an AI-assisted ADR writing guide.
+`yarn new:adr --title="…"` takes the next number and fills the header; the
+`write-adr` skill covers the content and superseding.
 
 ## Code style
 
-**Enforced by tools:**
-- ESLint + Prettier (`yarn format` to auto-fix)
-- TypeScript strict mode
-
-**Manual guidelines:** `docs/ai/CODING-GUIDELINES.md`
-
-Rules: `AGENTS.md` → "Code rules" and `docs/architecture/constraints.md`.
+Enforced by `yarn verify` (ESLint + Prettier, TypeScript strict, ruff,
+PSScriptAnalyzer); `yarn format` fixes formatting. Rules: `AGENTS.md` →
+"Code rules" and `docs/architecture/constraints.md`; style beyond the rules:
+`docs/ai/CODING-GUIDELINES.md`; what reviewers look for: `REVIEW.md`.
 
 ## Documentation
 
-### When to update docs
-
-- **Always:** Architectural changes → ADR + update relevant architecture docs
-- **Always:** Contract changes (manifest, protocol, config, CLI) → `AGENTS.md` + `docs/architecture/execution-model.md`
-- **Always:** New constraints → `docs/architecture/constraints.md`
-- **Always:** Releases → `CHANGELOG.md` + version bump
-- **Often:** New tools → `QUICKSTART.md` if it affects first-run flow
-- **When you learn something:** Anti-patterns → `docs/ai/ANTI-PATTERNS.md`
-
-### Key files
-
-| File | When to update |
-|------|---------------|
-| `CHANGELOG.md` | Every releasable change |
-| `docs/adr/` | Every architectural decision |
-| `docs/ai/ANTI-PATTERNS.md` | When AI or you makes a mistake worth remembering |
-| `docs/architecture/*.md` | When architecture changes |
-| `QUICKSTART.md` | When the first-run experience changes |
+Which doc to update for which change: `AGENTS.md` → "Decisions and docs".
+How docs are kept honest: `docs/README.md`. When you learn something the hard
+way, add it to `LESSONS-LEARNED.md` — and if it can be checked, add the check.
 
 ## Release process
 
-1. Make sure `main` is green
-2. Update `CHANGELOG.md` — move `[Unreleased]` to `[vX.Y.Z] - YYYY-MM-DD`
-3. Bump version in root `package.json` and workspace `package.json` files
-4. Run `yarn build` and smoke test
-5. Commit: `git commit -m "chore: release vX.Y.Z"`
-6. Tag: `git tag vX.Y.Z`
-7. Push: `git push && git push --tags`
+```bash
+yarn release --version=X.Y.Z --dry-run
+yarn release --version=X.Y.Z        # changelog, versions, verify, commit, tag
+git push origin main vX.Y.Z
+```
+
+The `release` skill covers choosing the version. The script refuses to run off
+`main`, on a dirty tree, or with an empty `[Unreleased]`.
 
 ## Troubleshooting
 
-### Build issues
-
-```bash
-# Clean rebuild
-rm -rf packages/core/dist apps/mctl/dist
-yarn install
-yarn build
-```
-
-### Type errors
-
-```bash
-# Type-check a single package
-yarn workspace @m-control/core typecheck
-yarn workspace @m-control/mctl typecheck
-```
-
-### ESLint issues
-
-```bash
-yarn lint
-# Auto-fix what's possible
-yarn workspace @m-control/core format
-yarn workspace @m-control/mctl format
-```
+- **Stale build:** `yarn clean && yarn build`.
+- **Type errors in one package:** `yarn workspace @m-control/core typecheck`.
+- **Formatting:** `yarn format`.
+- **A verify step failed:** fix it, then `yarn verify --from=<step>`.
 
 ## Working with AI assistants
 
-Start sessions with context:
-
-Agents that read `AGENTS.md` (Codex, Cursor, Copilot) or `CLAUDE.md`
-(Claude Code, which imports it) pick up the rules automatically. For others:
-
-```
-Read AGENTS.md first, then docs/ai/PROJECT-CONTEXT.md.
-```
-
-Use prompt templates in `docs/ai/PROMPTS/`.
-
-**Remember:** Update `docs/ai/ANTI-PATTERNS.md` when AI generates something wrong. It prevents the same mistake next session.
+Agents that read `AGENTS.md` (Codex, Cursor, Copilot) or `CLAUDE.md` (Claude
+Code, which imports it) pick up the rules and the procedures automatically.
+For anything else: "Read AGENTS.md first, then docs/ai/PROJECT-CONTEXT.md."
+When an agent gets something wrong, prefer a test or lint that catches it next
+time over a new paragraph of instructions.

@@ -106,10 +106,16 @@ m-control/
 │   └── ai/                    # AI assistant context (PROJECT-CONTEXT.md etc.)
 │
 ├── templates/
-│   ├── node-tool/             # Copy for new Node.js tools
-│   └── python-tool/           # Copy for new Python tools
+│   ├── node-tool/             # What `yarn new:tool` copies for Node.js tools
+│   └── python-tool/           # …and for Python tools
+│
+├── test/                      # Repo-wide tests: tool conformance, docs, scripts
+├── test-support/              # Shared helpers for tool tests (runTool, expectProtocol)
+├── scripts/                   # verify (= CI), smoke, new-tool, new-adr, release, installers
+├── .claude/                   # Claude Code skills and hooks
 │
 ├── tsconfig.base.json         # Shared TS config (extended by each package)
+├── tsconfig.json              # Type-checks tests and test-support
 └── package.json               # Yarn workspaces root
 ```
 
@@ -273,18 +279,19 @@ Two implementations:
 
 ## Adding a New Tool
 
-1. Create `tools/<category>/<tool-id>/`
-2. Copy `templates/node-tool/` or `templates/python-tool/` as a starting point
-3. Write `manifest.json` — all required fields, plus the config keys and budget the tool needs
-4. Implement your tool (reads stdin JSON, emits NDJSON events to stdout)
-5. `mctl list` — verify it appears
-6. `mctl run <tool-id>` — verify it runs
-7. Add tests under `tools/<category>/<tool-id>/test/` and a `README.md`
+```bash
+yarn new:tool --id=my-tool --category=misc --runtime=node --description="What it does"
+```
 
-No registration step. Discovery is automatic. Full checklist: `AGENTS.md` → "Adding a tool".
+That copies the template, fills in the id, and adds a protocol test and a
+changelog entry. No registration step: discovery is automatic, so `mctl list`
+shows it right away. The full procedure — design, config, tests, README — is
+`AGENTS.md` → "Adding a tool"; `test/conformance.test.ts` checks the result.
 
-**Node tools** — plain `.js`, no TypeScript compilation. Keep dependencies minimal or zero.
-**Other runtimes** — `manifest.json` is the same; python, powershell, and dotnet are executed by the same `ProcessRunner`, only the spawn command differs. Interpreters can be overridden per machine via `runtimes` in the config. PowerShell tools must run under Windows PowerShell 5.1 (what `powershell` spawns on Windows).
+Node tools are plain `.js` without dependencies; python, powershell and dotnet
+tools use the same manifest and the same `ProcessRunner` — only the spawn
+command differs. PowerShell must run under Windows PowerShell 5.1 (the linter
+checks it).
 
 ---
 
@@ -303,19 +310,9 @@ mctl --help
 
 ## Build & Dev Commands
 
-```bash
-yarn build                    # Build all packages (core → mctl)
-yarn lint                     # ESLint across all packages
-yarn format                   # Prettier across all packages
-yarn typecheck                # tsc --noEmit across all packages
-yarn test                     # Vitest (core, CLI, and tool tests)
-
-# Build individual package
-yarn workspace @m-control/core build
-yarn workspace @m-control/mctl build
-```
-
-Build order matters: `core` must be built before `mctl` (mctl imports from `core/dist`).
+`AGENTS.md` → "Commands". The one to remember is `yarn verify`: it runs
+exactly what CI runs, and resumes with `--from=<step>` after a failure. Build
+order matters: `core` is built before `mctl`, which imports from `core/dist`.
 
 ---
 
@@ -329,9 +326,11 @@ Build order matters: `core` must be built before `mctl` (mctl imports from `core
 | `docs/adr/0003-ndjson-protocol.md` | Why NDJSON over alternatives |
 | `docs/adr/0002-monorepo-workspaces.md` | Why yarn workspaces, why not Nx |
 | `docs/architecture/constraints.md` | Hard rules — read before making architectural decisions |
-| `docs/ai/PROJECT-CONTEXT.md` | Attach to every new AI coding session |
+| `docs/ai/PROJECT-CONTEXT.md` | Where the project stands; open decisions |
 | `tools/misc/hello-world/index.js` | Reference implementation of Tool Protocol v1 |
-| `templates/node-tool/`, `templates/python-tool/` | Copy-paste start for new tools |
+| `templates/node-tool/`, `templates/python-tool/` | What `yarn new:tool` copies |
+| `test-support/tool-harness.ts` | How tool tests spawn and check a tool |
+| `REVIEW.md` | What a reviewer checks beyond `yarn verify` |
 
 ---
 
@@ -367,6 +366,6 @@ docs/
 ├── architecture/OVERVIEW.md   Component map and run flow
 ├── architecture/constraints.md  Hard rules
 ├── adr/                       Why things are the way they are
-├── ai/CODING-GUIDELINES.md    Patterns to follow
-└── ai/ANTI-PATTERNS.md        What not to do (with rationale)
+└── ai/CODING-GUIDELINES.md    Patterns to follow
+LESSONS-LEARNED.md             Why things changed, mistakes included
 ```

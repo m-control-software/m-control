@@ -9,6 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`yarn verify`** — one script with every check CI runs, in CI order; CI
+  runs it verbatim (`scripts/verify.mjs`), so "passes locally" and "passes
+  CI" mean the same thing. `--from=<step>` resumes after a fix. The smoke test
+  moved to `scripts/smoke.mjs` and runs in a throwaway HOME: it used to write
+  to the real `~/.m-control/config.json`. Required config for it now comes
+  from each tool's `test/smoke-config.json` instead of the workflow file.
+
+- **`yarn new:tool`** — scaffolds a tool from a template (id filled in
+  everywhere, protocol test, CHANGELOG entry). The node and python templates
+  now read their id and `requiredConfig` from `manifest.json` and fail with a
+  recoverable `CONFIG_MISSING` on their own.
+
+- **`yarn new:adr`** (next number, header filled) and **`yarn release`**
+  (moves `[Unreleased]`, bumps every `package.json`, runs verify, commits and
+  tags; never pushes).
+
+- **Mechanical checks for what used to be checklists:** a per-tool
+  conformance suite (layout, README documents every config key, smoke config,
+  malformed request and missing config both end in a well-formed error),
+  docs checks (links, quoted paths, skills indexed), ADR numbering, and a
+  JSON Schema for manifests (`packages/core/schemas/manifest.v1.schema.json`)
+  held in parity with `validateManifest`. Shared tool-test helpers in
+  `test-support/` (`runTool`, `expectProtocol`).
+
+- **Linting for everything:** tool and script JS (ESLint + Prettier), Python
+  (ruff), PowerShell (PSScriptAnalyzer against the Windows PowerShell 5.1
+  profile, so PS7-only syntax fails on Linux CI too). Tests are type-checked.
+  Versions pinned in `linters.json`; `yarn setup:linters` installs them. CI
+  runs Python 3.10, the minimum tools support.
+
+- **Skills** `add-tool`, `change-contract`, `write-adr`, `release` and
+  `author-deck-profile`, indexed in `AGENTS.md` → "Procedures (skills)" so
+  every agent can follow them. `REVIEW.md` lists what reviewers check beyond
+  `yarn verify`. `tools/artifacts/stream-deck/docs/spec-format.md` documents
+  the `*.deck.json` format.
+
+- **Claude Code hooks** (`.claude/hooks/`): set up cloud sessions, format
+  edited TS/JS.
+
 - **`stream-deck` tool** (`tools/artifacts/stream-deck/`, ADR-0010 "Generated
   artifacts"): builds an Elgato Stream Deck profile from declarative
   `*.deck.json` packs and installs it in place of the previous version. Packs
@@ -98,6 +137,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`stream-deck` enforces its required config.** With `profileName` or
+  `packDirs` unset it used to carry on (on Windows, toward installing the
+  shared pack under the spec's name) and fail later with a null-path error.
+  It now fails first with `CONFIG_MISSING`, naming the keys. It also emits
+  `started` before an error about an unreadable request.
+
+- **Manifests with non-string-array `tags` are rejected** at discovery; they
+  were silently accepted.
+
+- **Toolchain pinned:** Yarn via `packageManager`, Node via `.nvmrc` (22),
+  Python via `.python-version` (3.10). `engines.node` is `>=20` (Vitest 4
+  already required it).
+
 - **Open config schema** — `MControlConfig.tools` is now `Record<string, section>`;
   adding a tool never requires a change to `@m-control/core`. Existing configs remain
   valid (`configVersion` stays 1).
@@ -137,6 +189,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tags.
 
 ### Removed
+
+- `package-lock.json` (the repo uses Yarn), `.claude/rules/` (restated
+  `AGENTS.md`), `docs/ai/ANTI-PATTERNS.md` (partly hypothetical and partly
+  wrong — its real lessons moved to `LESSONS-LEARNED.md`), `DOCS-STRUCTURE.md`
+  (merged into `docs/README.md`), and `docs/ai/PROMPTS/` (replaced by skills;
+  the Stream Deck import recipe moved to
+  `tools/artifacts/stream-deck/docs/import-existing-setup.md`).
 
 - `config/config.template.json` — copied into `~/.m-control/` by the
   installers but read by nothing; the installers now delete the leftover copy.

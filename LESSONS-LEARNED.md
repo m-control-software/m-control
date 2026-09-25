@@ -98,6 +98,63 @@ Go straight to `npm publish` if there were even one external user from day 1. Th
 
 ---
 
+## 2026-09-25: AI-First Means Executable, Not More Prose
+
+**Context:**
+Almost all code in the repo is written by coding agents. The rules they
+follow lived in about 2,900 lines of Markdown: `AGENTS.md`, plus restated
+copies in `.claude/rules/`, `PROJECT-CONTEXT.md`, `CODING-GUIDELINES.md`,
+`ANTI-PATTERNS.md`, `DOCS-STRUCTURE.md`, `ONBOARDING.md`, `CONTRIBUTING.md`
+and a prompt library.
+
+**What happened:**
+An audit found the prose and the repo disagreeing: two of five tools broke the
+"Adding a tool" checklist (no README, no tests); `stream-deck` ignored its
+`requiredConfig`; nothing checked the "PowerShell 5.1" rule; test files were
+never type-checked; the smoke test would overwrite a developer's real config;
+`ANTI-PATTERNS.md` forbade a shebang that `apps/mctl/src/index.ts` has;
+`package-lock.json` sat next to `yarn.lock`. Each rule was written down, often
+several times; none was checked.
+
+**Lesson:**
+For agents, a rule that runs beats a rule that is read. A checklist is
+followed most of the time; a test is followed every time, and it names the
+violation. And every restatement of a rule is a second copy that drifts.
+Hence the order of preference: make it impossible (a scaffolder, a template
+that reads its own manifest) → make it fail CI (conformance, parity, docs and
+lint checks in `yarn verify`) → write it once in `AGENTS.md` and link to it.
+Skills are for judgment and approval gates, and hand the mechanics to
+scripts.
+
+**Impact:**
+`yarn verify` (= CI), `yarn new:tool` / `new:adr` / `release`, a shared test
+harness, repo-wide conformance and docs tests, linting for every language in
+the repo, five skills. Removed: `.claude/rules/`, `ANTI-PATTERNS.md`,
+`DOCS-STRUCTURE.md`, the prompt library.
+
+**Would do differently:**
+`DOCS-STRUCTURE.md` argued for copy-paste templates over a scaffolding CLI
+("auditable, works offline"). That holds for people; for agents, the
+hand-edited id in four places was exactly where copies went wrong. The
+scaffolder copies the same auditable templates, so nothing is lost.
+
+---
+
+## Earlier mistakes (from the retired ANTI-PATTERNS.md)
+
+Kept for the record; each is now prevented by code or a check.
+
+- **Hard-coded config path** (`C:\Users\Michal\.m-control\config.json`):
+  broke other users and platforms. Config paths come from
+  `USERPROFILE`/`os.homedir()` (`packages/core/src/config.ts`).
+- **Config template as a separate file read at run time:** broke after
+  bundling. The template is embedded in core, and it holds no tool sections
+  (open config schema).
+- **Missing `lib` in tsconfig:** Node globals failed to type-check.
+  `tsconfig.base.json` sets `lib: ["ES2022"]` for every workspace.
+
+---
+
 ## Template for Future Entries
 
 ```markdown
@@ -144,5 +201,5 @@ In hindsight, what would you change?
 
 ---
 
-**Last updated:** 2025-02-18  
+**Last updated:** 2026-09-25  
 **Maintainer:** Michał

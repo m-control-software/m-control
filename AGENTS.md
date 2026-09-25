@@ -5,6 +5,12 @@ Copilot, …) and the shortest accurate description of the repo for humans.
 `CLAUDE.md`, `.cursor/rules/m-control.mdc` and `.github/copilot-instructions.md`
 point here. When a rule changes, change it **here**, not in the pointers.
 
+How the repo stays deterministic, in order of preference: a **script** does
+the mechanical work (`yarn new:tool`, `new:adr`, `release`), a **check** in
+`yarn verify` catches what a script can't prevent, and only what neither can
+cover is a rule written here. When you are about to add a rule, first ask
+whether it can be a check.
+
 ## What this is
 
 A personal CLI orchestrator (`mctl`) that discovers and runs standalone tool
@@ -19,8 +25,9 @@ and, longer term, a product for developer teams (`docs/VISION.md`).
 | `templates/node-tool`, `templates/python-tool` | What `yarn new:tool` copies. Changing one changes every future tool. |
 | `test-support/` | Shared Vitest helpers for tool tests (`runTool`, `expectProtocol`), imported as `@m-control/test-support` — a Vitest/tsconfig alias, not a package. |
 | `test/` | Repo-wide tests: every tool's conformance, the scaffolder, docs. |
-| `scripts/` | `verify.mjs` (= CI), `smoke.mjs`, `new-tool.mjs`, installers. |
-| `docs/` | ADRs, architecture, AI prompts. Index: `docs/README.md`. |
+| `scripts/` | `verify.mjs` (= CI), `smoke.mjs`, `new-tool.mjs`, `new-adr.mjs`, `release.mjs`, `setup-linters.mjs`, `lint-powershell.ps1`, installers. |
+| `docs/` | ADRs, architecture, project context. Index: `docs/README.md`. |
+| `.claude/` | Skills (procedures, see below) and hooks. |
 
 Tools today: `hello-world` (node) and `hello-python` (python) as protocol
 references; `agent-status` (node) — dashboard of AI coding-agent sessions;
@@ -33,12 +40,18 @@ Always from the repo root (never `yarn install` inside a package):
 
 ```bash
 yarn install
-yarn verify       # everything CI checks, in CI order — the definition of green
-yarn verify --from=test   # resume after fixing a failed step
-yarn build        # core first, then mctl (mctl compiles against core/dist)
-yarn typecheck    # needs core built first
-yarn lint
-yarn test         # Vitest: packages/*/test, apps/*/test, tools/**/test
+yarn verify                 # everything CI checks, in CI order — the definition of green
+yarn verify --from=test     # resume after fixing a failed step (--only=<step> runs one)
+yarn build                  # core first, then mctl (mctl compiles against core/dist)
+yarn typecheck              # workspaces + all tests; needs core built first
+yarn lint                   # ESLint + Prettier on all TS/JS
+yarn format                 # fix formatting
+yarn test                   # Vitest: packages/*/test, tools/**/test, test/
+yarn smoke                  # the built bundle end to end, in a throwaway HOME
+yarn new:tool --id=… --category=… --runtime=node|python --description="…"
+yarn new:adr --title="…"
+yarn release --version=X.Y.Z   # on main only; see the release skill
+yarn setup:linters          # ruff + PSScriptAnalyzer at the versions in linters.json
 node apps/mctl/dist/bundle/index.js <init|list|run|doctor>
 ```
 
@@ -50,8 +63,8 @@ lint (ESLint + Prettier on all TS/JS including tools and scripts), lint-python
 against Windows PowerShell 5.1), test, build, then `scripts/smoke.mjs`. The
 Python and PowerShell linters are pinned in `linters.json` and installed by
 `yarn setup:linters`; locally a missing one is skipped with a warning, in CI
-it fails. The smoke test runs the
-bundle in a throwaway HOME (it never touches your real config): `--help`,
+it fails. The smoke test runs the bundle in a throwaway HOME (it never touches
+your real config): `--help`,
 `init`, `list`, `doctor` must fail on the fresh config, then pass once every
 tool's `<tool>/test/smoke-config.json` is merged in, then `run hello-world` and
 `run hello-python`. A tool with `requiredConfig` must ship
@@ -68,9 +81,13 @@ tool's directory). Add a new check to `verify.mjs`, never only to the workflow.
   (path relative to the manifest).
 - Optional: `requiredConfig`, `optionalConfig` (arrays of dot-paths),
   `timeoutMs` (positive number), `tags`.
+  `tags` is an array of strings.
 - An invalid manifest is skipped with a warning; it never breaks discovery.
   `packages/core/test/repo-manifests.test.ts` fails CI for any invalid
   manifest in `tools/` or `templates/`.
+- `packages/core/schemas/manifest.v1.schema.json` is the JSON Schema of the
+  same rules (VS Code validates manifests with it); `test/manifest-schema.test.ts`
+  fails when it and `validateManifest` disagree.
 
 **Tool Protocol v1** — full spec in `docs/architecture/execution-model.md`:
 
@@ -115,6 +132,9 @@ spawn command (`resolveSpawnCommand`): node → the running Node binary; python 
 
 ## Adding a tool
 
+The `add-tool` skill runs this procedure with its design gate; other agents
+read `.claude/skills/add-tool/SKILL.md`.
+
 1. Scaffold — never copy by hand:
    `yarn new:tool --id=<kebab-id> --category=<kebab> --runtime=<node|python> --description="…"`.
    It fills the id everywhere, adds a protocol test and a CHANGELOG entry.
@@ -142,7 +162,7 @@ spawn command (`resolveSpawnCommand`): node → the running Node binary; python 
    `<tool>/test/smoke-config.json` (see "Commands").
 6. Write the `README.md` (the scaffold has one): usage, config keys, external
    dependencies. The README is where config keys are documented — `mctl init`
-   writes no tool sections.
+   writes no tool sections. Add the tool to "Tools today" above.
 7. Personal or client data (packs, names, paths) never goes into this repo. It
    lives in directories the user points the tool at via config (e.g.
    `tools.logi-options.packDirs`).
@@ -156,9 +176,14 @@ Claude Code loads them automatically; any other agent should read the matching
 mechanical steps are scripts they call. `test/docs.test.ts` fails when a skill
 is missing from this list.
 
-| Skill | Use it to |
-|-------|-----------|
-| `author-logi-profile` | Write or change MX Master 4 profiles (`*.logi.json`) and apply them. |
+| Skill | Use it to | Script it drives |
+|-------|-----------|------------------|
+| `add-tool` | Design, scaffold, implement, test and document a new tool. | `yarn new:tool` |
+| `change-contract` | Change the manifest, protocol, config, discovery or CLI surface. | — |
+| `write-adr` | Record a decision, or change an ADR's status. | `yarn new:adr` |
+| `release` | Cut and tag a version (the known-good state, ADR-0012). | `yarn release` |
+| `author-deck-profile` | Write or change Stream Deck specs (`*.deck.json`) and apply them. | `mctl run stream-deck` |
+| `author-logi-profile` | Write or change MX Master 4 profiles (`*.logi.json`) and apply them. | `mctl run logi-options` |
 
 ## Code rules
 
@@ -184,17 +209,19 @@ is missing from this list.
 
 ## Decisions and docs
 
-- Architectural decisions get an ADR in `docs/adr/` (copy `TEMPLATE.md`, next
-  free number). ADR-0009 and ADR-0010 are **Proposed**: read their Open
+- Architectural decisions get an ADR in `docs/adr/`: `yarn new:adr` (the
+  `write-adr` skill). ADR-0009 and ADR-0010 are **Proposed**: read their Open
   Questions before structural work (repo layout, manifest `kind`/`visibility`).
 - Where to update what, when you change it:
   - a contract (manifest, protocol, config, CLI surface) → this file,
     `docs/architecture/execution-model.md`, and `CHANGELOG.md`;
-  - a hard rule → `docs/architecture/constraints.md` and the "Code rules" above;
+  - a hard rule → `docs/architecture/constraints.md` and the "Code rules" above,
+    and a check in `test/` or a lint rule if it can be checked;
+  - something a reviewer must judge that no check can → `REVIEW.md`;
   - first-run steps → `QUICKSTART.md`.
 - Other docs link to these instead of restating them. Restated rules go stale
   (see `LESSONS-LEARNED.md`).
 - Branches (ADR-0012): `main` is the only long-lived branch. Work on a
-  short-lived branch, run the CI steps locally, then merge or fast-forward
+  short-lived branch, run `yarn verify`, then merge or fast-forward
   into `main`. Never target `develop` (retired). Known-good states are release
   tags `vX.Y.Z`, not a branch.

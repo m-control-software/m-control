@@ -94,11 +94,11 @@ node apps/mctl/dist/bundle/index.js --help
 ## Development
 
 ```bash
-yarn typecheck     # type-check all packages
-yarn lint          # lint all packages
-yarn test          # run Vitest tests
+yarn verify        # everything CI checks, in CI order
 yarn build         # full build (core then mctl)
 ```
+
+All commands: `AGENTS.md` → "Commands".
 
 See `QUICKSTART.md` for a complete getting-started walkthrough.
 
@@ -110,10 +110,12 @@ CI on every push and PR, release tags `vX.Y.Z` mark known-good versions. See
 
 ## Adding a tool
 
-1. Copy `templates/node-tool/` or `templates/python-tool/` to `tools/<category>/<id>/`
-2. Fill in `manifest.json` (`manifestVersion`, `id`, `version`, `name`, `description`, `runtime`, `entry`)
-3. Implement the entry file following Tool Protocol v1 (NDJSON stdout, JSON stdin)
-4. No registration needed — discovery is automatic
+```bash
+yarn new:tool --id=<id> --category=<category> --runtime=<node|python> --description="…"
+```
+
+Then implement the entry file following Tool Protocol v1 (JSON stdin, NDJSON
+stdout). No registration needed — discovery is automatic.
 
 Full checklist: `AGENTS.md` → "Adding a tool".
 
@@ -128,7 +130,8 @@ See `docs/architecture/execution-model.md` for the protocol spec.
 - `QUICKSTART.md` — step-by-step first-run guide
 - `AGENTS.md` — working rules and contracts (AI agents start here)
 - `ONBOARDING.md` — deeper tour of the codebase
-- `CONTRIBUTING.md` — branching, CI, commit conventions
+- `CONTRIBUTING.md` — branching, CI, commit conventions, releases
+- `REVIEW.md` — what reviewers check beyond `yarn verify`
 - `docs/ai/PROJECT-CONTEXT.md` — project state and open decisions
 - `docs/architecture/` — architecture docs and constraints
 - `docs/adr/` — architecture decision records

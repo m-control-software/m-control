@@ -99,13 +99,13 @@ try {
 
 ## Tools (`tools/`)
 
-- Start from `templates/node-tool` or `templates/python-tool`; the reference
-  implementations are `tools/misc/hello-world/index.js` and
-  `tools/misc/hello-python/main.py`.
+- Start with `yarn new:tool`; the reference implementations are
+  `tools/misc/hello-world/index.js` and `tools/misc/hello-python/main.py`.
 - Keep the protocol plumbing (`emit`, `started`, `log`, `result`, `error`) in
   one small block at the top, or in a `lib/protocol.*` module once the tool
   has several files (as logi-options and stream-deck do).
-- Put the tool id in one constant and use it for every event's `toolId`.
+- Take the tool id and the required config keys from `manifest.json` (the
+  templates do), so the manifest stays the only place they are declared.
 - Validate `input` and `context.config` first, and fail with a recoverable
   `error` event naming the key and where to set it.
 - Error `code`s are `UPPER_SNAKE_CASE` and stable — scripts match on them.
@@ -118,22 +118,19 @@ try {
 
 - Vitest. `describe`/`it`, Arrange–Act–Assert, one behaviour per test.
 - Location: `packages/<pkg>/test/*.test.ts`, `apps/<app>/test/*.test.ts`,
-  `tools/<category>/<id>/test/*.test.ts` (not co-located with sources).
-- Core tests import from `../src/…` directly — no build needed.
-- Tool tests spawn the tool with a `ToolRequest` on stdin and assert on the
-  NDJSON events and the exit code. Use temp directories and fixtures; never
-  touch real user state. Skip, don't fail, when the platform or an installed
-  app is missing.
+  `tools/<category>/<id>/test/*.test.ts`, repo-wide checks in `test/`.
+- Tests import `@m-control/core` and `@m-control/test-support`; both resolve
+  to sources, so no build is needed first.
+- Tool tests spawn the tool with `runTool` and assert with `expectProtocol`.
+  Use temp directories and fixtures; never touch real user state or the
+  network. Skip, don't fail, when the platform or an installed app is missing.
+- A rule worth writing down is usually worth a test: prefer adding a case to
+  `test/conformance.test.ts` or `test/docs.test.ts` over adding prose.
 
 ---
 
 ## Before you commit
 
-- [ ] `yarn build`, `yarn typecheck`, `yarn lint`, `yarn test` pass from the root
-- [ ] No raw `Error`, no empty `catch`, no `any` without a reason
-- [ ] No hardcoded paths, credentials, or personal data
-- [ ] Error messages say how to fix the problem
-- [ ] Contract changes are reflected in `AGENTS.md`, `execution-model.md`,
-      and `CHANGELOG.md`
+`yarn verify`. Then the judgment calls in `REVIEW.md`.
 
-**Last updated:** 2026-09-24
+**Last updated:** 2026-09-25
