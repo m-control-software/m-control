@@ -16,7 +16,10 @@ and, longer term, a product for developer teams (`docs/VISION.md`).
 | `packages/core` | `@m-control/core` — runtime library: types, discovery, config, runner, event sinks. No CLI concerns. Public API = `src/index.ts`. |
 | `apps/mctl` | `@m-control/mctl` — the CLI (`init`, `list`, `run`, `doctor`). Bundled by ncc into `apps/mctl/dist/bundle/index.js`. |
 | `tools/<category>/<id>/` | Standalone tool processes in any runtime. **Not** npm packages, not in workspaces. |
-| `templates/node-tool`, `templates/python-tool` | Copy-paste starting points for new tools. |
+| `templates/node-tool`, `templates/python-tool` | What `yarn new:tool` copies. Changing one changes every future tool. |
+| `test-support/` | Shared Vitest helpers for tool tests (`runTool`, `expectProtocol`), imported as `@m-control/test-support` — a Vitest/tsconfig alias, not a package. |
+| `test/` | Repo-wide tests: every tool's conformance, the scaffolder, docs. |
+| `scripts/` | `verify.mjs` (= CI), `smoke.mjs`, `new-tool.mjs`, installers. |
 | `docs/` | ADRs, architecture, AI prompts. Index: `docs/README.md`. |
 
 Tools today: `hello-world` (node) and `hello-python` (python) as protocol
@@ -106,29 +109,41 @@ spawn command (`resolveSpawnCommand`): node → the running Node binary; python 
 
 ## Adding a tool
 
-1. `cp -r templates/node-tool tools/<category>/<id>` (or `python-tool`). Edit
-   `manifest.json`: every required field above, plus the config keys and budget
-   the tool needs.
-2. Implement the entry following Tool Protocol v1. Emit `started` first; wrap
-   everything so an unexpected exception still ends in an `error` event.
-3. Runtime conventions:
+Claude Code: the `add-tool` skill runs this procedure with its approval gates.
+Other agents: read `.claude/skills/add-tool/SKILL.md` and follow it.
+
+1. Scaffold — never copy by hand:
+   `yarn new:tool --id=<kebab-id> --category=<kebab> --runtime=<node|python> --description="…"`.
+   It fills the id everywhere, adds a protocol test and a CHANGELOG entry.
+   `--dry-run` shows the plan. PowerShell has no template: copy the closest
+   existing tool.
+2. Edit `manifest.json`: config keys, `timeoutMs`, tags. The node and python
+   templates read their id and `requiredConfig` from the manifest and fail with
+   a recoverable `CONFIG_MISSING` error by themselves, so declaring a key is
+   enough for the tool to enforce it.
+3. Implement the entry following Tool Protocol v1. Emit `started` first; wrap
+   everything so an unexpected exception still ends in an `error` event. Throw
+   `ToolFailure(message, code, recoverable)` for expected failures.
+4. Runtime conventions:
    - node: plain `.js`, no build step, no TypeScript, no dependencies unless
      unavoidable.
    - python: `main.py`, standard library only, Python 3.10+.
    - powershell: must parse and run under **Windows PowerShell 5.1** (no
      ternaries, no `??`, no PS7-only cmdlets); that is what `powershell` spawns
      on Windows.
-4. Give the tool a `README.md` (the template has one): usage, config keys,
-   external dependencies. The README is where config keys are documented —
-   `mctl init` writes no tool sections.
-5. Tests go in `tools/<category>/<id>/test/*.test.ts` and spawn the tool as a
-   process. Tests that need Windows or an installed app skip themselves
-   elsewhere (CI is Ubuntu) — keep a platform-independent test for anything
-   that can be checked without them.
-6. Personal or client data (packs, names, paths) never goes into this repo. It
+5. Tests go in `tools/<category>/<id>/test/*.test.ts`, spawn the tool through
+   `runTool` from `@m-control/test-support`, and assert with `expectProtocol`.
+   Tests that need Windows or an installed app skip themselves elsewhere (CI is
+   Ubuntu) — keep a platform-independent test for anything that can be checked
+   without them. A tool with `requiredConfig` also ships
+   `test/smoke-config.json` (see "Commands").
+6. Write the `README.md` (the scaffold has one): usage, config keys, external
+   dependencies. The README is where config keys are documented — `mctl init`
+   writes no tool sections.
+7. Personal or client data (packs, names, paths) never goes into this repo. It
    lives in directories the user points the tool at via config (e.g.
    `tools.logi-options.packDirs`).
-7. Add an `[Unreleased]` entry to `CHANGELOG.md`.
+8. `yarn verify`.
 
 ## Code rules
 

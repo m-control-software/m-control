@@ -1,18 +1,28 @@
 {
+  // Type-checks everything the workspace tsconfigs do not cover: tests (core,
+  // tools, repo-wide), test-support, and config files. `yarn typecheck` runs
+  // it after the workspaces. Workspaces build with their own tsconfig.json.
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "commonjs",
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "moduleResolution": "node",
-    "forceConsistentCasingInFileNames": true
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "types": ["node"],
+    // Keep in sync with resolve.alias in vitest.config.ts.
+    "paths": {
+      "@m-control/core": ["./packages/core/src/index.ts"],
+      "@m-control/test-support": ["./test-support/index.ts"]
+    }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "packages/*/test/**/*.ts",
+    "apps/*/test/**/*.ts",
+    "tools/**/test/**/*.ts",
+    "templates/**/test/**/*.ts",
+    "test/**/*.ts",
+    "test-support/**/*.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["**/node_modules", "**/dist"]
 }

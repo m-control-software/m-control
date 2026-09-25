@@ -11,11 +11,12 @@
     "build": "yarn workspace @m-control/core build && yarn workspace @m-control/mctl build",
     "lint": "yarn workspaces run lint",
     "format": "yarn workspaces run format",
-    "typecheck": "yarn workspaces run typecheck",
+    "typecheck": "yarn workspaces run typecheck && tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "verify": "node scripts/verify.mjs",
     "smoke": "node scripts/smoke.mjs",
+    "new:tool": "node scripts/new-tool.mjs",
     "dev": "yarn workspace @m-control/mctl dev",
     "clean": "node scripts/clean.mjs"
   },

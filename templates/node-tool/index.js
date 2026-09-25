@@ -1,19 +1,24 @@
 #!/usr/bin/env node
 /**
- * <tool-id> — Tool Protocol v1 (Node.js template)
+ * tool-id — Tool Protocol v1 (Node.js template)
  *
  * stdin  <- JSON ToolRequest (read to EOF before doing any work)
  * stdout -> NDJSON ToolEvent lines ONLY (never raw console.log)
  * stderr -> raw diagnostic output (allowed, not parsed)
  * exit      0 = success, 1 = expected failure (after error event), >=2 = crash
  *
- * Tools are intentionally plain JS: no TypeScript, no build step, minimal
+ * Tools are intentionally plain JS: no TypeScript, no build step, no
  * dependencies. Keep them standalone.
+ *
+ * The tool id and the required config keys come from manifest.json, so the
+ * manifest stays the single source of truth for both.
  */
 
 'use strict';
 
-const TOOL_ID = 'tool-id'; // must match manifest.id
+const manifest = require('./manifest.json');
+
+const TOOL_ID = manifest.id;
 
 // ---------------------------------------------------------------------------
 // Protocol helpers
@@ -21,7 +26,12 @@ const TOOL_ID = 'tool-id'; // must match manifest.id
 
 function emit(type, payload) {
   process.stdout.write(
-    JSON.stringify({ type, ts: new Date().toISOString(), toolId: TOOL_ID, payload }) + '\n'
+    JSON.stringify({
+      type,
+      ts: new Date().toISOString(),
+      toolId: TOOL_ID,
+      payload,
+    }) + '\n'
   );
 }
 
@@ -29,8 +39,17 @@ const started = (meta = {}) => emit('started', { meta });
 const log = (level, message, data) =>
   emit('log', { level, message, ...(data !== undefined ? { data } : {}) });
 const result = (payload) => emit('result', payload);
-const error = (message, code, recoverable = true) =>
+const error = (message, code, recoverable) =>
   emit('error', { message, code, recoverable });
+
+/** An expected failure the user can act on (or not): error event, exit 1. */
+class ToolFailure extends Error {
+  constructor(message, code, recoverable = true) {
+    super(message);
+    this.code = code;
+    this.recoverable = recoverable;
+  }
+}
 
 function readRequest() {
   return new Promise((resolve, reject) => {
@@ -40,11 +59,37 @@ function readRequest() {
       try {
         resolve(JSON.parse(Buffer.concat(chunks).toString('utf-8')));
       } catch (err) {
-        reject(new Error(`Failed to parse ToolRequest from stdin: ${err.message}`));
+        // mctl always sends valid JSON, so a parse failure is a bug upstream.
+        reject(
+          new ToolFailure(
+            `Failed to parse ToolRequest from stdin: ${err.message}`,
+            'INVALID_REQUEST',
+            false
+          )
+        );
       }
     });
     process.stdin.on('error', reject);
   });
+}
+
+/**
+ * Fails with a recoverable CONFIG_MISSING error when any key the manifest
+ * declares in requiredConfig is unset or empty — the same rule `mctl doctor`
+ * applies. Nothing enforces requiredConfig at run time, so the tool must.
+ */
+function requireConfig(config) {
+  const missing = (manifest.requiredConfig || []).filter((key) => {
+    const v = config[key];
+    return v === undefined || v === null || v === '';
+  });
+  if (missing.length > 0) {
+    throw new ToolFailure(
+      `Missing required config: ${missing.map((k) => `tools.${k}`).join(', ')}. ` +
+        `Set it in ~/.m-control/config.json (see this tool's README), then run 'mctl doctor'.`,
+      'CONFIG_MISSING'
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -54,36 +99,34 @@ function readRequest() {
 async function main() {
   started();
 
-  let request;
-  try {
-    request = await readRequest();
-  } catch (err) {
-    error(err.message, 'INVALID_REQUEST', false);
-    process.exit(1);
-  }
-
-  const { context, input } = request;
-
-  // Config values requested via manifest.requiredConfig arrive as a flat map:
-  //   context.config['my-service.token']
-  // Validate them early and emit a recoverable error if missing:
-  //
-  // const token = context.config['my-service.token'];
-  // if (!token) {
-  //   error('Missing config: tools.my-service.token in ~/.m-control/config.json', 'CONFIG_MISSING', true);
-  //   process.exit(1);
-  // }
+  const { context, input = {} } = await readRequest();
+  const config = context.config || {};
+  requireConfig(config);
 
   log('info', `Running in workspace: ${context.workspaceRoot}`);
 
-  // TODO: implement tool logic here. `input` holds key=value args from
-  // `mctl run tool-id key=value`.
+  // TODO: implement the tool. `input` holds `mctl run tool-id key=value`
+  // pairs, always as strings. `config` holds every key the manifest declares,
+  // keyed by dot-path (e.g. config['tool-id.apiKey']).
 
   result({ message: 'TODO: implement me', input });
-  process.exit(0);
 }
 
-main().catch((err) => {
-  error(`Unhandled error: ${err.message}`, 'UNHANDLED_ERROR', false);
-  process.exit(2);
-});
+main().then(
+  () => {
+    process.exitCode = 0;
+  },
+  (err) => {
+    if (err instanceof ToolFailure) {
+      error(err.message, err.code, err.recoverable);
+      process.exitCode = 1;
+    } else {
+      error(
+        `Unhandled error: ${err && err.stack ? err.stack : err}`,
+        'UNHANDLED_ERROR',
+        false
+      );
+      process.exitCode = 2;
+    }
+  }
+);

@@ -30,6 +30,9 @@ If a run can take more than 30 s, declare `timeoutMs` in the manifest.
 |-----|-------------|
 | *(none yet)* | |
 
+A run with a required key unset fails with a recoverable `CONFIG_MISSING`
+error naming the key.
+
 ## External dependencies
 
 - Python 3.10+ (standard library only — add requirements here if that changes)

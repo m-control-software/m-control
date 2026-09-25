@@ -4,6 +4,10 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  expectProtocol,
+  runTool as runToolProcess,
+} from '@m-control/test-support';
 
 /**
  * Guards the tool's protocol behaviour and its safety valves.
@@ -18,7 +22,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
  */
 
 const TOOL_DIR = path.resolve(__dirname, '..');
-const ENTRY = path.join(TOOL_DIR, 'main.py');
 const FIXTURES = path.join(__dirname, 'fixtures');
 const hasOptionsPlus =
   process.platform === 'win32' &&
@@ -31,12 +34,6 @@ const hasOptionsPlus =
   );
 const suite = hasOptionsPlus ? describe : describe.skip;
 
-interface ToolEvent {
-  type: string;
-  toolId: string;
-  payload: Record<string, unknown>;
-}
-
 let root: string;
 let dataDir: string;
 let packDir: string;
@@ -46,34 +43,16 @@ function runTool(
   input: Record<string, string>,
   extraConfig: Record<string, unknown> = {}
 ) {
-  const request = JSON.stringify({
-    context: {
-      toolId: 'logi-options',
-      config: {
-        'logi-options.dataDir': dataDir,
-        'logi-options.packDirs': [packDir],
-        'logi-options.backupDir': backupDir,
-        ...extraConfig,
-      },
-      workspaceRoot: root,
+  return runToolProcess(TOOL_DIR, {
+    config: {
+      'logi-options.dataDir': dataDir,
+      'logi-options.packDirs': [packDir],
+      'logi-options.backupDir': backupDir,
+      ...extraConfig,
     },
+    workspaceRoot: root,
     input,
   });
-  const r = spawnSync('python', [ENTRY], {
-    input: request,
-    encoding: 'utf8',
-    maxBuffer: 32 * 1024 * 1024,
-  });
-  const lines = r.stdout.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  const events = lines.map((l) => JSON.parse(l) as ToolEvent);
-  return {
-    events,
-    lines,
-    status: r.status,
-    stderr: r.stderr,
-    result: events.find((e) => e.type === 'result')?.payload,
-    error: events.find((e) => e.type === 'error')?.payload,
-  };
 }
 
 function writePack(
@@ -208,12 +187,7 @@ suite('logi-options protocol', () => {
 
   it('emits only NDJSON ToolEvent lines on stdout', () => {
     writePack('p', [globalBack]);
-    const { lines } = runTool({ check: 'true' });
-    expect(lines.length).toBeGreaterThan(0);
-    for (const line of lines) {
-      const evt = JSON.parse(line) as ToolEvent;
-      expect(['started', 'log', 'result', 'error']).toContain(evt.type);
-      expect(evt.toolId).toBe('logi-options');
-    }
+    // Strict parse plus event order, attribution and exit-code agreement.
+    expectProtocol(runTool({ check: 'true' }), 'logi-options');
   }, 30_000);
 });

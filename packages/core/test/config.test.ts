@@ -148,7 +148,7 @@ describe('resolveTimeoutMs', () => {
     runtime: 'powershell',
     entry: 'main.ps1',
   };
-  const bare: MControlConfig = { configVersion: 1 };
+  const bare: MControlConfig = { configVersion: 1, tools: {} };
 
   it('falls back to the built-in when nothing declares a budget', () => {
     expect(resolveTimeoutMs(manifest, bare)).toBe(DEFAULT_TIMEOUT_MS);
@@ -165,6 +165,7 @@ describe('resolveTimeoutMs', () => {
   it('lets a per-tool config entry override the manifest', () => {
     const cfg: MControlConfig = {
       configVersion: 1,
+      tools: {},
       timeouts: { default: 45_000, tools: { 'slow-tool': 200_000 } },
     };
     expect(resolveTimeoutMs({ ...manifest, timeoutMs: 120_000 }, cfg)).toBe(
@@ -176,6 +177,7 @@ describe('resolveTimeoutMs', () => {
     // The tool knows its own cost; the default only covers tools that are silent.
     const cfg: MControlConfig = {
       configVersion: 1,
+      tools: {},
       timeouts: { default: 5_000 },
     };
     expect(resolveTimeoutMs({ ...manifest, timeoutMs: 120_000 }, cfg)).toBe(
@@ -187,6 +189,7 @@ describe('resolveTimeoutMs', () => {
   it('ignores values that would make every run fail instantly', () => {
     const cfg: MControlConfig = {
       configVersion: 1,
+      tools: {},
       timeouts: { tools: { 'slow-tool': 0 } },
     };
     expect(resolveTimeoutMs(manifest, cfg)).toBe(DEFAULT_TIMEOUT_MS);
@@ -201,6 +204,7 @@ describe('resolveTimeoutMs', () => {
   it('only applies a per-tool entry to that tool', () => {
     const cfg: MControlConfig = {
       configVersion: 1,
+      tools: {},
       timeouts: { tools: { 'other-tool': 200_000 } },
     };
     expect(resolveTimeoutMs(manifest, cfg)).toBe(DEFAULT_TIMEOUT_MS);

@@ -1,9 +1,13 @@
-import { spawnSync } from 'child_process';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  ToolRun,
+  expectProtocol,
+  runTool as runToolProcess,
+} from '@m-control/test-support';
 
 /**
  * Guards the check-mode safety valve.
@@ -16,38 +20,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
  */
 
 const TOOL_DIR = path.resolve(__dirname, '..');
-const ENTRY = path.join(TOOL_DIR, 'main.ps1');
 
 // The tool is Windows-only: it drives %APPDATA%\Elgato and System.Drawing.
 const windowsOnly = process.platform === 'win32' ? describe : describe.skip;
 
-interface ToolEvent {
-  type: string;
-  toolId: string;
-  payload: Record<string, unknown>;
-}
-
 function runTool(
   config: Record<string, string>,
   input: Record<string, string>
-): { events: ToolEvent[]; status: number | null; stdout: string } {
-  const request = JSON.stringify({
-    context: { config, workspaceRoot: TOOL_DIR },
-    input,
-  });
-
-  const result = spawnSync(
-    'powershell',
-    ['-NoProfile', '-NonInteractive', '-File', ENTRY],
-    { input: request, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
-  );
-
-  const events = result.stdout
-    .split(/\r?\n/)
-    .filter((l) => l.trim().length > 0)
-    .map((l) => JSON.parse(l) as ToolEvent);
-
-  return { events, status: result.status, stdout: result.stdout };
+): ToolRun {
+  return runToolProcess(TOOL_DIR, { config, input });
 }
 
 /** Content hash of every file under dir, keyed by relative path. */
@@ -153,20 +134,14 @@ windowsOnly('stream-deck check mode', () => {
   }, 60_000);
 
   it('emits only NDJSON ToolEvent lines on stdout', () => {
-    const { stdout } = runTool(
+    const run = runTool(
       {
         'stream-deck.profileName': 'MCtl Test',
         'stream-deck.profilesRoot': profilesRoot,
       },
       { check: 'true' }
     );
-
-    const lines = stdout.split(/\r?\n/).filter((l) => l.trim().length > 0);
-    expect(lines.length).toBeGreaterThan(0);
-    for (const line of lines) {
-      const evt = JSON.parse(line) as ToolEvent;
-      expect(['started', 'log', 'result', 'error']).toContain(evt.type);
-      expect(evt.toolId).toBe('stream-deck');
-    }
+    // Strict parse plus event order, attribution and exit-code agreement.
+    expectProtocol(run, 'stream-deck');
   }, 60_000);
 });
