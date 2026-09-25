@@ -54,8 +54,8 @@ Trunk-based on `main` (ADR-0012, superseding ADR-0005):
 
 1. `main` is the only long-lived branch. Work on a short-lived branch (coding
    agents create `claude/<topic>`), or commit small changes directly.
-2. Run the CI steps locally before anything reaches `main`; CI runs on every
-   push and PR to `main`.
+2. Run `yarn verify` before anything reaches `main`; CI runs the same script on
+   every push and PR to `main`.
 3. A red `main` gets fixed before new work lands.
 4. The known-good state is the latest release tag `vX.Y.Z`, not the tip of
    `main`. To install a proven version on another machine, check out the tag
@@ -84,33 +84,24 @@ Reads PR diff from stdin, calls Claude, emits review as result event.
 
 ## CI pipeline
 
-GitHub Actions runs on every push and pull request targeting `main`.
+GitHub Actions runs on every push and pull request targeting `main`. The
+workflow (`.github/workflows/ci.yml`) runs `scripts/verify.mjs` and nothing
+else, so `yarn verify` locally is the same check. The step list lives in that
+script; `AGENTS.md` → "Commands" describes it.
 
-Pipeline: `.github/workflows/ci.yml`
+### Reading failures
 
-Steps (in order):
+The failing step prints `yarn verify --from=<step>`; fix and resume there.
 
-| Step | Command | What it checks |
-|------|---------|---------------|
-| Install | `yarn install --frozen-lockfile` | Lockfile is consistent |
-| Build core | `yarn workspace @m-control/core build` | Core compiles; mctl's typecheck needs its `dist/` |
-| Typecheck | `yarn typecheck` | No TypeScript errors in any package |
-| Lint | `yarn lint` | No ESLint violations in `src/` of each workspace |
-| Test | `yarn test` | Vitest suites for core and tools (Windows-only suites skip) |
-| Build | `yarn build` | Both packages compile and bundle successfully |
-| Smoke test | `--help`, `init`, `list`, `doctor` (must fail on the fresh config, then pass once required keys are set), `run hello-world`, `run hello-python` | The bundle runs end to end, node and python runtimes included |
+**Typecheck fails:** the error names the file and line. Don't reach for `// @ts-ignore` unless the cause is an upstream type bug.
 
-### Reading CI failures
+**Lint fails:** `yarn workspace <pkg> lint --fix` fixes what is fixable.
 
-**Typecheck fails:** TypeScript error in `packages/core/src/` or `apps/mctl/src/`. The error message includes the file and line number. Fix the type error — do not use `// @ts-ignore` unless the cause is an upstream type bug.
+**Test fails:** `yarn vitest run <path>` runs one file. Tool tests spawn the tool, so its stderr is in the output.
 
-**Lint fails:** ESLint violation. Run `yarn lint` locally to reproduce, then `yarn workspace <pkg> lint -- --fix` to auto-fix what's fixable.
+**Build fails:** usually a missing import or build order; `packages/core/dist/` must exist before `mctl` builds.
 
-**Test fails:** Run `yarn test` locally; `yarn vitest run <path>` runs one file. Tool tests spawn the tool, so check its stderr in the output.
-
-**Build fails:** Usually a missing import or a core/mctl build-order issue. Check that `packages/core/dist/` exists before `mctl` builds.
-
-**Smoke test fails:** The bundle was produced but a command fails. Re-run the failing command from the workflow locally; `doctor` exits 1 on any `[FAIL]` line. A new tool with `requiredConfig` must also get CI values in the workflow's config step, or the second `doctor` run fails.
+**Smoke fails:** `yarn smoke` reproduces it in the same throwaway HOME. `doctor` exits 1 on any `[FAIL]` line; a tool with `requiredConfig` and no `test/smoke-config.json` fails the second `doctor` run.
 
 ## Adding a new tool
 

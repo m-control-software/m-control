@@ -1,0 +1,7 @@
+{
+  "tools": {
+    "logi-options": {
+      "packDirs": ["${toolDir}/examples"]
+    }
+  }
+}

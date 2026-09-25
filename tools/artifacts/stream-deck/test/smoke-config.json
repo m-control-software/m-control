@@ -1,0 +1,8 @@
+{
+  "tools": {
+    "stream-deck": {
+      "profileName": "CI",
+      "packDirs": ["${toolDir}/specs"]
+    }
+  }
+}

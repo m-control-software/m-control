@@ -30,6 +30,8 @@ Always from the repo root (never `yarn install` inside a package):
 
 ```bash
 yarn install
+yarn verify       # everything CI checks, in CI order — the definition of green
+yarn verify --from=test   # resume after fixing a failed step
 yarn build        # core first, then mctl (mctl compiles against core/dist)
 yarn typecheck    # needs core built first
 yarn lint
@@ -37,13 +39,15 @@ yarn test         # Vitest: packages/*/test, apps/*/test, tools/**/test
 node apps/mctl/dist/bundle/index.js <init|list|run|doctor>
 ```
 
-CI (`.github/workflows/ci.yml`) runs, in order: install `--frozen-lockfile`,
-build core, typecheck, lint, test, build, then a smoke test (`--help`, `init`,
-`list`, `doctor` twice — it must fail on the fresh config and pass once the
-workflow fills every tool's `requiredConfig` — then `run hello-world` and
-`run hello-python`). Run the same steps before pushing. A new tool with
-`requiredConfig` needs CI values in that workflow step. Only `src/` of each
-workspace is linted; tools are not.
+CI runs `scripts/verify.mjs` and nothing else, so `yarn verify` passing locally
+is the bar before pushing. Its steps: install `--frozen-lockfile`, build core,
+typecheck, lint, test, build, then `scripts/smoke.mjs`. The smoke test runs the
+bundle in a throwaway HOME (it never touches your real config): `--help`,
+`init`, `list`, `doctor` must fail on the fresh config, then pass once every
+tool's `test/smoke-config.json` is merged in, then `run hello-world` and
+`run hello-python`. A tool with `requiredConfig` must ship
+`test/smoke-config.json` supplying those keys (`${toolDir}` expands to the
+tool's directory). Add a new check to `verify.mjs`, never only to the workflow.
 
 ## Contracts (source of truth: `packages/core/src/types.ts`)
 
