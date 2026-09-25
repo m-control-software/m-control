@@ -118,7 +118,8 @@ def mode_check(ctx: Ctx) -> dict:
                  else model.verify(mp.device, mp.buttons, r, doc, ctx.store.data_dir))
         profiles.append({**_profile_summary(mp, r), "inSync": not drift, "drift": drift})
     mutate, verify = _composed(ctx, jobs)
-    plan = transaction.apply_change(ctx.store, mutate, verify, ctx.backups_dir, "check", _log, ctx.deadline, dry_run=True)
+    plan = transaction.apply_change(ctx.store, mutate, verify, ctx.backups_dir, "check", _log, ctx.deadline,
+                                    dry_run=True)
     in_sync = all(p["inSync"] for p in profiles)
     _log("info" if in_sync else "warn", "in sync" if in_sync else "live configuration differs from the specs")
     return {"inSync": in_sync, "specs": [str(f) for f in files], "profiles": profiles,
@@ -259,12 +260,14 @@ def mode_inspect(ctx: Ctx) -> dict:
         spec, warnings = model.profile_to_spec(doc, k, ctx.device)
         profiles.append({"profileKey": k, **spec, "warnings": warnings})
     return {
-        "store": {"path": str(ctx.store.settings_db), "live": ctx.store.live, "schemaVersion": doc.get("schema_version"),
+        "store": {"path": str(ctx.store.settings_db), "live": ctx.store.live,
+                  "schemaVersion": doc.get("schema_version"),
                   "blobBytes": len(snap.blob), "blobSha256": snap.sha256, "lastSavedUtc": snap.date_created},
         "catalogBuild": cat.build_dir().name,
         "agentRunning": ctx.store.agent_running(),
         "processes": st.logi_processes(),
-        "devicesEverConnected": sorted({d.get("slotPrefix", "?") for d in doc.get("ever_connected_devices", {}).get("devices", [])}),
+        "devicesEverConnected": sorted({d.get("slotPrefix", "?")
+                                        for d in doc.get("ever_connected_devices", {}).get("devices", [])}),
         "files": files,
         "profiles": profiles,
     }

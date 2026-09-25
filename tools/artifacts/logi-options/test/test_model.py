@@ -59,7 +59,8 @@ class CompilerMatchesUI(unittest.TestCase):
 
     def test_new_profile_defaults_mean_what_the_ui_created(self):
         ours = {a["slotId"]: model.card_action(a["card"], CHROME) for a in model.default_assignments(DEV, CHROME)}
-        ui = {a["slotId"]: model.card_action(a["card"], CHROME) for a in UI["e2_chrome_profile_as_created"]["assignments"]}
+        ui = {a["slotId"]: model.card_action(a["card"], CHROME)
+              for a in UI["e2_chrome_profile_as_created"]["assignments"]}
         self.assertEqual(ours, ui)
 
     def test_ui_written_cards_decompile_to_portable_actions(self):
@@ -109,7 +110,8 @@ class Validation(unittest.TestCase):
 class Packs(unittest.TestCase):
     def _pack(self, d: Path, name: str, profiles, pack="p"):
         p = d / f"{name}.logi.json"
-        p.write_text(json.dumps({"specVersion": 1, "pack": pack, "device": DEV, "profiles": profiles}), encoding="utf-8")
+        doc = {"specVersion": 1, "pack": pack, "device": DEV, "profiles": profiles}
+        p.write_text(json.dumps(doc), encoding="utf-8")
         return p
 
     def test_packs_merge_by_button_and_conflict_on_same_button(self):
@@ -118,13 +120,15 @@ class Packs(unittest.TestCase):
             (d / "a").mkdir()
             (d / "b" / "specs").mkdir(parents=True)
             self._pack(d / "a", "one", [{"application": {"global": True}, "buttons": {"back": {"preset": "back"}}}])
-            self._pack(d / "b" / "specs", "two", [{"application": {"global": True}, "buttons": {"top": {"preset": "mode-shift"}}}])
+            self._pack(d / "b" / "specs", "two",
+                       [{"application": {"global": True}, "buttons": {"top": {"preset": "mode-shift"}}}])
             files = packs.find_spec_files([str(d)])
             self.assertEqual(len(files), 2)  # a root holding several packs, incl. <pack>/specs/
             merged = packs.merge(files)
             self.assertEqual(len(merged), 1)
             self.assertEqual(sorted(merged[0].buttons), ["back", "top"])
-            self._pack(d / "a", "three", [{"application": {"global": True}, "buttons": {"mode-shift": {"nothing": True}}}])
+            self._pack(d / "a", "three",
+                       [{"application": {"global": True}, "buttons": {"mode-shift": {"nothing": True}}}])
             with self.assertRaisesRegex(SpecError, "set twice"):
                 packs.merge(packs.find_spec_files([str(d)]))
 

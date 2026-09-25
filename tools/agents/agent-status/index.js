@@ -26,14 +26,26 @@ const os = require('os');
 
 const TOOL_ID = 'agent-status';
 
-const ALL_PROVIDERS = ['claude-code', 'codex', 'cursor', 'cursor-ide', 'copilot'];
+const ALL_PROVIDERS = [
+  'claude-code',
+  'codex',
+  'cursor',
+  'cursor-ide',
+  'copilot',
+];
 
 // Status vocabulary (ordered by how much the user cares):
 //   awaiting-input — the agent finished and is waiting on you (the money shot)
 //   working        — the agent is actively doing something
 //   failed         — the agent errored / expired
 //   idle           — stale session, probably abandoned (hidden unless showIdle=true)
-const STATUS_ORDER = { 'awaiting-input': 0, working: 1, failed: 2, idle: 3, unknown: 4 };
+const STATUS_ORDER = {
+  'awaiting-input': 0,
+  working: 1,
+  failed: 2,
+  idle: 3,
+  unknown: 4,
+};
 const STATUS_ICONS = {
   'awaiting-input': '◉',
   working: '◐',
@@ -48,7 +60,12 @@ const STATUS_ICONS = {
 
 function emit(type, payload) {
   process.stdout.write(
-    JSON.stringify({ type, ts: new Date().toISOString(), toolId: TOOL_ID, payload }) + '\n'
+    JSON.stringify({
+      type,
+      ts: new Date().toISOString(),
+      toolId: TOOL_ID,
+      payload,
+    }) + '\n'
   );
 }
 
@@ -67,7 +84,9 @@ function readRequest() {
       try {
         resolve(JSON.parse(Buffer.concat(chunks).toString('utf-8')));
       } catch (err) {
-        reject(new Error(`Failed to parse ToolRequest from stdin: ${err.message}`));
+        reject(
+          new Error(`Failed to parse ToolRequest from stdin: ${err.message}`)
+        );
       }
     });
     process.stdin.on('error', reject);
@@ -168,14 +187,23 @@ async function collectJsonl(dir, depth, out) {
 async function classifyLocalSession(file, mtimeMs, opts) {
   const ageMs = Date.now() - mtimeMs;
   if (ageMs < opts.activeMs) {
-    return { status: 'working', detail: 'session log is being written right now' };
+    return {
+      status: 'working',
+      detail: 'session log is being written right now',
+    };
   }
   const actor = inferLastActor(await readTail(file));
   if (actor === 'assistant') {
-    return { status: 'awaiting-input', detail: 'agent replied — response waiting for you' };
+    return {
+      status: 'awaiting-input',
+      detail: 'agent replied — response waiting for you',
+    };
   }
   if (actor === 'user') {
-    return { status: 'idle', detail: 'last entry is user input — session likely interrupted' };
+    return {
+      status: 'idle',
+      detail: 'last entry is user input — session likely interrupted',
+    };
   }
   return { status: 'idle', detail: 'inactive session' };
 }
@@ -196,16 +224,21 @@ function toIso(ms) {
 //      can be awaiting input — stale "awaiting-input" gets demoted to closed.
 
 const STATE_DIR =
-  process.env.M_CONTROL_STATE_DIR || path.join(os.homedir(), '.m-control', 'state');
+  process.env.M_CONTROL_STATE_DIR ||
+  path.join(os.homedir(), '.m-control', 'state');
 const REGISTRY_FILE = path.join(STATE_DIR, 'claude-sessions.json');
 
-const CLAUDE_CMD_RE = /(?:^|[\\/\s"'=])claude(?:\.exe|\.cmd|\.js|\.mjs)?(?:["'\s]|$)/i;
-const CODEX_CMD_RE = /(?:^|[\\/\s"'=])codex(?:\.exe|\.cmd|\.js|\.mjs)?(?:["'\s]|$)/i;
+const CLAUDE_CMD_RE =
+  /(?:^|[\\/\s"'=])claude(?:\.exe|\.cmd|\.js|\.mjs)?(?:["'\s]|$)/i;
+const CODEX_CMD_RE =
+  /(?:^|[\\/\s"'=])codex(?:\.exe|\.cmd|\.js|\.mjs)?(?:["'\s]|$)/i;
 
 function execFileP(cmd, args, options) {
   const { execFile } = require('child_process');
   return new Promise((resolve, reject) => {
-    execFile(cmd, args, options, (err, stdout) => (err ? reject(err) : resolve(stdout)));
+    execFile(cmd, args, options, (err, stdout) =>
+      err ? reject(err) : resolve(stdout)
+    );
   });
 }
 
@@ -221,7 +254,12 @@ async function listProcesses() {
           '-Command',
           'Get-CimInstance Win32_Process | Select-Object ProcessId,Name,CommandLine | ConvertTo-Json -Compress',
         ],
-        { timeout: 15_000, windowsHide: true, maxBuffer: 32 * 1024 * 1024, encoding: 'utf-8' }
+        {
+          timeout: 15_000,
+          windowsHide: true,
+          maxBuffer: 32 * 1024 * 1024,
+          encoding: 'utf-8',
+        }
       );
       const parsed = JSON.parse(out);
       const list = Array.isArray(parsed) ? parsed : [parsed];
@@ -265,7 +303,12 @@ function isPidAlive(pid, procs) {
 async function readSessionRegistry() {
   try {
     const raw = JSON.parse(await fs.readFile(REGISTRY_FILE, 'utf-8'));
-    if (raw && typeof raw === 'object' && raw.sessions && typeof raw.sessions === 'object') {
+    if (
+      raw &&
+      typeof raw === 'object' &&
+      raw.sessions &&
+      typeof raw.sessions === 'object'
+    ) {
       return { present: true, sessions: raw.sessions };
     }
   } catch {
@@ -302,7 +345,10 @@ function getSqliteInProcess() {
 
 function querySqliteSync(dbPath, sql, params) {
   const sqlite = getSqliteInProcess();
-  if (!sqlite) throw Object.assign(new Error('node:sqlite unavailable'), { code: 'NO_SQLITE' });
+  if (!sqlite)
+    throw Object.assign(new Error('node:sqlite unavailable'), {
+      code: 'NO_SQLITE',
+    });
   const db = new sqlite.DatabaseSync(dbPath, { readOnly: true });
   try {
     return db.prepare(sql).all(...params);
@@ -320,13 +366,28 @@ async function querySqlite(dbPath, sql, params = []) {
       // Older Node: re-exec this script in helper mode with the flag.
       const out = await execFileP(
         process.execPath,
-        ['--experimental-sqlite', __filename, '--sqlite-helper', dbPath, sql, JSON.stringify(params)],
-        { timeout: 15_000, maxBuffer: 64 * 1024 * 1024, encoding: 'utf-8', windowsHide: true }
+        [
+          '--experimental-sqlite',
+          __filename,
+          '--sqlite-helper',
+          dbPath,
+          sql,
+          JSON.stringify(params),
+        ],
+        {
+          timeout: 15_000,
+          maxBuffer: 64 * 1024 * 1024,
+          encoding: 'utf-8',
+          windowsHide: true,
+        }
       );
       return JSON.parse(out);
     }
     // Likely SQLITE_BUSY while the app is writing — retry against a temp copy.
-    const tmp = path.join(os.tmpdir(), `agent-status-${process.pid}-${Date.now()}.vscdb`);
+    const tmp = path.join(
+      os.tmpdir(),
+      `agent-status-${process.pid}-${Date.now()}.vscdb`
+    );
     try {
       await fs.copyFile(dbPath, tmp);
       return querySqliteSync(tmp, sql, params);
@@ -371,15 +432,23 @@ function relTime(iso) {
 async function scanClaudeCode(config, opts, sys) {
   const provider = 'claude-code';
   const root =
-    (config['agent-status.claudeProjectsDir'] || '') ||
+    config['agent-status.claudeProjectsDir'] ||
+    '' ||
     path.join(os.homedir(), '.claude', 'projects');
 
   if (!(await safeStat(root))) {
-    return { provider, ok: false, reason: `no local Claude Code sessions (${root} not found)`, agents: [] };
+    return {
+      provider,
+      ok: false,
+      reason: `no local Claude Code sessions (${root} not found)`,
+      agents: [],
+    };
   }
 
   const registry = await readSessionRegistry();
-  const claudeProcs = sys.procs ? sys.procs.filter((p) => CLAUDE_CMD_RE.test(p.cmd)) : null;
+  const claudeProcs = sys.procs
+    ? sys.procs.filter((p) => CLAUDE_CMD_RE.test(p.cmd))
+    : null;
 
   const agents = [];
   const deadIds = [];
@@ -417,7 +486,9 @@ async function scanClaudeCode(config, opts, sys) {
           verified = alive === true;
           if (reg.state === 'working') {
             status = 'working';
-            detail = verified ? 'live session — agent is working' : 'agent is working (hooks)';
+            detail = verified
+              ? 'live session — agent is working'
+              : 'agent is working (hooks)';
           } else {
             status = 'awaiting-input';
             detail =
@@ -433,7 +504,11 @@ async function scanClaudeCode(config, opts, sys) {
       } else {
         // No hooks installed — heuristic mode, but never claim "awaiting input"
         // when there is provably no claude process on the whole machine.
-        ({ status, detail } = await classifyLocalSession(file, stat.mtimeMs, opts));
+        ({ status, detail } = await classifyLocalSession(
+          file,
+          stat.mtimeMs,
+          opts
+        ));
         if (status === 'awaiting-input') {
           if (claudeProcs && claudeProcs.length === 0) {
             status = 'idle';
@@ -471,14 +546,22 @@ async function scanClaudeCode(config, opts, sys) {
 async function scanCodex(config, opts, sys) {
   const provider = 'codex';
   const root =
-    (config['agent-status.codexSessionsDir'] || '') ||
+    config['agent-status.codexSessionsDir'] ||
+    '' ||
     path.join(os.homedir(), '.codex', 'sessions');
 
   if (!(await safeStat(root))) {
-    return { provider, ok: false, reason: `no local Codex sessions (${root} not found)`, agents: [] };
+    return {
+      provider,
+      ok: false,
+      reason: `no local Codex sessions (${root} not found)`,
+      agents: [],
+    };
   }
 
-  const codexProcs = sys.procs ? sys.procs.filter((p) => CODEX_CMD_RE.test(p.cmd)) : null;
+  const codexProcs = sys.procs
+    ? sys.procs.filter((p) => CODEX_CMD_RE.test(p.cmd))
+    : null;
 
   // Layout: sessions/YYYY/MM/DD/rollout-<timestamp>-<uuid>.jsonl
   const files = [];
@@ -489,7 +572,11 @@ async function scanCodex(config, opts, sys) {
     const stat = await safeStat(file);
     if (!stat || Date.now() - stat.mtimeMs > opts.maxAgeMs) continue;
 
-    let { status, detail } = await classifyLocalSession(file, stat.mtimeMs, opts);
+    let { status, detail } = await classifyLocalSession(
+      file,
+      stat.mtimeMs,
+      opts
+    );
     let verified = status === 'working';
     // Codex has no hook API for a live registry, but the process scan still
     // stops closed sessions from masquerading as "awaiting input".
@@ -521,7 +608,12 @@ async function fetchCursor(config, opts) {
   const provider = 'cursor';
   const apiKey = config['agent-status.cursorApiKey'];
   if (!apiKey) {
-    return { provider, ok: false, reason: 'cursorApiKey not configured — skipped', agents: [] };
+    return {
+      provider,
+      ok: false,
+      reason: 'cursorApiKey not configured — skipped',
+      agents: [],
+    };
   }
 
   try {
@@ -533,15 +625,22 @@ async function fetchCursor(config, opts) {
       throw new Error(`api.cursor.com returned HTTP ${res.status}`);
     }
     const body = await res.json();
-    const list = Array.isArray(body.agents) ? body.agents : Array.isArray(body) ? body : [];
+    const list = Array.isArray(body.agents)
+      ? body.agents
+      : Array.isArray(body)
+        ? body
+        : [];
 
     const agents = [];
     for (const a of list) {
       const raw = String(a.status || '').toUpperCase();
       let status = 'unknown';
-      if (['RUNNING', 'CREATING', 'PENDING', 'QUEUED'].includes(raw)) status = 'working';
-      else if (['FINISHED', 'COMPLETED'].includes(raw)) status = 'awaiting-input';
-      else if (['ERROR', 'FAILED', 'EXPIRED', 'CANCELLED'].includes(raw)) status = 'failed';
+      if (['RUNNING', 'CREATING', 'PENDING', 'QUEUED'].includes(raw))
+        status = 'working';
+      else if (['FINISHED', 'COMPLETED'].includes(raw))
+        status = 'awaiting-input';
+      else if (['ERROR', 'FAILED', 'EXPIRED', 'CANCELLED'].includes(raw))
+        status = 'failed';
 
       const lastActivity = a.updatedAt || a.createdAt || null;
       // Non-running agents older than the window are history, not "pending".
@@ -555,7 +654,11 @@ async function fetchCursor(config, opts) {
       agents.push({
         provider,
         id: String(a.id ?? ''),
-        title: a.name || a.summary || (a.source && a.source.repository) || 'background agent',
+        title:
+          a.name ||
+          a.summary ||
+          (a.source && a.source.repository) ||
+          'background agent',
         status,
         detail: `Cursor status: ${a.status}`,
         lastActivity,
@@ -571,7 +674,12 @@ async function fetchCursor(config, opts) {
     }
     return { provider, ok: true, agents, hints };
   } catch (err) {
-    return { provider, ok: false, reason: `Cursor API error: ${err.message}`, agents: [] };
+    return {
+      provider,
+      ok: false,
+      reason: `Cursor API error: ${err.message}`,
+      agents: [],
+    };
   }
 }
 
@@ -584,7 +692,8 @@ async function fetchCursor(config, opts) {
 //   <User>/globalStorage/state.vscdb                  -> conversations (cursorDiskKV)
 // Message types in conversations: 1 = user, 2 = assistant.
 
-const CURSOR_CMD_RE = /(?:^|[\\/\s"'=])cursor(?:\.exe|\.cmd|\.AppImage)?(?:["'\s]|$)/i;
+const CURSOR_CMD_RE =
+  /(?:^|[\\/\s"'=])cursor(?:\.exe|\.cmd|\.AppImage)?(?:["'\s]|$)/i;
 
 function cursorUserDir(config) {
   const override = config['agent-status.cursorIdeDir'];
@@ -595,7 +704,13 @@ function cursorUserDir(config) {
     return path.join(appData, 'Cursor', 'User');
   }
   if (process.platform === 'darwin') {
-    return path.join(os.homedir(), 'Library', 'Application Support', 'Cursor', 'User');
+    return path.join(
+      os.homedir(),
+      'Library',
+      'Application Support',
+      'Cursor',
+      'User'
+    );
   }
   return path.join(os.homedir(), '.config', 'Cursor', 'User');
 }
@@ -638,13 +753,22 @@ async function scanCursorIde(config, opts, sys) {
   const userDir = cursorUserDir(config);
 
   if (!(await safeStat(userDir))) {
-    return { provider, ok: false, reason: `Cursor desktop not found (${userDir} missing)`, agents: [] };
+    return {
+      provider,
+      ok: false,
+      reason: `Cursor desktop not found (${userDir} missing)`,
+      agents: [],
+    };
   }
 
-  const cursorProcs = sys.procs ? sys.procs.filter((p) => CURSOR_CMD_RE.test(p.cmd)) : null;
+  const cursorProcs = sys.procs
+    ? sys.procs.filter((p) => CURSOR_CMD_RE.test(p.cmd))
+    : null;
   const cursorRunning = cursorProcs === null ? null : cursorProcs.length > 0;
   const dbg = (msg) => opts.debug && log('info', `[cursor-ide debug] ${msg}`);
-  dbg(`userDir=${userDir} · cursorRunning=${cursorRunning === null ? 'unknown (scan failed)' : cursorRunning}`);
+  dbg(
+    `userDir=${userDir} · cursorRunning=${cursorRunning === null ? 'unknown (scan failed)' : cursorRunning}`
+  );
 
   // Collect recent composers across workspaces.
   const composers = []; // { id, name, lastUpdatedAt, folder }
@@ -660,7 +784,9 @@ async function scanCursorIde(config, opts, sys) {
 
       let folder = ws.name;
       try {
-        const meta = JSON.parse(await fs.readFile(path.join(wsDir, 'workspace.json'), 'utf-8'));
+        const meta = JSON.parse(
+          await fs.readFile(path.join(wsDir, 'workspace.json'), 'utf-8')
+        );
         if (meta.folder) folder = fileUriToPath(meta.folder);
       } catch {
         /* workspace.json optional */
@@ -673,7 +799,10 @@ async function scanCursorIde(config, opts, sys) {
           "SELECT value FROM ItemTable WHERE key = 'composer.composerData'"
         );
       } catch (err) {
-        if (err.code === 'NO_SQLITE' || /unknown or not supported|bad option/i.test(String(err.message))) {
+        if (
+          err.code === 'NO_SQLITE' ||
+          /unknown or not supported|bad option/i.test(String(err.message))
+        ) {
           return {
             provider,
             ok: false,
@@ -693,14 +822,24 @@ async function scanCursorIde(config, opts, sys) {
         for (const c of all) {
           const ts = Number(c.lastUpdatedAt ?? c.createdAt ?? 0);
           if (!ts || Date.now() - ts > opts.maxAgeMs) continue;
-          composers.push({ id: String(c.composerId), name: c.name || '', lastUpdatedAt: ts, folder });
+          composers.push({
+            id: String(c.composerId),
+            name: c.name || '',
+            lastUpdatedAt: ts,
+            folder,
+          });
         }
       } catch {
         /* malformed composer blob — skip workspace */
       }
     }
   } catch (err) {
-    return { provider, ok: false, reason: `failed to read Cursor state: ${err.message}`, agents: [] };
+    return {
+      provider,
+      ok: false,
+      reason: `failed to read Cursor state: ${err.message}`,
+      agents: [],
+    };
   }
 
   // Newer Cursor builds register chats only in the global store, not in the
@@ -738,7 +877,9 @@ async function scanCursorIde(config, opts, sys) {
       composers.push({ id, name, lastUpdatedAt: ts, folder: 'Cursor' });
       added++;
     }
-    dbg(`global store: ${added} recent composers not listed in any workspace db`);
+    dbg(
+      `global store: ${added} recent composers not listed in any workspace db`
+    );
   } catch (err) {
     dbg(`global store scan failed: ${err.message}`);
   }
@@ -764,7 +905,7 @@ async function scanCursorIde(config, opts, sys) {
         }
       }
     } catch {
-      /* global store unreadable — statuses degrade to idle/working below */
+      /* The global store is unreadable: statuses degrade to idle/working below. */
     }
   }
 
@@ -812,7 +953,12 @@ async function fetchCopilot(config, opts) {
   const provider = 'copilot';
   const token = config['agent-status.githubToken'];
   if (!token) {
-    return { provider, ok: false, reason: 'githubToken not configured — skipped', agents: [] };
+    return {
+      provider,
+      ok: false,
+      reason: 'githubToken not configured — skipped',
+      agents: [],
+    };
   }
 
   // Copilot coding agent works inside draft PRs it authors; a PR leaving
@@ -844,7 +990,9 @@ async function fetchCopilot(config, opts) {
         }
       );
       if (!res.ok) {
-        throw new Error(`api.github.com returned HTTP ${res.status} for scope "${scope}"`);
+        throw new Error(
+          `api.github.com returned HTTP ${res.status} for scope "${scope}"`
+        );
       }
       const body = await res.json();
       for (const item of body.items ?? []) {
@@ -853,21 +1001,31 @@ async function fetchCopilot(config, opts) {
     }
 
     const agents = [...byId.values()].map((pr) => {
-      const repo = String(pr.repository_url || '').replace('https://api.github.com/repos/', '');
+      const repo = String(pr.repository_url || '').replace(
+        'https://api.github.com/repos/',
+        ''
+      );
       const working = pr.draft === true;
       return {
         provider,
         id: `${repo}#${pr.number}`,
         title: pr.title,
         status: working ? 'working' : 'awaiting-input',
-        detail: working ? 'Copilot is still working (PR in draft)' : 'PR ready for your review',
+        detail: working
+          ? 'Copilot is still working (PR in draft)'
+          : 'PR ready for your review',
         lastActivity: pr.updated_at || null,
         url: pr.html_url,
       };
     });
     return { provider, ok: true, agents };
   } catch (err) {
-    return { provider, ok: false, reason: `GitHub API error: ${err.message}`, agents: [] };
+    return {
+      provider,
+      ok: false,
+      reason: `GitHub API error: ${err.message}`,
+      agents: [],
+    };
   }
 }
 
@@ -885,7 +1043,13 @@ const LOCAL_PROVIDERS = ['claude-code', 'codex', 'cursor-ide'];
 // setup=claude-hooks — install/remove the lifecycle hooks in ~/.claude/settings.json
 // ---------------------------------------------------------------------------
 
-const HOOK_EVENTS = ['SessionStart', 'UserPromptSubmit', 'Stop', 'Notification', 'SessionEnd'];
+const HOOK_EVENTS = [
+  'SessionStart',
+  'UserPromptSubmit',
+  'Stop',
+  'Notification',
+  'SessionEnd',
+];
 const HOOK_MARKER = 'claude-session-hook.js';
 
 async function setupClaudeHooks(action) {
@@ -908,17 +1072,28 @@ async function setupClaudeHooks(action) {
       );
     }
     await fs.copyFile(settingsPath, `${settingsPath}.agent-status.bak`);
-    log('info', `backed up existing settings to ${settingsPath}.agent-status.bak`);
+    log(
+      'info',
+      `backed up existing settings to ${settingsPath}.agent-status.bak`
+    );
   }
 
-  if (typeof settings.hooks !== 'object' || settings.hooks === null) settings.hooks = {};
+  if (typeof settings.hooks !== 'object' || settings.hooks === null)
+    settings.hooks = {};
 
   for (const event of HOOK_EVENTS) {
-    const groups = Array.isArray(settings.hooks[event]) ? settings.hooks[event] : [];
+    const groups = Array.isArray(settings.hooks[event])
+      ? settings.hooks[event]
+      : [];
     // Drop any previous install of ours (identified by the script name), then
     // re-add — this makes setup idempotent and repairs a moved repo path.
     const kept = groups.filter(
-      (g) => !(g && Array.isArray(g.hooks) && g.hooks.some((h) => String(h.command).includes(HOOK_MARKER)))
+      (g) =>
+        !(
+          g &&
+          Array.isArray(g.hooks) &&
+          g.hooks.some((h) => String(h.command).includes(HOOK_MARKER))
+        )
     );
     if (action === 'install') {
       kept.push({ hooks: [{ type: 'command', command }] });
@@ -932,13 +1107,24 @@ async function setupClaudeHooks(action) {
   await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2) + '\n');
 
   if (action === 'install') {
-    log('info', `hooks installed in ${settingsPath} (${HOOK_EVENTS.join(', ')})`);
+    log(
+      'info',
+      `hooks installed in ${settingsPath} (${HOOK_EVENTS.join(', ')})`
+    );
     log('info', 'restart any running Claude Code sessions to activate them');
-    log('info', 'from then on, agent-status reports verified live status for claude-code');
+    log(
+      'info',
+      'from then on, agent-status reports verified live status for claude-code'
+    );
   } else {
     log('info', `agent-status hooks removed from ${settingsPath}`);
   }
-  return { action, settingsPath, hookScript, events: action === 'install' ? HOOK_EVENTS : [] };
+  return {
+    action,
+    settingsPath,
+    hookScript,
+    events: action === 'install' ? HOOK_EVENTS : [],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -966,7 +1152,9 @@ function parseOptions(input) {
   const setup = String(input.setup ?? '');
   if (setup && !['claude-hooks', 'remove-claude-hooks'].includes(setup)) {
     throw Object.assign(
-      new Error(`Unknown setup action: "${setup}". Valid: claude-hooks, remove-claude-hooks`),
+      new Error(
+        `Unknown setup action: "${setup}". Valid: claude-hooks, remove-claude-hooks`
+      ),
       { code: 'BAD_INPUT' }
     );
   }
@@ -1048,7 +1236,9 @@ async function main() {
     }
     agents.push(
       ...r.agents
-        .sort((a, b) => String(b.lastActivity).localeCompare(String(a.lastActivity)))
+        .sort((a, b) =>
+          String(b.lastActivity).localeCompare(String(a.lastActivity))
+        )
         .slice(0, opts.maxPerProvider)
     );
   }
@@ -1066,7 +1256,8 @@ async function main() {
   for (const a of agents) {
     const icon = STATUS_ICONS[a.status] ?? '?';
     let label = a.status === 'awaiting-input' ? 'awaiting input' : a.status;
-    if (a.status === 'awaiting-input' && a.verified === false) label += ' (unverified)';
+    if (a.status === 'awaiting-input' && a.verified === false)
+      label += ' (unverified)';
     log(
       'info',
       `${icon} [${a.provider}] ${a.title} (${a.id}) — ${label} · ${relTime(a.lastActivity)}`
@@ -1104,7 +1295,9 @@ if (process.argv[2] === '--sqlite-helper') {
     const [, , , dbPath, sql, paramsJson] = process.argv;
     const { DatabaseSync } = require('node:sqlite');
     const db = new DatabaseSync(dbPath, { readOnly: true });
-    process.stdout.write(JSON.stringify(db.prepare(sql).all(...JSON.parse(paramsJson))));
+    process.stdout.write(
+      JSON.stringify(db.prepare(sql).all(...JSON.parse(paramsJson)))
+    );
     db.close();
     process.exit(0);
   } catch (err) {

@@ -107,7 +107,8 @@ def gesture_card(dev: str, gestures, app_id: str | None, base: dict | None, wher
     if isinstance(gestures, str):
         name = gestures.replace("-", "_")
         if name not in nested or name == cat.CUSTOM_GESTURE:
-            choices = ", ".join(k.replace("_", "-") for k in card.get("nestedCardsOrder", nested) if k != cat.CUSTOM_GESTURE)
+            choices = ", ".join(k.replace("_", "-") for k in card.get("nestedCardsOrder", nested)
+                                if k != cat.CUSTOM_GESTURE)
             raise SpecError(f"{where}: unknown gesture preset '{gestures}'. Presets: {choices}; "
                             "or give up/down/left/right/click actions for custom gestures.")
         card["selectedNestedCard"] = name
@@ -116,7 +117,8 @@ def gesture_card(dev: str, gestures, app_id: str | None, base: dict | None, wher
         raise SpecError(f"{where}: gestures must be a preset name or a map of {', '.join(cat.GESTURE_DIRECTIONS)}.")
     bad = set(gestures) - set(cat.GESTURE_DIRECTIONS)
     if bad:
-        raise SpecError(f"{where}: unknown gesture direction(s) {sorted(bad)}; use {', '.join(cat.GESTURE_DIRECTIONS)}.")
+        raise SpecError(f"{where}: unknown gesture direction(s) {sorted(bad)}; "
+                        f"use {', '.join(cat.GESTURE_DIRECTIONS)}.")
     default_custom = default_gesture_card(dev)["nestedCards"][cat.CUSTOM_GESTURE]
     custom = nested.setdefault(cat.CUSTOM_GESTURE, copy.deepcopy(default_custom))
     inner = custom.setdefault("nestedCards", {})
@@ -135,7 +137,8 @@ def compile_button(dev: str, button: str, action, app_id: str | None, existing: 
         if cat.BUTTON_ALIASES.get(button, button) != "thumb":
             raise SpecError(f"{where}: gestures are only possible on the thumb (gesture) button.")
         _check_action(action, where, allow_gestures=True)
-        return assignment(slot, gesture_card(dev, action["gestures"], app_id, existing["card"] if existing else None, where))
+        previous = existing["card"] if existing else None
+        return assignment(slot, gesture_card(dev, action["gestures"], app_id, previous, where))
     return assignment(slot, action_card(action, app_id, where))
 
 
@@ -224,7 +227,8 @@ def application_key(spec_app: dict) -> str:
 
 def validate_application(spec_app, where: str) -> None:
     if not isinstance(spec_app, dict):
-        raise SpecError(f"{where}: expected {{\"global\": true}} | {{\"builtin\": name}} | {{\"executable\": \"file.exe\"}}.")
+        raise SpecError(f"{where}: expected {{\"global\": true}} | {{\"builtin\": name}} | "
+                        f"{{\"executable\": \"file.exe\"}}.")
     kinds = [k for k in APPLICATION_KINDS if k in spec_app]
     extra = set(spec_app) - set(APPLICATION_KINDS) - {"name", "searchPaths"}
     if len(kinds) != 1 or extra:
@@ -292,7 +296,8 @@ def resolve_application(spec_app: dict, doc: dict) -> ResolvedApp:
         return r
     exe = str(spec_app["executable"])
     for a in st.applications(doc):
-        if any(Path(p).name.lower() == exe.lower() for p in a.get("applicationPathsList", [a.get("applicationPath", "")])):
+        paths = a.get("applicationPathsList", [a.get("applicationPath", "")])
+        if any(Path(p).name.lower() == exe.lower() for p in paths):
             r = ResolvedApp(a["applicationId"], f"profile-{a['applicationId']}", a.get("name", exe))
             r.notes.append(f"reusing application entry {a['applicationId']} ({a.get('applicationPath')})")
             return r

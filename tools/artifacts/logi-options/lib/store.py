@@ -27,7 +27,7 @@ import time
 from ctypes import wintypes
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from collections.abc import Callable
 
 from errors import StoreError
 
@@ -253,7 +253,8 @@ class Store:
                 log("debug", f"agent started in {time.monotonic() - t0:.1f}s (pid {running[0]})")
                 return running[0]
             time.sleep(0.1)
-        raise StoreError(f"Started {AGENT_EXE} but it is not running after {wait_s:.0f}s. Start Logi Options+ manually.")
+        raise StoreError(f"Started {AGENT_EXE} but it is not running after {wait_s:.0f}s. "
+                         "Start Logi Options+ manually.")
 
 
 # ---------------------------------------------------------------- model helpers

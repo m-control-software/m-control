@@ -25,7 +25,8 @@ def main() -> int:
         if isinstance(o, dict):
             ks = o.get("keystroke")
             if isinstance(ks, dict):
-                seen[ks.get("code", 0)].add((ks.get("virtualKeyId", ""), ks.get("displayCharacter", ""), o.get("actionName", "")))
+                seen[ks.get("code", 0)].add(
+                    (ks.get("virtualKeyId", ""), ks.get("displayCharacter", ""), o.get("actionName", "")))
             for v in o.values():
                 walk(v)
         elif isinstance(o, list):

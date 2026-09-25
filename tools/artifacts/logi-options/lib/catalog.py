@@ -57,7 +57,7 @@ def available() -> bool:
         return False
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def build_dir() -> Path:
     if not DEPOTS.is_dir():
         raise CatalogError(f"{DEPOTS} not found. Is Logi Options+ installed on this machine?")
@@ -74,12 +74,12 @@ def _load(rel: str):
     return json.loads(p.read_text(encoding="utf-8"))
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def cards() -> dict[str, dict]:
     return {c["id"]: c for c in _load(r"logioptionsplus\data\card_presets\card_presets_win.json")["cards"]}
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def builtin_apps() -> dict[str, dict]:
     apps = _load(r"logioptionsplus\data\applications.json")["applications"]
     return {a["applicationId"]: a for a in apps if "applicationId" in a}
@@ -127,7 +127,7 @@ def _alias(card_id: str) -> str | None:
     return m.group(1).replace("_", "-") if m else None
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def preset_aliases() -> dict[str, str]:
     """alias -> card id, for aliases that are unambiguous in this catalog."""
     seen: dict[str, list[str]] = {}
@@ -194,7 +194,7 @@ MODIFIER_ALIASES = {"CONTROL": "CTRL", "LCTRL": "CTRL", "LSHIFT": "SHIFT", "LALT
 KEYS: dict[str, tuple[int, str, str]] = {}
 for i, ch in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ"):
     KEYS[ch] = (4 + i, f"VK_{ch}", ch)
-for i, (d, shifted) in enumerate(zip("1234567890", "!@#$%^&*()")):
+for i, (d, shifted) in enumerate(zip("1234567890", "!@#$%^&*()", strict=True)):
     KEYS[d] = (30 + i, f"VK_{d}", f"{d} / {shifted}")
 for n in range(1, 13):
     KEYS[f"F{n}"] = (57 + n, f"VK_F{n}", f"F{n}")

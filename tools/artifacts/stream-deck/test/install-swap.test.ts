@@ -22,7 +22,10 @@ const HARNESS = path.join(__dirname, 'fixtures', 'Invoke-InstallScenario.ps1');
 // The tool is Windows-only: it drives %APPDATA%\Elgato and System.Drawing.
 const windowsOnly = process.platform === 'win32' ? describe : describe.skip;
 
-function runScenario(scenario: string, workDir: string): Record<string, unknown> {
+function runScenario(
+  scenario: string,
+  workDir: string
+): Record<string, unknown> {
   const result = spawnSync(
     'powershell',
     [

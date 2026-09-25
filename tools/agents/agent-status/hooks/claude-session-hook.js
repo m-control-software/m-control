@@ -27,12 +27,14 @@ const os = require('os');
 const { execFileSync } = require('child_process');
 
 const STATE_DIR =
-  process.env.M_CONTROL_STATE_DIR || path.join(os.homedir(), '.m-control', 'state');
+  process.env.M_CONTROL_STATE_DIR ||
+  path.join(os.homedir(), '.m-control', 'state');
 const REGISTRY_FILE = path.join(STATE_DIR, 'claude-sessions.json');
 
 // Matches "claude" as a standalone token in a command line (claude, claude.exe,
 // node .../claude.js) without matching mere path fragments like C:\.claude\.
-const CLAUDE_CMD_RE = /(?:^|[\\/\s"'=])claude(?:\.exe|\.cmd|\.js|\.mjs)?(?:["'\s]|$)/i;
+const CLAUDE_CMD_RE =
+  /(?:^|[\\/\s"'=])claude(?:\.exe|\.cmd|\.js|\.mjs)?(?:["'\s]|$)/i;
 
 // Give up quietly if anything hangs — never stall the user's session.
 setTimeout(() => process.exit(0), 8000).unref();
@@ -46,7 +48,10 @@ function parentOf(pid) {
       const rest = stat.slice(stat.lastIndexOf(')') + 2).split(' ');
       let cmd = '';
       try {
-        cmd = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf-8').replace(/\0/g, ' ').trim();
+        cmd = fs
+          .readFileSync(`/proc/${pid}/cmdline`, 'utf-8')
+          .replace(/\0/g, ' ')
+          .trim();
       } catch {
         /* kernel threads have no cmdline */
       }
@@ -65,13 +70,20 @@ function parentOf(pid) {
         { timeout: 5000, windowsHide: true, encoding: 'utf-8' }
       );
       const p = JSON.parse(out);
-      return { ppid: Number(p.ParentProcessId), cmd: String(p.CommandLine || p.Name || '') };
+      return {
+        ppid: Number(p.ParentProcessId),
+        cmd: String(p.CommandLine || p.Name || ''),
+      };
     }
     // darwin and other unixes
-    const out = execFileSync('ps', ['-o', 'ppid=,command=', '-p', String(pid)], {
-      timeout: 5000,
-      encoding: 'utf-8',
-    });
+    const out = execFileSync(
+      'ps',
+      ['-o', 'ppid=,command=', '-p', String(pid)],
+      {
+        timeout: 5000,
+        encoding: 'utf-8',
+      }
+    );
     const m = out.trim().match(/^(\d+)\s+(.*)$/);
     return m ? { ppid: Number(m[1]), cmd: m[2] } : null;
   } catch {
@@ -97,7 +109,12 @@ function findClaudeAncestorPid() {
 function readRegistry() {
   try {
     const raw = JSON.parse(fs.readFileSync(REGISTRY_FILE, 'utf-8'));
-    if (raw && typeof raw === 'object' && raw.sessions && typeof raw.sessions === 'object') {
+    if (
+      raw &&
+      typeof raw === 'object' &&
+      raw.sessions &&
+      typeof raw.sessions === 'object'
+    ) {
       return raw;
     }
   } catch {

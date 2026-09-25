@@ -15,7 +15,7 @@ from __future__ import annotations
 import copy
 import time
 from pathlib import Path
-from typing import Callable
+from collections.abc import Callable
 
 import backup
 import docdiff

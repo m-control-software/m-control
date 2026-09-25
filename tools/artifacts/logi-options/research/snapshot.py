@@ -44,7 +44,8 @@ def file_records() -> list[dict]:
             if not p.is_file() or p.relative_to(root).parts[0] in excluded:
                 continue
             s = p.stat()
-            rec = {"path": str(p), "size": s.st_size, "mtime": dt.datetime.fromtimestamp(s.st_mtime).isoformat(timespec="seconds")}
+            mtime = dt.datetime.fromtimestamp(s.st_mtime).isoformat(timespec="seconds")
+            rec = {"path": str(p), "size": s.st_size, "mtime": mtime}
             try:
                 rec["sha256"] = st.sha256_file(p)
             except OSError as e:  # exclusively locked (Electron lockfile)
@@ -102,7 +103,8 @@ def main() -> int:
         "processes": st.logi_processes()}, indent=2), encoding="utf-8")
     (dest / "files.json").write_text(json.dumps(file_records(), indent=1), encoding="utf-8")
     (dest / "registry.json").write_text(json.dumps(registry_fingerprints(), indent=1), encoding="utf-8")
-    print(f"snapshot {args.label}: blob {snap.sha256[:16]} ({len(snap.blob)} bytes, saved {snap.date_created} UTC) -> {dest}")
+    print(f"snapshot {args.label}: blob {snap.sha256[:16]} ({len(snap.blob)} bytes, "
+          f"saved {snap.date_created} UTC) -> {dest}")
     return 0
 
 

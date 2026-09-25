@@ -58,7 +58,8 @@ def resolve(backups_dir: Path, name: str) -> Path:
     if not p.is_absolute():
         p = backups_dir / name
     if not (p / "manifest.json").is_file():
-        raise StoreError(f"{p} is not a logi-options backup (no manifest.json). List them: mctl run logi-options mode=backups")
+        raise StoreError(f"{p} is not a logi-options backup (no manifest.json). "
+                         "List them: mctl run logi-options mode=backups")
     return p
 
 
