@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "yarn: build",
+      "type": "shell",
+      "command": "yarn build",
+      "group": "build",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "yarn: verify",
+      "type": "shell",
+      "command": "yarn verify",
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}

@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && ncc build dist/index.js -o dist/bundle --minify",
-    "dev": "ts-node -r tsconfig-paths/register src/index.ts",
+    "dev": "ts-node src/index.ts",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write 'src/**/*.ts'",
     "typecheck": "tsc --noEmit"

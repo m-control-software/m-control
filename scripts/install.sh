@@ -19,7 +19,7 @@ echo "=== m-control Installer ==="
 echo "Repo root: $REPO_ROOT"
 echo ""
 
-command -v node >/dev/null 2>&1 || { echo "FAIL Node.js not found. Install Node.js 18+ first."; exit 1; }
+command -v node >/dev/null 2>&1 || { echo "FAIL Node.js not found. Install Node.js 20+ first."; exit 1; }
 echo "OK Node.js detected: $(node --version)"
 command -v yarn >/dev/null 2>&1 || { echo "FAIL yarn not found. Install via: npm install -g yarn"; exit 1; }
 echo "OK yarn detected: $(yarn --version)"

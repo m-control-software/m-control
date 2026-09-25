@@ -21,7 +21,7 @@ The key architectural bet: tools are **separate processes** (any language), orch
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20+ (22 recommended, see `.nvmrc`)
 - Yarn 1.22+
 - Git
 - Python 3.10+ (for Python tools)

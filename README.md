@@ -11,7 +11,7 @@ Michał's personal CLI orchestrator — discovers and runs standalone tool proce
 
 ## Requirements
 
-- Node.js 18.0.0 or higher
+- Node.js 20 or higher (22 recommended, see `.nvmrc`)
 - Yarn 1.22+
 
 ## Project structure

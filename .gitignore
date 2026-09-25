@@ -11,9 +11,14 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Config (secrets)
-config.json
+# m-control config (may hold secrets). Global config lives in ~/.m-control/,
+# outside the repo; this catches a project config created at the repo root.
+.m-control/
 .env
+
+# Package managers other than the pinned Yarn (see packageManager)
+package-lock.json
+pnpm-lock.yaml
 
 # OS
 .DS_Store

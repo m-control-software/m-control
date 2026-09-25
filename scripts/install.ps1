@@ -19,7 +19,7 @@ try {
     $nodeVersion = node --version
     Write-Host "OK Node.js detected: $nodeVersion" -ForegroundColor Green
 } catch {
-    Write-Host "FAIL Node.js not found. Install Node.js 18+ first." -ForegroundColor Red
+    Write-Host "FAIL Node.js not found. Install Node.js 20+ first." -ForegroundColor Red
     exit 1
 }
 
