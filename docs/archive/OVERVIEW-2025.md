@@ -311,9 +311,9 @@ See [plugin-contract.md](plugin-contract.md) for details.
 ## 📚 Related Documentation
 
 - [Plugin Contract](plugin-contract.md) - How plugins work
-- [Execution Model](execution-model.md) - How commands execute
+- [Execution Model](../architecture/execution-model.md) - How commands execute
 - [Context Model](context-model.md) - How data flows
-- [Constraints](constraints.md) - Architectural rules
+- [Constraints](../architecture/constraints.md) - Architectural rules
 
 ---
 

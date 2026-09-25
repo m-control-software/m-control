@@ -31,6 +31,7 @@ INPUT_KEYS = {"mode", "check", "app", "out", "pack", "force", "backup", "device"
 
 def main() -> int:
     if sys.platform != "win32":
+        sys.stdin.read()  # Protocol v1: consume the request even when refusing it.
         pr.started()
         pr.error("logi-options supports Windows only (v1). Options+ also ships macOS catalogs; see "
                  "docs/internals.md for what a macOS port would need.", "UNSUPPORTED_PLATFORM", True)

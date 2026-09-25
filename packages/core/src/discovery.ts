@@ -193,6 +193,14 @@ function validateManifest(raw: unknown, filePath: string): ToolManifest {
     }
   }
 
+  if (
+    obj['tags'] !== undefined &&
+    (!Array.isArray(obj['tags']) ||
+      obj['tags'].some((t) => typeof t !== 'string'))
+  ) {
+    err(`field "tags" must be an array of strings`);
+  }
+
   // A zero or negative budget would kill every run instantly, and a string
   // would be passed straight to setTimeout and coerced to 0. Fail at discovery
   // instead, where the manifest path is in the message.

@@ -404,8 +404,8 @@ expect(mockContext.logger.info).toHaveBeenCalledWith('Processing...');
 ## 📚 Related Docs
 
 - [Plugin Contract](plugin-contract.md) - How context is used
-- [Execution Model](execution-model.md) - When context is created
-- [Constraints](constraints.md) - Context security rules
+- [Execution Model](../architecture/execution-model.md) - When context is created
+- [Constraints](../architecture/constraints.md) - Context security rules
 
 ---
 

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://m-control.local/schemas/manifest.v1.schema.json",
+  "title": "m-control tool manifest (manifestVersion 1)",
+  "description": "tools/<category>/<id>/manifest.json. Mirrors validateManifest in packages/core/src/discovery.ts; test/manifest-schema.test.ts keeps the two in agreement. The source of truth is ToolManifest in packages/core/src/types.ts.",
+  "type": "object",
+  "required": ["manifestVersion", "id", "version", "name", "description", "runtime", "entry"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "manifestVersion": {
+      "const": 1,
+      "description": "Schema version. A breaking change to the manifest bumps it."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Unique kebab-case id, used in `mctl run <id>`. Matches the tool's directory name."
+    },
+    "version": { "type": "string", "description": "Semver version of the tool." },
+    "name": { "type": "string", "description": "Display name." },
+    "description": { "type": "string", "description": "One line, shown by `mctl list`." },
+    "runtime": {
+      "enum": ["node", "python", "powershell", "dotnet"],
+      "description": "Decides the spawn command: node -> the running Node, python -> python/python3, powershell -> powershell/pwsh, dotnet -> dotnet <dll> or the executable."
+    },
+    "entry": {
+      "type": "string",
+      "description": "Entry point, relative to this manifest (e.g. index.js, main.py, main.ps1)."
+    },
+    "requiredConfig": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Dot-paths under the config's `tools` section the tool cannot work without. `mctl doctor` reports unset ones; the tool must still fail recoverably when one is empty."
+    },
+    "optionalConfig": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Dot-paths the tool reads when present. Only declared keys (required + optional) reach the tool."
+    },
+    "timeoutMs": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Run budget in ms. Precedence: config timeouts.tools[id] > timeoutMs > config timeouts.default > 30000."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Free-form tags for filtering."
+    }
+  }
+}

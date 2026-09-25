@@ -5,6 +5,15 @@
     "source.fixAll.eslint": "explicit"
   },
 
+  // Validates tool manifests as you type. Same rules as mctl's discovery
+  // (test/manifest-schema.test.ts keeps them in agreement).
+  "json.schemas": [
+    {
+      "fileMatch": ["/tools/**/manifest.json", "/templates/**/manifest.json"],
+      "url": "./packages/core/schemas/manifest.v1.schema.json"
+    }
+  ],
+
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
 

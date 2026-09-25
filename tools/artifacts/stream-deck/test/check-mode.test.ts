@@ -53,9 +53,11 @@ function snapshot(dir: string): Record<string, string> {
 
 windowsOnly('stream-deck check mode', () => {
   let profilesRoot: string;
+  let packDir: string;
 
   beforeEach(() => {
     profilesRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sd-profiles-'));
+    packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sd-packs-'));
     // One existing bundle, purely so the device serial is discoverable.
     const bundle = path.join(
       profilesRoot,
@@ -79,6 +81,7 @@ windowsOnly('stream-deck check mode', () => {
 
   afterEach(() => {
     fs.rmSync(profilesRoot, { recursive: true, force: true });
+    fs.rmSync(packDir, { recursive: true, force: true });
   });
 
   it('writes nothing to the profiles root', () => {
@@ -88,6 +91,8 @@ windowsOnly('stream-deck check mode', () => {
       {
         'stream-deck.profileName': 'MCtl Test',
         'stream-deck.profilesRoot': profilesRoot,
+        // Required; an empty pack dir adds nothing to the shared pack.
+        'stream-deck.packDirs': packDir,
       },
       { check: 'true' }
     );
@@ -107,6 +112,8 @@ windowsOnly('stream-deck check mode', () => {
       {
         'stream-deck.profileName': 'MCtl Test',
         'stream-deck.profilesRoot': profilesRoot,
+        // Required; an empty pack dir adds nothing to the shared pack.
+        'stream-deck.packDirs': packDir,
       },
       { check: 'false' }
     );
@@ -123,6 +130,8 @@ windowsOnly('stream-deck check mode', () => {
       {
         'stream-deck.profileName': 'MCtl Test',
         'stream-deck.profilesRoot': profilesRoot,
+        // Required; an empty pack dir adds nothing to the shared pack.
+        'stream-deck.packDirs': packDir,
       },
       { check: 'banana' }
     );
@@ -138,6 +147,8 @@ windowsOnly('stream-deck check mode', () => {
       {
         'stream-deck.profileName': 'MCtl Test',
         'stream-deck.profilesRoot': profilesRoot,
+        // Required; an empty pack dir adds nothing to the shared pack.
+        'stream-deck.packDirs': packDir,
       },
       { check: 'true' }
     );

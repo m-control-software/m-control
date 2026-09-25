@@ -66,9 +66,32 @@ function ConvertTo-DeckBool {
     }
 }
 
+function Get-MissingRequiredConfig {
+    <#
+        Every key manifest.json declares in requiredConfig that is unset or
+        empty - the rule `mctl doctor` applies. Nothing enforces requiredConfig
+        at run time, so without this an unconfigured run would carry on with
+        defaults (on Windows: install the shared pack under the spec's name).
+    #>
+    [CmdletBinding()] param($Config)
+    $manifest = Get-Content -LiteralPath (Join-Path $here 'manifest.json') -Raw | ConvertFrom-Json
+    $missing = @()
+    foreach ($key in @($manifest.requiredConfig)) {
+        $v = Get-SpecProperty $Config $key
+        if ($null -eq $v -or ($v -is [string] -and $v -eq '')) { $missing += $key }
+    }
+    return $missing
+}
+
 $exitCode = 0
+$started = $false
+# Until the request parses, a failure is mctl's bug, not the user's.
+$failureCode = 'INVALID_REQUEST'
+$recoverable = $false
 try {
     $request = Read-ToolRequest
+    $failureCode = 'STREAM_DECK_FAILED'
+    $recoverable = $true
 
     # Not $input: that is a PowerShell automatic variable (the pipeline
     # enumerator) and assigning it would shadow the real one.
@@ -79,6 +102,15 @@ try {
     $config  = Get-SpecProperty $context 'config'
 
     Write-ToolStarted -Meta @{ mode = $(if ($checkOnly) { 'check' } else { 'generate' }) }
+    $started = $true
+
+    # ---- 0. Required config ---------------------------------------------
+    $missingConfig = @(Get-MissingRequiredConfig -Config $config)
+    if ($missingConfig.Count -gt 0) {
+        $failureCode = 'CONFIG_MISSING'
+        $keys = ($missingConfig | ForEach-Object { "tools.$_" }) -join ', '
+        throw "Missing required config: $keys. Set it in ~/.m-control/config.json (see the stream-deck README), then run 'mctl doctor'."
+    }
 
     # ---- 1. Locate packs -------------------------------------------------
     $packDirs = @(Get-ConfigValue $config 'packDirs' @())
@@ -192,7 +224,9 @@ try {
 catch {
     $exitCode = 1
     try {
-        Write-ToolError -Message $_.Exception.Message -Code 'STREAM_DECK_FAILED' -Recoverable $true
+        # Protocol v1: `started` comes first even when the request was unreadable.
+        if (-not $started) { Write-ToolStarted }
+        Write-ToolError -Message $_.Exception.Message -Code $failureCode -Recoverable $recoverable
     } catch {
         # Protocol emission itself failed - nothing left but a non-zero exit.
         $exitCode = 2

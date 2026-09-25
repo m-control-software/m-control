@@ -64,4 +64,4 @@ a missing catalog file, or `test_model.py` failures mean **Options+ changed its
 internals** (usually after an update). Don't work around the guard. Follow
 **`tools/artifacts/logi-options/docs/maintenance.md`**: run the tests, then the
 controlled-change method with `research/`. Background:
-`docs/internals.md`, ADR-0011.
+`tools/artifacts/logi-options/docs/internals.md`, ADR-0011.

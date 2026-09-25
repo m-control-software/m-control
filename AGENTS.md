@@ -47,9 +47,9 @@ is the bar before pushing. Its steps: install `--frozen-lockfile`, build core,
 typecheck, lint, test, build, then `scripts/smoke.mjs`. The smoke test runs the
 bundle in a throwaway HOME (it never touches your real config): `--help`,
 `init`, `list`, `doctor` must fail on the fresh config, then pass once every
-tool's `test/smoke-config.json` is merged in, then `run hello-world` and
+tool's `<tool>/test/smoke-config.json` is merged in, then `run hello-world` and
 `run hello-python`. A tool with `requiredConfig` must ship
-`test/smoke-config.json` supplying those keys (`${toolDir}` expands to the
+`<tool>/test/smoke-config.json` supplying those keys (`${toolDir}` expands to the
 tool's directory). Add a new check to `verify.mjs`, never only to the workflow.
 
 ## Contracts (source of truth: `packages/core/src/types.ts`)
@@ -109,9 +109,6 @@ spawn command (`resolveSpawnCommand`): node → the running Node binary; python 
 
 ## Adding a tool
 
-Claude Code: the `add-tool` skill runs this procedure with its approval gates.
-Other agents: read `.claude/skills/add-tool/SKILL.md` and follow it.
-
 1. Scaffold — never copy by hand:
    `yarn new:tool --id=<kebab-id> --category=<kebab> --runtime=<node|python> --description="…"`.
    It fills the id everywhere, adds a protocol test and a CHANGELOG entry.
@@ -136,7 +133,7 @@ Other agents: read `.claude/skills/add-tool/SKILL.md` and follow it.
    Tests that need Windows or an installed app skip themselves elsewhere (CI is
    Ubuntu) — keep a platform-independent test for anything that can be checked
    without them. A tool with `requiredConfig` also ships
-   `test/smoke-config.json` (see "Commands").
+   `<tool>/test/smoke-config.json` (see "Commands").
 6. Write the `README.md` (the scaffold has one): usage, config keys, external
    dependencies. The README is where config keys are documented — `mctl init`
    writes no tool sections.
@@ -144,6 +141,18 @@ Other agents: read `.claude/skills/add-tool/SKILL.md` and follow it.
    lives in directories the user points the tool at via config (e.g.
    `tools.logi-options.packDirs`).
 8. `yarn verify`.
+
+## Procedures (skills)
+
+Multi-step procedures live as skills in `.claude/skills/<name>/SKILL.md`.
+Claude Code loads them automatically; any other agent should read the matching
+`SKILL.md` and follow it. Skills hold the judgment and the approval gates;
+mechanical steps are scripts they call. `test/docs.test.ts` fails when a skill
+is missing from this list.
+
+| Skill | Use it to |
+|-------|-----------|
+| `author-logi-profile` | Write or change MX Master 4 profiles (`*.logi.json`) and apply them. |
 
 ## Code rules
 

@@ -416,9 +416,9 @@ npm run build
 
 ## 📚 Related Docs
 
-- [Execution Model](execution-model.md) - How plugins are executed
+- [Execution Model](../architecture/execution-model.md) - How plugins are executed
 - [Context Model](context-model.md) - How context flows
-- [Constraints](constraints.md) - What plugins must NOT do
+- [Constraints](../architecture/constraints.md) - What plugins must NOT do
 
 ---
 
