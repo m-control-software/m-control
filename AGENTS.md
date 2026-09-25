@@ -160,6 +160,7 @@ spawn command (`resolveSpawnCommand`): node → the running Node binary; python 
   - first-run steps → `QUICKSTART.md`.
 - Other docs link to these instead of restating them. Restated rules go stale
   (see `LESSONS-LEARNED.md`).
-- Branches: work happens on short-lived branches merged into `main`, which CI
-  gates. ADR-0005 describes a `main` + `develop` model that is not currently
-  followed (`develop` is behind `main`); see `CONTRIBUTING.md`.
+- Branches (ADR-0012): `main` is the only long-lived branch. Work on a
+  short-lived branch, run the CI steps locally, then merge or fast-forward
+  into `main`. Never target `develop` (retired). Known-good states are release
+  tags `vX.Y.Z`, not a branch.

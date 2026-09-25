@@ -197,9 +197,10 @@ Verified plan facts (2026-08-05):
   Free org** — public repos only until GitHub Team ($4/user/month). Team
   also adds multiple PR reviewers, CODEOWNERS, draft PRs, Pages and wikis
   on private repos, 3,000 Actions minutes, 2GB Packages.
-- **This costs nothing today.** Per ADR-0005 the workflow is direct commits
-  to `develop` while solo, no self-PRs — CI runs on both branches but
-  nothing depends on *required* status checks or required reviewers. That
+- **This costs nothing today.** Per ADR-0012 (which superseded ADR-0005) the
+  workflow is short-lived branches merged into `main` while solo, no
+  self-PRs — CI runs on `main` but nothing depends on *required* status
+  checks or required reviewers. That
   changes the day someone else is onboarded onto the work toolset.
 - **Free orgs cap external collaborators on private repos at 3.** Directly
   relevant to the sharing requirement: handing the work toolset to more

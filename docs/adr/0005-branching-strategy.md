@@ -1,6 +1,6 @@
 # ADR-0005: Branching Strategy — main + develop, Solo Workflow
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0012](0012-trunk-based-on-main.md) (2026-09-25)
 **Date:** 2026-02-28
 **Deciders:** Michał + Claude
 **Tags:** workflow, git, ci

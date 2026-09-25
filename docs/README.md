@@ -26,7 +26,7 @@ maintained, see [DOCS-STRUCTURE.md](../DOCS-STRUCTURE.md).
 docs/
 ├── README.md               👈 You are here
 ├── VISION.md               Product north star
-├── adr/                    Architecture Decision Records (0001–0011)
+├── adr/                    Architecture Decision Records (0001–0012)
 ├── architecture/
 │   ├── OVERVIEW.md         Component map, run flow, tool kinds
 │   ├── constraints.md      ⚠️ The hard rules

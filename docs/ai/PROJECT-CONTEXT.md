@@ -101,7 +101,7 @@ yarn build                              # runs both in correct order
 ## CI pipeline (GitHub Actions)
 
 Pipeline: `.github/workflows/ci.yml`
-Triggers: push or PR to `main` or `develop`
+Triggers: push or PR to `main`
 
 Steps:
 1. Checkout, setup Node 22
@@ -119,10 +119,9 @@ Steps:
 
 ## Branching strategy
 
-ADR-0005 defines `main` (stable, tags) + `develop` (day-to-day). **In practice**
-work is done on short-lived branches (often agent-created `claude/*`) and merged
-into `main`; `develop` has fallen behind `main`. Until ADR-0005 is revisited,
-target `main` and let CI gate it. See `CONTRIBUTING.md`.
+Trunk-based on `main` (ADR-0012): short-lived branches (often agent-created
+`claude/*`) merged into `main`, CI on every push. Known-good = release tags
+`vX.Y.Z`. `develop` is retired. See `CONTRIBUTING.md`.
 
 ---
 

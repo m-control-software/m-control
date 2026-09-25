@@ -25,7 +25,7 @@ m-control/
 │   │
 │   ├── adr/                     # Architecture Decision Records
 │   │   ├── TEMPLATE.md          # Blank ADR to copy
-│   │   └── 0001-…0011-*.md      # 0009 and 0010 are Proposed
+│   │   └── 0001-…0012-*.md      # 0009 and 0010 are Proposed; 0005 superseded by 0012
 │   │
 │   ├── architecture/            # How the system works (technical)
 │   │   ├── OVERVIEW.md          # Big picture, component map, run flow

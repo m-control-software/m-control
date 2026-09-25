@@ -131,6 +131,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and they went stale. Tools document their keys in their README; `mctl doctor`
   names missing required ones. Existing configs are unaffected.
 
+- **Branching: trunk-based on `main`** (ADR-0012, supersedes ADR-0005). The
+  `main` + `develop` model hadn't been followed since March; `develop` is
+  retired and CI no longer triggers on it. Known-good versions are release
+  tags.
+
 ### Removed
 
 - `config/config.template.json` — copied into `~/.m-control/` by the

@@ -104,9 +104,9 @@ See `QUICKSTART.md` for a complete getting-started walkthrough.
 
 ## Branching strategy
 
-Work happens on short-lived branches merged into `main`; CI gates pushes and
-PRs to `main`. See `CONTRIBUTING.md` for details (and for the status of the
-`develop` branch from ADR-0005).
+Trunk-based on `main` (ADR-0012): short-lived branches merged into `main`,
+CI on every push and PR, release tags `vX.Y.Z` mark known-good versions. See
+`CONTRIBUTING.md`.
 
 ## Adding a tool
 

@@ -50,15 +50,17 @@ node apps/mctl/dist/bundle/index.js doctor
 
 ## Branching strategy
 
-**Current practice:** work is done on short-lived branches (often created by a
-coding agent, e.g. `claude/<topic>`) and merged into `main`. CI gates pushes
-and PRs to `main`. Version tags (`v0.X.0`) go on `main`.
+Trunk-based on `main` (ADR-0012, superseding ADR-0005):
 
-**Documented model (ADR-0005):** `main` (stable, tags) + `develop` (direct
-commits while solo), with `main` updated from `develop` at milestones. This is
-not what happens today: `develop` is behind `main` and carries a few commits
-that were never merged. ADR-0005 needs revisiting — either retire `develop`
-(supersede the ADR) or return to it. Until then, target `main`.
+1. `main` is the only long-lived branch. Work on a short-lived branch (coding
+   agents create `claude/<topic>`), or commit small changes directly.
+2. Run the CI steps locally before anything reaches `main`; CI runs on every
+   push and PR to `main`.
+3. A red `main` gets fixed before new work lands.
+4. The known-good state is the latest release tag `vX.Y.Z`, not the tip of
+   `main`. To install a proven version on another machine, check out the tag
+   and run the installer.
+5. `develop` is retired: don't branch from it or merge it.
 
 ## Commit conventions
 
@@ -82,7 +84,7 @@ Reads PR diff from stdin, calls Claude, emits review as result event.
 
 ## CI pipeline
 
-GitHub Actions runs on every push and pull request targeting `main` or `develop`.
+GitHub Actions runs on every push and pull request targeting `main`.
 
 Pipeline: `.github/workflows/ci.yml`
 
