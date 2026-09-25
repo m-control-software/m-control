@@ -2,12 +2,44 @@
   "permissions": {
     "allow": [
       "mcp__ide__getDiagnostics",
-      "Bash(yarn build:*)",
+      "mcp__Claude_Code_Remote__read_documentation",
       "Bash(yarn install:*)",
+      "Bash(yarn build:*)",
       "Bash(yarn typecheck:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "mcp__Claude_Code_Remote__read_documentation"
+      "Bash(yarn lint:*)",
+      "Bash(yarn format:*)",
+      "Bash(yarn test:*)",
+      "Bash(yarn verify:*)",
+      "Bash(yarn smoke:*)",
+      "Bash(yarn new:tool:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git commit:*)"
+    ],
+    "ask": ["Bash(git push:*)"]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.mjs\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/format-edited-file.mjs\""
+          }
+        ]
+      }
     ]
   }
 }
