@@ -87,7 +87,9 @@ describe('paths quoted in agent instructions', () => {
         (p) =>
           ROOTED.some((r) => p.startsWith(r)) &&
           !/[<>*{}$…]/.test(p) &&
-          !PERSONAL.has(p)
+          !PERSONAL.has(p) &&
+          // Build outputs exist only after `yarn build`, which runs after tests.
+          !/(^|\/)dist(\/|$)/.test(p)
       )
       .map((p) => p.replace(/[:.,]+$/, '').replace(/:\d+$/, ''))
       .filter((p) => !fs.existsSync(path.join(REPO_ROOT, p)));
