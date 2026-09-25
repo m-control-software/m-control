@@ -1,0 +1,2 @@
+# ESLint ignores dot-directories by default; the Claude Code hooks are code too.
+!.claude/
