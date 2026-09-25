@@ -12,7 +12,8 @@ there, not here. This file only adds what is specific to Claude Code.
   (skills)"; conventions for writing one are in `.claude/skills/README.md`.
 - `.claude/hooks/` — `session-start.mjs` installs dependencies and builds core
   in cloud sessions; `format-edited-file.mjs` runs Prettier on TS/JS you edit.
-  Registered in `.claude/settings.json`.
+  Registered in `.claude/settings.json`; Cursor runs the format script too,
+  via `.cursor/hooks.json`. `test/agent-config.test.ts` checks both.
 - `.claude/settings.json` — shared permissions and hooks for this repo.
   `.claude/settings.local.json` and `CLAUDE.local.md` are personal and
   git-ignored.

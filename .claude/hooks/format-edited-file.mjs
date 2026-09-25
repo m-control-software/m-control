@@ -1,5 +1,7 @@
-// PostToolUse hook (Claude Code) for Edit|Write|MultiEdit. Registered in
-// .claude/settings.json.
+// Format-on-edit hook, shared by two agents:
+//   - Claude Code: PostToolUse for Edit|Write|MultiEdit (.claude/settings.json);
+//     stdin carries the path as `tool_input.file_path`.
+//   - Cursor: afterFileEdit (.cursor/hooks.json); stdin carries `file_path`.
 //
 // Formats the file an agent just wrote with the repo's Prettier config, so
 // `yarn lint` never fails on formatting and diffs stay free of style noise.
@@ -20,7 +22,8 @@ function readStdin() {
   }
 }
 
-const file = readStdin().tool_input?.file_path;
+const payload = readStdin();
+const file = payload.tool_input?.file_path ?? payload.file_path;
 if (
   typeof file !== 'string' ||
   !FORMATTED.has(extname(file)) ||

@@ -38,6 +38,22 @@ describe('format-edited-file', () => {
     expect(fs.readFileSync(file, 'utf-8')).toBe('const a = { b: 1 };\n');
   });
 
+  it('accepts the Cursor afterFileEdit payload too', () => {
+    const file = path.join(dir, 'b.js');
+    fs.writeFileSync(file, 'var  b=[1,2]\n');
+    const r = hook(
+      'format-edited-file.mjs',
+      JSON.stringify({
+        hook_event_name: 'afterFileEdit',
+        file_path: file,
+        edits: [],
+        workspace_roots: [dir],
+      })
+    );
+    expect(r.status, r.stderr).toBe(0);
+    expect(fs.readFileSync(file, 'utf-8')).toBe('var b = [1, 2];\n');
+  });
+
   it.each([
     ['a non-code file', 'notes.md', '#  keep   as is\n'],
     [

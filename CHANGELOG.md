@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Copilot and Cursor get the same setup as Claude Code.**
+  `.github/workflows/copilot-setup-steps.yml` prepares the Copilot cloud
+  agent's environment with CI's toolchain pins; `.cursor/hooks.json` runs the
+  shared format-on-edit script after Cursor edits. Skills needed no copy:
+  Copilot and Cursor both load `.claude/skills/`.
+  `test/agent-config.test.ts` checks that hook scripts exist and that the
+  Copilot setup pins match CI.
+
 - **`yarn verify`** — one script with every check CI runs, in CI order; CI
   runs it verbatim (`scripts/verify.mjs`), so "passes locally" and "passes
   CI" mean the same thing. `--from=<step>` resumes after a fix. The smoke test

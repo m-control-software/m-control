@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "node .claude/hooks/format-edited-file.mjs"
+      }
+    ]
+  }
+}

@@ -10,8 +10,10 @@ Each skill is a directory with a `SKILL.md`:
 ```
 
 The current skills and what each drives are listed in `AGENTS.md` →
-"Procedures (skills)". Claude Code loads them automatically; other agents read
-the `SKILL.md` the table points to.
+"Procedures (skills)". This is the open Agent Skills format, and this one
+directory serves every assistant we use: Claude Code, GitHub Copilot and
+Cursor all load project skills from `.claude/skills/`. Don't copy skills into
+Copilot's or Cursor's own skill directories as well; a second copy drifts.
 
 ## Writing a skill
 
@@ -42,9 +44,9 @@ After adding a skill, add its row to the table in `AGENTS.md`
 
 ## Where each assistant reads from
 
-| Assistant | Reads |
-|-----------|-------|
-| Any agent that supports it (Codex, Cursor, Copilot, …) | `AGENTS.md` |
-| Claude Code | `CLAUDE.md` (imports `AGENTS.md`), `.claude/skills/`, `.claude/hooks/` via `.claude/settings.json` |
-| Cursor | `.cursor/rules/*.mdc` (points at `AGENTS.md`) |
-| GitHub Copilot | `.github/copilot-instructions.md` (points at `AGENTS.md`) |
+| Assistant | Rules | Skills | Hooks / environment |
+|-----------|-------|--------|---------------------|
+| Claude Code | `CLAUDE.md` (imports `AGENTS.md`) | `.claude/skills/` | `.claude/settings.json` → `.claude/hooks/` |
+| GitHub Copilot | `.github/copilot-instructions.md` → `AGENTS.md` | `.claude/skills/` | Cloud agent: `.github/workflows/copilot-setup-steps.yml` |
+| Cursor | `.cursor/rules/m-control.mdc` → `AGENTS.md` | `.claude/skills/` | `.cursor/hooks.json` → `.claude/hooks/format-edited-file.mjs` |
+| Anything else (Codex, …) | `AGENTS.md` | reads `SKILL.md` via `AGENTS.md` | — |

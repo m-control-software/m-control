@@ -11,9 +11,9 @@ v1, config), how to add a tool, and code rules. This file is only a pointer.
 Change rules in `AGENTS.md`, not here.
 
 Multi-step procedures (add a tool, change a contract, write an ADR, cut a
-release, author device profiles) are in `.claude/skills/<name>/SKILL.md`;
-`AGENTS.md` → "Procedures (skills)" says which to read. Run `yarn verify`
-before calling work done — CI runs the same script.
+release, author device profiles) are Agent Skills in `.claude/skills/`, which
+this assistant loads by itself; `AGENTS.md` → "Procedures (skills)" lists
+them. Run `yarn verify` before calling work done — CI runs the same script.
 
 The rules that are most often broken:
 

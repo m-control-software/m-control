@@ -27,7 +27,7 @@ and, longer term, a product for developer teams (`docs/VISION.md`).
 | `test/` | Repo-wide tests: every tool's conformance, the scaffolder, docs. |
 | `scripts/` | `verify.mjs` (= CI), `smoke.mjs`, `new-tool.mjs`, `new-adr.mjs`, `release.mjs`, `setup-linters.mjs`, `lint-powershell.ps1`, installers. |
 | `docs/` | ADRs, architecture, project context. Index: `docs/README.md`. |
-| `.claude/` | Skills (procedures, see below) and hooks. |
+| `.claude/` | Skills (procedures, see below) and hook scripts, shared with Cursor via `.cursor/hooks.json`. |
 
 Tools today: `hello-world` (node) and `hello-python` (python) as protocol
 references; `agent-status` (node) — dashboard of AI coding-agent sessions;
@@ -170,9 +170,11 @@ read `.claude/skills/add-tool/SKILL.md`.
 
 ## Procedures (skills)
 
-Multi-step procedures live as skills in `.claude/skills/<name>/SKILL.md`.
-Claude Code loads them automatically; any other agent should read the matching
-`SKILL.md` and follow it. Skills hold the judgment and the approval gates;
+Multi-step procedures live as skills in `.claude/skills/<name>/SKILL.md`
+(the open Agent Skills format). Claude Code, GitHub Copilot (cloud agent, code
+review, CLI, VS Code, JetBrains) and Cursor all load skills from that directory
+by themselves; any other agent should read the matching `SKILL.md` and follow
+it. Skills hold the judgment and the approval gates;
 mechanical steps are scripts they call. `test/docs.test.ts` fails when a skill
 is missing from this list.
 
