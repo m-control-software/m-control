@@ -18,6 +18,8 @@
     "smoke": "node scripts/smoke.mjs",
     "new:tool": "node scripts/new-tool.mjs",
     "setup:linters": "node scripts/setup-linters.mjs",
+    "release": "node scripts/release.mjs",
+    "new:adr": "node scripts/new-adr.mjs",
     "dev": "yarn workspace @m-control/mctl dev",
     "clean": "node scripts/clean.mjs"
   },
