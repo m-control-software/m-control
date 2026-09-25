@@ -9,14 +9,15 @@
   ],
   "scripts": {
     "build": "yarn workspace @m-control/core build && yarn workspace @m-control/mctl build",
-    "lint": "yarn workspaces run lint",
-    "format": "yarn workspaces run format",
+    "lint": "yarn workspaces run lint && eslint test test-support tools templates scripts vitest.config.ts --ext .ts,.js,.mjs",
+    "format": "yarn workspaces run format && prettier --write \"{test,test-support,scripts}/**/*.{ts,mjs}\" \"{tools,templates}/**/*.{ts,js}\" vitest.config.ts",
     "typecheck": "yarn workspaces run typecheck && tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "verify": "node scripts/verify.mjs",
     "smoke": "node scripts/smoke.mjs",
     "new:tool": "node scripts/new-tool.mjs",
+    "setup:linters": "node scripts/setup-linters.mjs",
     "dev": "yarn workspace @m-control/mctl dev",
     "clean": "node scripts/clean.mjs"
   },

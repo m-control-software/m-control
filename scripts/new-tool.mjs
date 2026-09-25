@@ -68,7 +68,10 @@ function existingToolIds(toolsRoot) {
       const manifestPath = join(categoryDir, tool.name, 'manifest.json');
       if (!tool.isDirectory() || !existsSync(manifestPath)) continue;
       try {
-        ids.set(JSON.parse(readFileSync(manifestPath, 'utf-8')).id, manifestPath);
+        ids.set(
+          JSON.parse(readFileSync(manifestPath, 'utf-8')).id,
+          manifestPath
+        );
       } catch {
         // An unreadable manifest is reported by the conformance tests; here it
         // just cannot collide.
@@ -79,11 +82,16 @@ function existingToolIds(toolsRoot) {
 }
 
 function validate(opts, root) {
-  const missing = ['id', 'category', 'runtime', 'description'].filter((k) => !opts[k]);
+  const missing = ['id', 'category', 'runtime', 'description'].filter(
+    (k) => !opts[k]
+  );
   if (missing.length > 0) fail(`missing --${missing.join(', --')}.`);
-  if (!KEBAB.test(opts.id)) fail(`--id '${opts.id}' must be kebab-case (e.g. jira-sprint).`);
+  if (!KEBAB.test(opts.id))
+    fail(`--id '${opts.id}' must be kebab-case (e.g. jira-sprint).`);
   if (!KEBAB.test(opts.category)) {
-    fail(`--category '${opts.category}' must be kebab-case (e.g. work, artifacts, misc).`);
+    fail(
+      `--category '${opts.category}' must be kebab-case (e.g. work, artifacts, misc).`
+    );
   }
   if (!RUNTIMES_WITH_TEMPLATE.includes(opts.runtime)) {
     fail(
@@ -95,7 +103,8 @@ function validate(opts, root) {
   if (/[\r\n]/.test(opts.description)) fail('--description must be one line.');
 
   const taken = existingToolIds(join(root, 'tools')).get(opts.id);
-  if (taken) fail(`tool id '${opts.id}' is already used by ${relative(root, taken)}.`);
+  if (taken)
+    fail(`tool id '${opts.id}' is already used by ${relative(root, taken)}.`);
   const target = join(root, 'tools', opts.category, opts.id);
   if (existsSync(target)) fail(`${relative(root, target)} already exists.`);
   return target;
@@ -111,7 +120,9 @@ function addChangelogEntry(changelogPath, line) {
   const text = readFileSync(changelogPath, 'utf-8');
   const unreleased = text.indexOf('## [Unreleased]');
   if (unreleased === -1) {
-    fail(`${changelogPath} has no '## [Unreleased]' section; add one, then re-run.`);
+    fail(
+      `${changelogPath} has no '## [Unreleased]' section; add one, then re-run.`
+    );
   }
   const nextRelease = text.indexOf('\n## [', unreleased + 1);
   const sectionEnd = nextRelease === -1 ? text.length : nextRelease;
@@ -140,7 +151,9 @@ const changelogLine = `- **\`${opts.id}\` tool** (\`${rel}/\`): ${description}.`
 if (opts.dryRun) {
   console.log(`new:tool (dry run) would:`);
   console.log(`  copy    ${relative(root, template)}/ -> ${rel}/`);
-  console.log(`  set     manifest id=${opts.id}, name="${name}", description="${description}"`);
+  console.log(
+    `  set     manifest id=${opts.id}, name="${name}", description="${description}"`
+  );
   console.log(`  add     CHANGELOG.md [Unreleased] ${changelogLine}`);
   process.exit(0);
 }
@@ -163,7 +176,8 @@ replaceInFile(join(target, ENTRY[opts.runtime]), [['tool-id', opts.id]]);
 addChangelogEntry(join(root, 'CHANGELOG.md'), changelogLine);
 
 console.log(`Created ${rel}/ from ${relative(root, template)}/:`);
-for (const f of readdirSync(target, { recursive: true })) console.log(`  ${rel}/${String(f).split('\\').join('/')}`);
+for (const f of readdirSync(target, { recursive: true }))
+  console.log(`  ${rel}/${String(f).split('\\').join('/')}`);
 console.log(`Added to CHANGELOG.md [Unreleased]: ${changelogLine}`);
 console.log(`
 Next (the add-tool skill walks through these):

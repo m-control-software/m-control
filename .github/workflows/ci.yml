@@ -21,6 +21,16 @@ jobs:
           node-version-file: .nvmrc
           cache: 'yarn'
 
+      # Tools must run on the minimum supported Python (AGENTS.md: 3.10+).
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      # ruff and PSScriptAnalyzer at the versions pinned in linters.json.
+      - name: Setup linters
+        run: node scripts/setup-linters.mjs
+
       # Every check lives in scripts/verify.mjs so CI and `yarn verify` cannot
       # drift apart. Add a check there, not here.
       - name: Verify

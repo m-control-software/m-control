@@ -3,6 +3,9 @@
 #   .\scripts\install.ps1          (from repo root)
 #   pwsh ".\install.ps1"           (from scripts\ dir)
 
+# An interactive console installer: colored host output is the point here. The
+# rule exists for tools, whose stdout is reserved for NDJSON events.
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '')]
 param(
     [string]$InstallPath = "$env:USERPROFILE\.m-control"
 )

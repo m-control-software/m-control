@@ -20,7 +20,15 @@
 // absolute directory, so values can point at the tool's own examples.
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -49,7 +57,11 @@ const configPath = join(home, '.m-control', 'config.json');
 
 function mctl(args, { expectFail = false } = {}) {
   console.log(`\n$ mctl ${args.join(' ')}`);
-  const r = spawnSync(process.execPath, [bundle, ...args], { cwd, env, stdio: 'inherit' });
+  const r = spawnSync(process.execPath, [bundle, ...args], {
+    cwd,
+    env,
+    stdio: 'inherit',
+  });
   const failed = r.status !== 0;
   if (failed !== expectFail) {
     const why = expectFail
@@ -65,9 +77,12 @@ function toolDirs() {
   const dirs = [];
   for (const category of readdirSync(root, { withFileTypes: true })) {
     if (!category.isDirectory()) continue;
-    for (const tool of readdirSync(join(root, category.name), { withFileTypes: true })) {
+    for (const tool of readdirSync(join(root, category.name), {
+      withFileTypes: true,
+    })) {
       const dir = join(root, category.name, tool.name);
-      if (tool.isDirectory() && existsSync(join(dir, 'manifest.json'))) dirs.push(dir);
+      if (tool.isDirectory() && existsSync(join(dir, 'manifest.json')))
+        dirs.push(dir);
     }
   }
   return dirs;
@@ -111,7 +126,9 @@ try {
   for (const [id, ...args] of SMOKE_RUN) mctl(['run', id, ...args]);
   console.log('\nsmoke: all checks passed');
 } catch (err) {
-  console.error(`\nsmoke: FAILED — ${err instanceof Error ? err.message : String(err)}`);
+  console.error(
+    `\nsmoke: FAILED — ${err instanceof Error ? err.message : String(err)}`
+  );
   exitCode = 1;
 } finally {
   rmSync(sandbox, { recursive: true, force: true });

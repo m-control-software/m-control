@@ -1,0 +1,9 @@
+# Lints every Python file in the repo (tools/, templates/, research scripts).
+# `yarn verify` runs `ruff check`; CI installs the version pinned in
+# scripts/setup-linters.mjs.
+target-version = "py310"   # AGENTS.md: Python 3.10+, standard library only
+line-length = 120
+
+[lint]
+# pyflakes, pycodestyle, bugbear, pyupgrade
+select = ["E", "F", "W", "B", "UP"]

@@ -5,10 +5,11 @@
 //   yarn verify --from=test     resume at a step after fixing a failure
 //   yarn verify --only=lint     a single step
 //
-// A step that needs an external linter (PowerShell, PSScriptAnalyzer, ruff) is
-// REQUIRED when CI=true and skipped with a loud warning otherwise, so a
-// contributor without those tools can still verify everything else. The
-// summary lists what was skipped: CI will run it.
+// A step that needs an external linter (ruff, pwsh + PSScriptAnalyzer, versions
+// pinned in linters.json) is REQUIRED when CI=true and skipped with a loud
+// warning otherwise, so a contributor without those tools can still verify
+// everything else. The summary lists what was skipped: CI will run it.
+// `node scripts/setup-linters.mjs` installs them.
 
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -18,21 +19,51 @@ const inCI = process.env.CI === 'true';
 const inGitHub = process.env.GITHUB_ACTIONS === 'true';
 const isWindows = process.platform === 'win32';
 
-/** A command is available when `<cmd> --version` exits 0. */
-function has(command, versionArgs = ['--version']) {
-  const r = spawnSync(command, versionArgs, { stdio: 'ignore', shell: isWindows });
-  return r.status === 0;
+/** True when `command args…` can be spawned and exits 0. */
+function probe([command, ...args]) {
+  const r = spawnSync(command, args, { stdio: 'ignore', shell: isWindows });
+  return !r.error && r.status === 0;
 }
 
+const python = isWindows ? 'python' : 'python3';
+
 /**
- * Steps in CI order. `run` is argv; `needs` names an external command the step
- * cannot run without (checked before running, see the header comment).
+ * Steps in CI order. `run` is argv. `needs` describes an external tool the step
+ * cannot run without: `probe` is argv that exits 0 when it is installed (see
+ * the header comment for what happens when it is not).
  */
 const steps = [
   { name: 'install', run: ['yarn', 'install', '--frozen-lockfile'] },
-  { name: 'build-core', run: ['yarn', 'workspace', '@m-control/core', 'build'] },
+  {
+    name: 'build-core',
+    run: ['yarn', 'workspace', '@m-control/core', 'build'],
+  },
   { name: 'typecheck', run: ['yarn', 'typecheck'] },
   { name: 'lint', run: ['yarn', 'lint'] },
+  {
+    name: 'lint-python',
+    run: [python, '-m', 'ruff', 'check', '.'],
+    needs: { what: 'ruff', probe: [python, '-m', 'ruff', '--version'] },
+  },
+  {
+    name: 'lint-powershell',
+    run: [
+      'pwsh',
+      '-NoProfile',
+      '-NonInteractive',
+      '-File',
+      'scripts/lint-powershell.ps1',
+    ],
+    needs: {
+      what: 'pwsh with PSScriptAnalyzer',
+      probe: [
+        'pwsh',
+        '-NoProfile',
+        '-Command',
+        'if (Get-Module -ListAvailable PSScriptAnalyzer) { exit 0 } else { exit 1 }',
+      ],
+    },
+  },
   { name: 'test', run: ['yarn', 'test'] },
   { name: 'build', run: ['yarn', 'build'] },
   { name: 'smoke', run: ['node', 'scripts/smoke.mjs'] },
@@ -43,7 +74,9 @@ function parseArgs(argv) {
   for (const arg of argv) {
     const m = /^--(from|only)=(.+)$/.exec(arg);
     if (!m) {
-      console.error(`verify: unknown argument '${arg}'. Use --from=<step> or --only=<step>.`);
+      console.error(
+        `verify: unknown argument '${arg}'. Use --from=<step> or --only=<step>.`
+      );
       process.exit(2);
     }
     if (!steps.some((s) => s.name === m[2])) {
@@ -68,12 +101,17 @@ const skipped = [];
 const started = Date.now();
 
 for (const step of selectSteps(opts)) {
-  if (step.needs && !has(step.needs, step.needsArgs)) {
+  if (step.needs && !probe(step.needs.probe)) {
+    const hint = 'Install it with: node scripts/setup-linters.mjs';
     if (inCI) {
-      console.error(`verify: step '${step.name}' needs '${step.needs}', which is not installed.`);
+      console.error(
+        `verify: step '${step.name}' needs ${step.needs.what}, which is not installed. ${hint}`
+      );
       process.exit(1);
     }
-    console.warn(`\n!! verify: SKIPPING '${step.name}' — '${step.needs}' is not installed (CI runs it).`);
+    console.warn(
+      `\n!! verify: SKIPPING '${step.name}' — ${step.needs.what} is not installed (CI runs it). ${hint}`
+    );
     skipped.push(step.name);
     continue;
   }
@@ -94,12 +132,16 @@ for (const step of selectSteps(opts)) {
     console.error(`Fix it, then resume with: yarn verify --from=${step.name}`);
     process.exit(1);
   }
-  console.log(`   ${step.name} ok (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
+  console.log(
+    `   ${step.name} ok (${((Date.now() - t0) / 1000).toFixed(1)} s)`
+  );
 }
 
 const total = ((Date.now() - started) / 1000).toFixed(1);
 if (skipped.length > 0) {
-  console.warn(`\nverify: passed in ${total} s, but SKIPPED: ${skipped.join(', ')}. CI will run them.`);
+  console.warn(
+    `\nverify: passed in ${total} s, but SKIPPED: ${skipped.join(', ')}. CI will run them.`
+  );
 } else {
   console.log(`\nverify: all steps passed in ${total} s`);
 }

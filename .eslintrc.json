@@ -1,24 +1,39 @@
 {
-  "parser": "@typescript-eslint/parser",
+  "root": true,
   "parserOptions": {
-    "ecmaVersion": 2022,
-    "sourceType": "module"
+    "ecmaVersion": 2022
   },
-  "extends": [
-    "eslint:recommended",
-    "plugin:@typescript-eslint/recommended",
-    "plugin:prettier/recommended"
-  ],
-  "plugins": ["@typescript-eslint", "prettier"],
+  "extends": ["eslint:recommended", "plugin:prettier/recommended"],
   "rules": {
     "prettier/prettier": "error",
-    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-    "@typescript-eslint/explicit-function-return-type": "off",
-    "@typescript-eslint/no-explicit-any": "warn",
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     "no-console": "off"
   },
   "env": {
     "node": true,
     "es2022": true
-  }
+  },
+  "overrides": [
+    {
+      "files": ["*.ts"],
+      "parser": "@typescript-eslint/parser",
+      "parserOptions": { "sourceType": "module" },
+      "plugins": ["@typescript-eslint"],
+      "extends": ["plugin:@typescript-eslint/recommended"],
+      "rules": {
+        "no-unused-vars": "off",
+        "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+        "@typescript-eslint/explicit-function-return-type": "off",
+        "@typescript-eslint/no-explicit-any": "warn"
+      }
+    },
+    {
+      "files": ["*.js"],
+      "parserOptions": { "sourceType": "script" }
+    },
+    {
+      "files": ["*.mjs"],
+      "parserOptions": { "sourceType": "module" }
+    }
+  ]
 }

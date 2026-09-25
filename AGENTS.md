@@ -44,7 +44,13 @@ node apps/mctl/dist/bundle/index.js <init|list|run|doctor>
 
 CI runs `scripts/verify.mjs` and nothing else, so `yarn verify` passing locally
 is the bar before pushing. Its steps: install `--frozen-lockfile`, build core,
-typecheck, lint, test, build, then `scripts/smoke.mjs`. The smoke test runs the
+typecheck (workspaces, plus every test file via the root `tsconfig.json`),
+lint (ESLint + Prettier on all TS/JS including tools and scripts), lint-python
+(ruff, `ruff.toml`), lint-powershell (PSScriptAnalyzer checks every `.ps1`
+against Windows PowerShell 5.1), test, build, then `scripts/smoke.mjs`. The
+Python and PowerShell linters are pinned in `linters.json` and installed by
+`yarn setup:linters`; locally a missing one is skipped with a warning, in CI
+it fails. The smoke test runs the
 bundle in a throwaway HOME (it never touches your real config): `--help`,
 `init`, `list`, `doctor` must fail on the fresh config, then pass once every
 tool's `<tool>/test/smoke-config.json` is merged in, then `run hello-world` and
