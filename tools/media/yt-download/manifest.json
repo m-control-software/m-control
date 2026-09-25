@@ -1,0 +1,18 @@
+{
+  "manifestVersion": 1,
+  "id": "yt-download",
+  "version": "0.1.0",
+  "name": "YouTube Download",
+  "description": "Downloads YouTube videos (mp4) or audio (mp3) with pinned, checksum-verified yt-dlp and ffmpeg",
+  "runtime": "node",
+  "entry": "index.js",
+  "timeoutMs": 3600000,
+  "requiredConfig": [],
+  "optionalConfig": [
+    "yt-download.outputDir",
+    "yt-download.depsDir",
+    "yt-download.ytDlpPath",
+    "yt-download.ffmpegPath"
+  ],
+  "tags": ["media", "youtube", "download", "personal"]
+}

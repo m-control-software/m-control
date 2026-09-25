@@ -32,7 +32,9 @@ and, longer term, a product for developer teams (`docs/VISION.md`).
 Tools today: `hello-world` (node) and `hello-python` (python) as protocol
 references; `agent-status` (node) — dashboard of AI coding-agent sessions;
 `stream-deck` (powershell) — Stream Deck profiles from `*.deck.json` specs;
-`logi-options` (python) — MX Master 4 profiles from `*.logi.json` specs.
+`logi-options` (python) — MX Master 4 profiles from `*.logi.json` specs;
+`yt-download` (node) — YouTube video/mp3 downloads via pinned, checksum-verified
+yt-dlp + ffmpeg that `action=setup` installs outside the repo.
 
 ## Commands
 

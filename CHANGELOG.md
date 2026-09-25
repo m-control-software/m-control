@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`yt-download` tool** (`tools/media/yt-download/`): downloads YouTube
+  videos (mp4) or audio (mp3 with tags and cover art), single videos or whole
+  playlists. yt-dlp and ffmpeg are not vendored and never taken from `PATH`:
+  `deps.json` pins each by version and SHA-256 per platform (Windows and Linux,
+  x64 and arm64), and `mctl run yt-download action=setup` downloads, verifies
+  and atomically installs them into `~/.m-control/deps/`. YouTube's
+  JavaScript challenges run on the Node that runs mctl (Node 22+).
+
 - **Copilot and Cursor get the same setup as Claude Code.**
   `.github/workflows/copilot-setup-steps.yml` prepares the Copilot cloud
   agent's environment with CI's toolchain pins; `.cursor/hooks.json` runs the
