@@ -1,0 +1,439 @@
+{
+  "_comment": "Actions Ring items exactly as the Options+ UI (LogiPluginService 6.4.1.3246) wrote them in experiments R1-R4 (docs/actions-ring.md). Only the Ring's press controls and the items they reference; no paths, serials or host names. '{hkl}' stands for the decimal HKL of the keyboard layout active when the shortcut was recorded (read per machine). Profile JSON is serialized by json.dumps(indent=4, ensure_ascii=False) with CRLF, in the key order shown.",
+  "optionsPlusBuild": "853130",
+  "logiPluginServiceVersion": "6.4.1.3246",
+  "file": "LogiPluginService\\Applications\\Loupedeck72\\<app>\\Profiles\\<defaultProfileName>\\ProfileInfo.json",
+  "controlsPath": "layout.layoutModes[0].workspaces[0].pressPages[0].controls",
+  "r0_global_controls_before": [
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 0,
+      "pressAction": "$DefaultWin___MediaPlayPause",
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 1,
+      "pressAction": "$@Generic___@Macro___4C29B55B6794491380D7A2702A541439",
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 2,
+      "pressAction": "$@Generic___@ProfileAction___B93AF79DDFEC4F37A1927E9139C236F7",
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 3,
+      "pressAction": "$DefaultWin___LockWorkstation",
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 4,
+      "pressAction": "$@Generic___@Macro___77B246FCB5104A83B009581493755F13",
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 5,
+      "pressAction": "$DefaultWin___WindowsScreenshot",
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 6,
+      "pressAction": "$DefaultWin___WindowsMagnifier",
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 7,
+      "pressAction": "$DefaultWin___WindowsExplorer",
+      "rotateAction": null
+    }
+  ],
+  "r1_global_slot1_ctrl_shift_esc": {
+    "control": {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 0,
+      "pressAction": "$@Generic___@ProfileAction___2531144E10364180B65EDDEE4AB963EE",
+      "rotateAction": null
+    },
+    "profileAction": {
+      "$type": "Loupedeck.Service.ApplicationProfileCommand, LoupedeckService",
+      "isCommand": true,
+      "name": "$@Generic___@ProfileAction___2531144E10364180B65EDDEE4AB963EE",
+      "templateActionName": "$@Generic___@KeyboardKey",
+      "actionParameters": {
+        "$type": "Loupedeck.ActionEditorActionParameters, PluginApi",
+        "parameters": {
+          "$type": "Loupedeck.StringDictionaryNoCase, PluginApi",
+          "keyboardKey": "ControlOrCommand+Shift+Escape___{hkl}___Ctrl+Shift+Escape___win-27#¤%&+?132#¤%&+?{hkl}#¤%&+?1"
+        },
+        "count": 1
+      },
+      "displayName": "Ctrl+Shift+Escape",
+      "description": "Activate a keyboard shortcut with a single press or hold down for continuous use like a keyboard key",
+      "groupName": "",
+      "superGroupName": "@macro",
+      "isProfileAction": true,
+      "isMultiState": false,
+      "isResetCommand": false,
+      "adjustmentName": null,
+      "states": null
+    },
+    "actionIcon_ict_optional": {
+      "backgroundColor": 4278190080,
+      "items": [
+        {
+          "image": "<base64 SVG, Logitech's generic keyboard-shortcut glyph, 1.9 KB; omitted>",
+          "imageFileName": null,
+          "imageColor": 4294967295,
+          "imageRotation": "None",
+          "isVisible": true,
+          "itemType": "Image",
+          "area": {
+            "x": 17,
+            "y": 0,
+            "width": 65,
+            "height": 65
+          }
+        },
+        {
+          "text": "Ctrl+Shift+Escape",
+          "originalText": null,
+          "textColor": 4294967295,
+          "fontSize": 5,
+          "fontName": "Brown Logitech Pan Light",
+          "isVisible": true,
+          "itemType": "Text",
+          "area": {
+            "x": 0,
+            "y": 65,
+            "width": 100,
+            "height": 30
+          }
+        }
+      ]
+    }
+  },
+  "r2_moved_to_slot5_swap": {
+    "control0": {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 0,
+      "pressAction": "$@Generic___@Macro___77B246FCB5104A83B009581493755F13",
+      "rotateAction": null
+    },
+    "control4": {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 4,
+      "pressAction": "$@Generic___@ProfileAction___2531144E10364180B65EDDEE4AB963EE",
+      "rotateAction": null
+    }
+  },
+  "r3_chrome_plugin_app": {
+    "$type": "Loupedeck.Service.SupportedApplicationInfo, LoupedeckService",
+    "name": "@_chromeextension",
+    "displayName": "Chrome (Beta)",
+    "description": null,
+    "deviceType": "Loupedeck72",
+    "nativePluginName": "ChromeExtension",
+    "hasNativePlugin": true,
+    "processOrBundleName": null,
+    "modes": [
+      {
+        "$type": "Loupedeck.Service.ApplicationMode, LoupedeckService",
+        "name": "main",
+        "parentModeName": null,
+        "displayName": "Main"
+      }
+    ],
+    "defaultProfileName": "27A6D789DF33408EB377CCAA26896D25",
+    "isEnabled": true
+  },
+  "r3_chrome_empty_profile_controls": [
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 0,
+      "pressAction": null,
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 1,
+      "pressAction": null,
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 2,
+      "pressAction": null,
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 3,
+      "pressAction": null,
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 4,
+      "pressAction": null,
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 5,
+      "pressAction": null,
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 6,
+      "pressAction": null,
+      "rotateAction": null
+    },
+    {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 7,
+      "pressAction": null,
+      "rotateAction": null
+    }
+  ],
+  "r3_chrome_slot1_ctrl_shift_esc": {
+    "control": {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 0,
+      "pressAction": "$@Generic___@ProfileAction___1658D1CD650640C7B4BA011FFC50119B",
+      "rotateAction": null
+    },
+    "profileAction": {
+      "$type": "Loupedeck.Service.ApplicationProfileCommand, LoupedeckService",
+      "isCommand": true,
+      "name": "$@Generic___@ProfileAction___1658D1CD650640C7B4BA011FFC50119B",
+      "templateActionName": "$@Generic___@KeyboardKey",
+      "actionParameters": {
+        "$type": "Loupedeck.ActionEditorActionParameters, PluginApi",
+        "parameters": {
+          "$type": "Loupedeck.StringDictionaryNoCase, PluginApi",
+          "keyboardKey": "ControlOrCommand+Shift+Escape___{hkl}___Ctrl+Shift+Escape___win-27#¤%&+?132#¤%&+?{hkl}#¤%&+?1"
+        },
+        "count": 1
+      },
+      "displayName": "Ctrl+Shift+Escape",
+      "description": "Activate a keyboard shortcut with a single press or hold down for continuous use like a keyboard key",
+      "groupName": "",
+      "superGroupName": "@macro",
+      "isProfileAction": true,
+      "isMultiState": false,
+      "isResetCommand": false,
+      "adjustmentName": null,
+      "states": null
+    }
+  },
+  "r3c_plugin_less_app": {
+    "applicationInfo": {
+      "$type": "Loupedeck.Service.SupportedApplicationInfo, LoupedeckService",
+      "name": "7zfm",
+      "displayName": "7-Zip File Manager",
+      "description": null,
+      "deviceType": "Loupedeck72",
+      "nativePluginName": null,
+      "hasNativePlugin": false,
+      "processOrBundleName": "7zfm",
+      "modes": [
+        {
+          "$type": "Loupedeck.Service.ApplicationMode, LoupedeckService",
+          "name": "main",
+          "parentModeName": null,
+          "displayName": "Main"
+        }
+      ],
+      "defaultProfileName": null,
+      "isEnabled": true
+    },
+    "profile": {
+      "$type": "Loupedeck.Service.ApplicationProfile, LoupedeckService",
+      "name": "71F8E2B3EE364E17ADF308E3454D4C73",
+      "profileFlags": "None",
+      "displayName": "7-Zip File Manager Profil",
+      "description": null,
+      "deviceType": "Loupedeck72",
+      "applicationName": "7zfm",
+      "nativePluginName": null,
+      "hasNativePlugin": false,
+      "additionalNativePluginNames": [
+        "DefaultWin"
+      ],
+      "profileSettings": {
+        "$type": "Loupedeck.DictionaryNoCase`1[[System.String, System.Private.CoreLib]], PluginApi"
+      },
+      "actionImages90": null,
+      "actionImages60": null,
+      "wheelImages": null,
+      "actionColors": null,
+      "layout": {
+        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayout7, LoupedeckService",
+        "deviceType": "Loupedeck72",
+        "profileFlags": "None",
+        "layoutModes": [
+          {
+            "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutMode7, LoupedeckService",
+            "deviceType": "Loupedeck72",
+            "modeName": "main",
+            "parentModeName": null,
+            "actions": null,
+            "dynamicButtonPages": null,
+            "dynamicEncoderPages": null,
+            "workspaces": [
+              {
+                "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutWorkspace7, LoupedeckService",
+                "name": "EF01CF69E45D46CBA3D4E5E1870F7C69",
+                "displayName": "Workspace 1",
+                "description": null,
+                "pressPages": [
+                  {
+                    "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutPage7, LoupedeckService",
+                    "name": "A4191449F8B0433C978F0E0BCAF28473",
+                    "displayName": "Page (1)",
+                    "description": null,
+                    "controls": [
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 0,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 1,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 2,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 3,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 4,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 5,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 6,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 7,
+                        "pressAction": null,
+                        "rotateAction": null
+                      }
+                    ]
+                  }
+                ],
+                "rotatePages": [
+                  {
+                    "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutPage7, LoupedeckService",
+                    "name": "5B4B19384E6047A4A07E10F8057E142C",
+                    "displayName": "Dial Page",
+                    "description": null,
+                    "controls": [
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 0,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 1,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 2,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 3,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 4,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 5,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 6,
+                        "pressAction": null,
+                        "rotateAction": null
+                      },
+                      {
+                        "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+                        "controlId": 7,
+                        "pressAction": null,
+                        "rotateAction": null
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "homeWorkspaceName": "EF01CF69E45D46CBA3D4E5E1870F7C69"
+          }
+        ],
+        "folderPages": []
+      },
+      "macroCommands": [],
+      "macroAdjustments": [],
+      "profileCommands": [],
+      "profileAdjustments": [],
+      "conversionHistory": null,
+      "packageName": null,
+      "packageVersion": null,
+      "profileActions": []
+    }
+  },
+  "r4_removed_slot5": {
+    "control4": {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 4,
+      "pressAction": null,
+      "rotateAction": null
+    },
+    "orphanedProfileActionKept": true
+  }
+}

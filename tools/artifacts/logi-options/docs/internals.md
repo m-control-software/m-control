@@ -64,7 +64,8 @@ settings document
 - **App profiles hold only the 7 button slots.** The Global profile also holds
   device settings (`_mouse_settings`, `_mouse_scroll_wheel_settings`,
   `_haptic_settings`, `_force_sensing_settings`, `_mouse_thumb_wheel_settings`),
-  webcam slots, and the Actions Ring's own slots.
+  webcam slots, and 8 `radial-menu-virtual-device` slots. Those are dormant: the
+  Actions Ring's real content lives in LogiPluginService ([actions-ring.md](actions-ring.md)).
 - **Slots** come from the device package's `core_metadata.json`. Control suffixes
   are HID++ control ids: `c82` middle (0x52), `c83` back, `c86` forward, `c195`
   gesture/thumb (0xC3), `c196` mode shift/top, `c416` haptic panel (0x1A0),

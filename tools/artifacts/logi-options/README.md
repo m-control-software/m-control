@@ -87,7 +87,7 @@ only `packDirs` is needed in practice.
 main.py            protocol + mode dispatch
 lib/               store (SQLite, agent control) · catalog (Logitech catalogs, keys) · model (compile/decompile/verify)
                    packs (discovery, merge) · transaction (budgeted apply) · backup · docdiff · modes · protocol
-docs/              spec-format (authoring) · internals (how Options+ stores it, evidence) · portability · maintenance
+docs/              spec-format (authoring) · internals (how Options+ stores it, evidence) · portability · maintenance · actions-ring (feasibility study)
 examples/          reference specs - never auto-applied
 research/          developer scripts for re-deriving the model (run directly, not via mctl)
 test/              test_model.py (compiler vs UI-written evidence) · protocol.test.ts (vitest) · fixtures/
