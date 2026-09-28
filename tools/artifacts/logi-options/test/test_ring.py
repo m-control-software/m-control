@@ -294,6 +294,14 @@ class Patch(Tree):
         self.assertEqual(len(self.store.read("chrome").doc["profileActions"]), 1)
         self.assertTrue(any("no longer referenced" in c for c in p.changes))
 
+    def test_a_label_equal_to_the_default_text_is_no_label(self):
+        spec = {"top": {"shortcut": "CTRL+SHIFT+Y", "label": "Ctrl+Shift+Y"}}
+        self.assertEqual(ring.canonical_action(spec["top"], "x"), {"shortcut": "CTRL+SHIFT+Y"})
+        self.apply(spec, {"builtin": "google-chrome"})
+        self.assertEqual(self.plan(spec, {"builtin": "google-chrome"}).drift, [])  # not drift forever
+        p = self.apply({"top": {"nothing": True}}, {"builtin": "google-chrome"})
+        self.assertTrue(any("no longer referenced" in c for c in p.changes))  # still recognised as ours
+
     def test_a_raw_item_with_a_foreign_id_is_never_overwritten(self):
         doc = self.global_doc()
         ui = doc["profileActions"][1]  # the UI's R1 item (orphaned)

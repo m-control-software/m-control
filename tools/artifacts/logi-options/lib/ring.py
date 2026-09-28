@@ -168,13 +168,19 @@ def canonical_shortcut(text: str, where: str = "shortcut") -> str:
     return keys.format_shortcut(ks)
 
 
+def display_text(shortcut: str) -> str:
+    """Canonical spec shortcut -> the label the UI gives it (`Ctrl+Shift+Y`)."""
+    *mods, key = shortcut.split("+")
+    return "+".join([m[2] for m in MODIFIERS if m[0] in mods] + [KEYS[key][1]])
+
+
 def encode(shortcut: str, kb: Keyboard) -> tuple[str, str]:
     """Canonical spec shortcut -> (keyboardKey, display text), as the UI writes it."""
     *mods, key = shortcut.split("+")
     used = [m for m in MODIFIERS if m[0] in mods]
-    logical_key, display_key, vk = KEYS[key]
+    logical_key, _, vk = KEYS[key]
     logical = "+".join([m[1] for m in used] + [logical_key])
-    display = "+".join([m[2] for m in used] + [display_key])
+    display = display_text(shortcut)
     flags = sum(m[3] for m in used)
     scan = kb.scan(vk, kb.hkl)
     return f"{logical}___{kb.hkl}___{display}___win-{vk}{SEP}{flags}{SEP}{kb.hkl}{SEP}{scan}", display
@@ -280,7 +286,10 @@ def canonical_action(action, where: str) -> dict:
         if "label" in action:
             if not isinstance(action["label"], str) or not action["label"].strip():
                 raise SpecError(f"{where}.label must be a non-empty string.")
-            out["label"] = action["label"]
+            # A label equal to the default text is no label: the stored item can't tell
+            # them apart, so keeping it would read as drift forever and change the id.
+            if action["label"] != display_text(out["shortcut"]):
+                out["label"] = action["label"]
         return out
     if kind == "system":
         if not isinstance(value, str) or not re.fullmatch(r"[a-z]+(-[a-z]+)*", value):
