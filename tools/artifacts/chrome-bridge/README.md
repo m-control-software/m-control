@@ -47,8 +47,15 @@ key; `check=true` first if you like), then remove the extension in Chrome.
 ## Use
 
 On a YouTube or YouTube Music tab, press Ctrl+Shift+Y or click the toolbar button.
-The badge shows `…`, then the percentage, then `✓` or `!`; a notification names the
-saved file, or shows yt-download's error message and code. The file goes wherever
+A toast in the page's bottom-right corner shows "Save as mp3…", the percentage, then
+the saved file name or yt-download's error message and code. The same goes to the
+badge (`…`, %, `✓` or `!`; visible when the extension is pinned) and a Windows
+notification (only if Windows lets Chrome show them; Focus Assist hides them). The
+toast is why the extension has the `scripting` permission: it runs only in the tab
+you pressed the shortcut on.
+
+Pressing it again while that track is still downloading is refused (`ALREADY_RUNNING`):
+two runs of one track would write the same file. The file goes wherever
 `yt-download` puts it (`tools.yt-download.outputDir`, default `~/Downloads`), with tags
 and cover art.
 
@@ -114,7 +121,8 @@ The tool (`mctl run chrome-bridge …`):
 | `VERIFY_FAILED`                    | yes         | After writing, the files or key still differ from the plan.                   |
 
 The notification, when a tab is refused: `URL_NOT_ALLOWED`, `NOT_A_VIDEO`,
-`URL_INVALID`, `ACTION_NOT_ALLOWED`, `MESSAGE_INVALID`, `MCTL_NOT_FOUND`; otherwise
+`URL_INVALID`, `ACTION_NOT_ALLOWED`, `MESSAGE_INVALID`, `MCTL_NOT_FOUND`,
+`ALREADY_RUNNING`; otherwise
 yt-download's own codes (its README), or `HOST_DISCONNECTED` when Chrome can't start
 the host (usually: `action=install` not run).
 

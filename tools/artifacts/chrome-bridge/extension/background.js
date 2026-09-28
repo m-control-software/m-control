@@ -4,13 +4,14 @@
  * The command (suggested Ctrl+Shift+Y, which the Actions Ring item sends) and
  * the toolbar button read the active tab's URL (the command grants activeTab),
  * check it against the same allowlist the host enforces, and hand it to the
- * native messaging host. Progress goes on the badge; the result or the error
- * (message and code) goes in one notification per job.
+ * native messaging host. Progress goes on the badge and a toast in the page;
+ * the result or the error (message and code) goes in the toast and in one
+ * notification per job.
  */
 
 'use strict';
 
-/* global chrome, importScripts -- a Chrome extension service worker */
+/* global chrome, importScripts, document -- a service worker; document only inside showToast, which runs in the page */
 importScripts('actions.js');
 
 const HOST = 'com.m_control.chrome_bridge';
@@ -44,6 +45,54 @@ function notify(id, title, message, context) {
   });
 }
 
+/**
+ * The same news on the page itself, bottom right: Windows can silence Chrome's
+ * notifications (Focus Assist, per-app settings) and the badge is only visible
+ * when the extension is pinned. Runs in the tab the command or button was used
+ * on, which activeTab allows; pages it can't script (chrome://) are skipped.
+ */
+function toast(tabId, text, kind) {
+  if (tabId === undefined) return;
+  chrome.scripting
+    .executeScript({ target: { tabId }, func: showToast, args: [text, kind] })
+    .catch(() => {});
+}
+
+function showToast(text, kind) {
+  const id = 'm-control-bridge-toast';
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id;
+    Object.assign(el.style, {
+      position: 'fixed',
+      right: '16px',
+      bottom: '16px',
+      zIndex: '2147483647',
+      maxWidth: '380px',
+      padding: '10px 14px',
+      borderRadius: '8px',
+      color: '#fff',
+      font: '13px/1.4 system-ui, sans-serif',
+      boxShadow: '0 2px 10px rgba(0,0,0,.45)',
+      whiteSpace: 'pre-line',
+    });
+    document.documentElement.appendChild(el);
+  }
+  el.style.background = { ok: '#188038', error: '#d93025' }[kind] || '#1a73e8';
+  el.textContent = text;
+  clearTimeout(Number(el.dataset.timer));
+  if (kind !== 'busy')
+    el.dataset.timer = String(setTimeout(() => el.remove(), 7000));
+}
+
+/** One job's news: a notification (replaced in place by id) plus the page toast. */
+function tell(job, title, message, context, kind) {
+  notify(job.id, title, message, context);
+  const code = context && kind === 'error' ? ` (${context})` : '';
+  toast(job.tabId, `${title}\n${message}${code}`, kind);
+}
+
 function badge(text, color) {
   chrome.action.setBadgeText({ text });
   if (color) chrome.action.setBadgeBackgroundColor({ color });
@@ -58,25 +107,21 @@ function settle(text, color) {
 }
 
 async function start(action, tab) {
-  const id = `job-${Date.now()}`;
   const current = await activeTab(tab);
   const url = current && current.url;
+  const job = { id: `job-${Date.now()}`, tabId: current && current.id };
   try {
     resolve({ action, url }); // the host checks again; this only avoids a spawn
   } catch (err) {
     if (!(err instanceof Rejected)) throw err;
-    notify(id, 'Not saved', err.message, err.code);
+    tell(job, 'Not saved', err.message, err.code, 'error');
     return;
   }
 
   jobs += 1;
   badge('…', BADGE.busy);
-  notify(
-    id,
-    `${ACTIONS[action].title}…`,
-    current.title || url,
-    'm-control: started'
-  );
+  const title = (current.title || url).replace(/ - YouTube( Music)?$/, '');
+  tell(job, `${ACTIONS[action].title}…`, title, 'm-control: started', 'busy');
   let finished = false;
   let saved = [];
   let failure;
@@ -85,14 +130,21 @@ async function start(action, tab) {
   port.onMessage.addListener((msg) => {
     if (msg.type === 'rejected') {
       finished = true;
-      notify(id, 'Not saved', msg.message, msg.code);
+      tell(job, 'Not saved', msg.message, msg.code, 'error');
       settle('!', BADGE.failed);
     } else if (msg.type === 'event') {
       const e = msg.event || {};
       const p = e.payload || {};
       if (e.type === 'log') {
         const m = /: (\d{1,3})% of /.exec(p.message || '');
-        if (m) badge(`${m[1]}%`, BADGE.busy);
+        if (m) {
+          badge(`${m[1]}%`, BADGE.busy);
+          toast(
+            job.tabId,
+            `${ACTIONS[action].title}… ${m[1]}%\n${title}`,
+            'busy'
+          );
+        }
       } else if (e.type === 'result') {
         saved = (p.items || []).map((i) => i.file).filter(Boolean);
         if (p.failed && p.failed.length)
@@ -105,14 +157,14 @@ async function start(action, tab) {
       port.disconnect();
       if (msg.exitCode === 0 && saved.length) {
         const names = saved.map((f) => f.split(/[\\/]/).pop());
-        notify(id, 'Saved as mp3', names.join('\n'), saved[0]);
+        tell(job, 'Saved as mp3', names.join('\n'), saved[0], 'ok');
         settle('✓', BADGE.ok);
       } else {
         const f = failure || {
           message: msg.message || `mctl exited with ${msg.exitCode}`,
           code: 'MCTL_FAILED',
         };
-        notify(id, 'Download failed', f.message, f.code);
+        tell(job, 'Download failed', f.message, f.code, 'error');
         settle('!', BADGE.failed);
       }
     }
@@ -125,7 +177,13 @@ async function start(action, tab) {
     const hint = /not found/i.test(reason)
       ? ' Run: mctl run chrome-bridge action=install'
       : '';
-    notify(id, 'Download status lost', reason + hint, 'HOST_DISCONNECTED');
+    tell(
+      job,
+      'Download status lost',
+      reason + hint,
+      'HOST_DISCONNECTED',
+      'error'
+    );
     settle('!', BADGE.failed);
   });
   port.postMessage({ action, url });

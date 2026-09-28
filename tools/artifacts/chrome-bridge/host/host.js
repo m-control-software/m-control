@@ -16,6 +16,9 @@
  *     -> {type: "done", exitCode}
  *     -> {type: "rejected", code, message}          (instead of all of the above)
  *
+ * Only one job per URL runs at a time (./lock.js): a second one is rejected
+ * with ALREADY_RUNNING instead of racing the first for the same file.
+ *
  * It never runs anything else. If the port closes (the service worker stops,
  * the extension reloads, Chrome closes), the child keeps running: the download
  * finishes, only its progress has nobody to go to.
@@ -25,9 +28,11 @@
 
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
+const path = require('node:path');
 const readline = require('node:readline');
 
 const { Rejected, resolve } = require('../extension/actions');
+const { acquire } = require('./lock');
 const { FramingError, createDecoder, encode } = require('./native');
 
 /** The only caller: the extension id its pinned manifest `key` derives. */
@@ -139,7 +144,20 @@ function main() {
         reject(err.code, err.message);
         return;
       }
+      // Same track twice at once would collide on one file; the lock lives
+      // next to the log (the install's state directory).
+      const release = args.log
+        ? acquire(path.join(path.dirname(args.log), 'running'), job.url)
+        : () => {};
+      if (!release) {
+        reject(
+          'ALREADY_RUNNING',
+          `Already saving this track (${job.url}); wait for it to finish.`
+        );
+        return;
+      }
       child = run(job, args.mctl, send, log, () => {
+        release();
         process.stdout.end();
         process.stdin.destroy();
       });

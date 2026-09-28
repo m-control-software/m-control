@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -276,6 +277,37 @@ describe('host with a fake mctl', () => {
     expect(run.argv).toBeUndefined();
     expect(run.status).toBe(1);
     expect(run.log).toContain('refused caller');
+  }, 30_000);
+
+  const lockFor = (url: string) =>
+    path.join(
+      dir,
+      'running',
+      crypto.createHash('sha256').update(url).digest('hex').slice(0, 16) +
+        '.lock'
+    );
+
+  it('refuses a second job for a track that is still downloading', async () => {
+    const canonical = `https://www.youtube.com/watch?v=${ID}`;
+    fs.mkdirSync(path.join(dir, 'running'));
+    fs.writeFileSync(lockFor(canonical), String(process.pid)); // a live holder
+    const run = await runHost({
+      action: 'yt-audio',
+      url: `https://youtu.be/${ID}`,
+    });
+    expect(run.messages).toEqual([
+      expect.objectContaining({ type: 'rejected', code: 'ALREADY_RUNNING' }),
+    ]);
+    expect(run.argv).toBeUndefined();
+  }, 30_000);
+
+  it('takes over a stale lock and releases it when done', async () => {
+    const canonical = `https://www.youtube.com/watch?v=${ID}`;
+    fs.mkdirSync(path.join(dir, 'running'));
+    fs.writeFileSync(lockFor(canonical), '999999999'); // its host is gone
+    const run = await runHost({ action: 'yt-audio', url: canonical });
+    expect(run.messages.at(-1)).toEqual({ type: 'done', exitCode: 0 });
+    expect(fs.existsSync(lockFor(canonical))).toBe(false);
   }, 30_000);
 
   it('says where mctl was expected when it is missing', async () => {
