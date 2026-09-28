@@ -6,6 +6,7 @@ import {
   ProcessRunner,
   resolveSpawnCommand,
 } from '../src/runner/process-runner';
+import { descendantsOf, parsePsTable } from '../src/runner/kill-tree';
 import { ResolvedTool, RunContext, ToolEvent } from '../src/types';
 
 const isWindows = process.platform === 'win32';
@@ -49,6 +50,39 @@ describe('resolveSpawnCommand', () => {
       command: '/t/Tool.exe',
       args: [],
     });
+  });
+});
+
+describe('killProcessTree helpers', () => {
+  it('finds every descendant, parents first, and nothing outside the tree', () => {
+    const table: Array<[number, number]> = [
+      [1, 0],
+      [10, 1], // the tool
+      [11, 10],
+      [12, 10],
+      [13, 11], // grandchild
+      [20, 1], // unrelated sibling
+      [21, 20],
+    ];
+    expect(descendantsOf(10, table)).toEqual([11, 12, 13]);
+    expect(descendantsOf(13, table)).toEqual([]);
+  });
+
+  it('survives a cycle and self-parented pids', () => {
+    expect(
+      descendantsOf(5, [
+        [0, 0],
+        [5, 6],
+        [6, 5],
+      ])
+    ).toEqual([6]);
+  });
+
+  it('parses ps output and skips anything else', () => {
+    expect(parsePsTable('    1     0\n  812     1\nPID PPID\n\n')).toEqual([
+      [1, 0],
+      [812, 1],
+    ]);
   });
 });
 
@@ -147,6 +181,45 @@ describe('ProcessRunner (integration, node runtime)', () => {
     expect(error).toBeDefined();
     expect((error!.payload as { code: string }).code).toBe('RUNNER_TIMEOUT');
   }, 10_000);
+
+  it('stops the processes a tool started when a guardrail stops the tool', async () => {
+    // The tool starts a grandchild that would run for a minute, records its
+    // pid, and then hangs past the timeout.
+    const pidFile = path.join(dir, 'grandchild.pid');
+    const tool = makeTool(
+      'echo-tool',
+      `
+      const { spawn } = require('child_process');
+      const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], { stdio: 'ignore' });
+      require('fs').writeFileSync(${JSON.stringify(pidFile)}, String(child.pid));
+      setTimeout(() => process.exit(0), 60000);
+      `
+    );
+
+    const events = await collect(
+      new ProcessRunner().run(tool, context, {}, { timeoutMs: 1_000 })
+    );
+    expect(
+      (events.find((e) => e.type === 'error')!.payload as { code: string }).code
+    ).toBe('RUNNER_TIMEOUT');
+
+    const grandchild = Number(fs.readFileSync(pidFile, 'utf-8'));
+    const alive = (): boolean => {
+      try {
+        process.kill(grandchild, 0);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    const deadline = Date.now() + 5_000; // taskkill on Windows is asynchronous
+    while (alive() && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    const survived = alive();
+    if (survived) process.kill(grandchild, 'SIGKILL'); // don't leak it past the test
+    expect(survived).toBe(false);
+  }, 15_000);
 
   it('throws RunnerError when the runtime command does not exist', async () => {
     const tool = makeTool('echo-tool', '');

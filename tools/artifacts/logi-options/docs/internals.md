@@ -152,6 +152,9 @@ What applying a change needs:
   the store was intact after every one of 7+ cycles.
 - **Start** `logioptionsplus_agent.exe` as the user. Its first re-save comes
   ~8 s later, and that re-save is the signal that it loaded the document.
+  It is started through `cmd /c start`, so its parent is a `cmd.exe` that exits
+  at once, not this tool: mctl stops a timed-out tool with its whole process
+  tree, and the agent must survive that (`store.agent_launch_command`).
 - **The UI** reconnects by itself and shows new bindings. Only a new app
   *icon* needs the window reopened (Electron image cache).
 - **Not needed:** logoff, device reconnect, admin rights, or a service restart.

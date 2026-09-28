@@ -233,6 +233,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A guardrail stops everything the tool started.** On a timeout (or the
+  output/event caps) the runner used to stop only the tool process. On Windows
+  that is TerminateProcess, which never reaches children, so yt-download's
+  yt-dlp and ffmpeg kept downloading unsupervised after `RUNNER_TIMEOUT`.
+  The runner now stops the whole tree: `taskkill /T /F` on Windows, SIGTERM to
+  every descendant from a `ps` snapshot elsewhere (`runner/kill-tree.ts`). A
+  process that must outlive the run must not be the tool's descendant
+  (`constraints.md` §4): logi-options now starts the Options+ agent through
+  `cmd /c start`, so a timed-out apply can't take the agent down with it.
+
 - **`logi-options` crashing on non-ASCII output.** It emits events with
   `ensure_ascii=False`, but on Windows Python gives a pipe the ANSI code page,
   so any non-ASCII text failed as `INVALID_INPUT`. stdin and stdout are now

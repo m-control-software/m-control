@@ -176,6 +176,11 @@ class Store(unittest.TestCase):
             with self.assertRaises(LogiError):  # stale expected hash: refuse, write nothing
                 s.write(snap.doc, snap.sha256)
 
+    def test_agent_is_started_through_cmd_start_never_as_our_child(self):
+        exe = Path(r"C:\Program Files\LogiOptionsPlus\logioptionsplus_agent.exe")
+        self.assertEqual(st.agent_launch_command(exe, r"C:\Windows\system32\cmd.exe"),
+                         [r"C:\Windows\system32\cmd.exe", "/d", "/c", "start", "", "/D", str(exe.parent), str(exe)])
+
 
 if __name__ == "__main__":
     unittest.main()

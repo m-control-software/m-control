@@ -253,9 +253,9 @@ Guardrails (defaults; the timeout resolves per tool as
 
 | Guardrail | Default | Behaviour |
 |-----------|---------|-----------|
-| `timeoutMs` | 30s | SIGTERM + error event |
-| `maxOutputBytes` | 10 MB | SIGTERM + error event |
-| `maxEvents` | 10,000 | SIGTERM + error event |
+| `timeoutMs` | 30s | tool and its child processes stopped + error event |
+| `maxOutputBytes` | 10 MB | tool and its child processes stopped + error event |
+| `maxEvents` | 10,000 | tool and its child processes stopped + error event |
 
 Malformed NDJSON lines on stdout → warning to stderr, orchestrator keeps running.
 

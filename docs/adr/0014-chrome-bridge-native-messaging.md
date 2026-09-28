@@ -160,10 +160,10 @@ Answered on 2026-09-28 (device, Chrome 154.0.8037.57, Windows 11):
 Still open:
 
 4. **Work laptop.** Is Developer mode / unpacked loading allowed by policy there?
-5. **Runs mctl can't stop.** On Windows mctl's timeout doesn't kill yt-dlp's
-   process tree (yt-download README, Limitations). With a current mctl the 1 h
-   budget makes that rare, but a run killed that way keeps writing after the host
-   released its lock. The fix is the process-tree kill in the core runner.
+5. ~~**Runs mctl can't stop.**~~ **Answered 2026-09-28:** the core runner now
+   stops a tool's whole process tree on any guardrail (`kill-tree.ts`), so
+   yt-dlp and ffmpeg end with the run and the host's lock is released only
+   when nothing is writing any more.
 
 ## Related Decisions
 

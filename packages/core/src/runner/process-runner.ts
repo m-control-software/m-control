@@ -12,6 +12,7 @@ import {
 } from '../types';
 import { RunnerError } from '../errors';
 import { DEFAULT_TIMEOUT_MS } from '../config';
+import { killProcessTree } from './kill-tree';
 
 // ---------------------------------------------------------------------------
 // Defaults
@@ -98,10 +99,11 @@ export function resolveSpawnCommand(
  *   stderr -> raw text (forwarded to process.stderr unparsed)
  *   exit      0=success, 1=expected failure, >=2=crash
  *
- * Guardrails:
- *   - timeoutMs:      SIGTERM after N ms
- *   - maxOutputBytes: SIGTERM if stdout exceeds N bytes
- *   - maxEvents:      SIGTERM after N events yielded
+ * Guardrails (each stops the tool and every process it started, see
+ * kill-tree.ts):
+ *   - timeoutMs:      after N ms
+ *   - maxOutputBytes: if stdout exceeds N bytes
+ *   - maxEvents:      after N events yielded
  *
  * Malformed NDJSON lines from stdout are skipped with a stderr warning -
  * they never crash the orchestrator.
@@ -181,7 +183,7 @@ async function* spawnAndStream(
 
   const timeoutHandle = setTimeout(() => {
     guardrailHit = true;
-    proc.kill('SIGTERM');
+    killProcessTree(proc, toolId);
     push({
       kind: 'event',
       event: makeErrorEvent(
@@ -228,7 +230,7 @@ async function* spawnAndStream(
     bytesRead += chunk.length;
     if (bytesRead > opts.maxOutputBytes) {
       guardrailHit = true;
-      proc.kill('SIGTERM');
+      killProcessTree(proc, toolId);
       push({
         kind: 'event',
         event: makeErrorEvent(
@@ -256,7 +258,7 @@ async function* spawnAndStream(
       eventsEmitted++;
       if (eventsEmitted > opts.maxEvents) {
         guardrailHit = true;
-        proc.kill('SIGTERM');
+        killProcessTree(proc, toolId);
         push({
           kind: 'event',
           event: makeErrorEvent(

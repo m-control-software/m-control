@@ -245,8 +245,15 @@ class Store:
         if not AGENT_EXE.is_file():
             raise StoreError(f"{AGENT_EXE} not found. Start Logi Options+ manually (or reinstall it).")
         t0 = time.monotonic()
-        subprocess.Popen([str(AGENT_EXE)], cwd=str(AGENT_EXE.parent), close_fds=True,
-                         creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+        # Through `start`, never as our own child: mctl stops a timed-out tool with
+        # its whole process tree (taskkill /T), which would take the agent down too
+        # and leave the mouse on default buttons until the next login.
+        launcher = subprocess.Popen(agent_launch_command(AGENT_EXE, os.environ.get("ComSpec", "cmd.exe")),
+                                    close_fds=True, creationflags=subprocess.CREATE_NO_WINDOW)
+        try:
+            launcher.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass  # cmd normally exits at once; the poll below decides
         while time.monotonic() - t0 < wait_s:
             running = agent_pids()
             if running:
@@ -255,6 +262,12 @@ class Store:
             time.sleep(0.1)
         raise StoreError(f"Started {AGENT_EXE} but it is not running after {wait_s:.0f}s. "
                          "Start Logi Options+ manually.")
+
+
+def agent_launch_command(exe: Path, comspec: str) -> list[str]:
+    """`cmd /c start` makes the agent the child of a cmd.exe that exits at once, so
+    it is never a descendant of this tool (docs/architecture/constraints.md)."""
+    return [comspec, "/d", "/c", "start", "", "/D", str(exe.parent), str(exe)]
 
 
 # ---------------------------------------------------------------- model helpers

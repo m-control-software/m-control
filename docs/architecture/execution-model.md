@@ -140,11 +140,16 @@ Levels: `debug | info | warn | error`
 
 | Guardrail | Default | Behaviour when hit |
 |-----------|---------|-------------------|
-| `timeoutMs` | 30,000ms | SIGTERM → error event → caller notified |
-| `maxOutputBytes` | 10 MB | SIGTERM → error event |
-| `maxEvents` | 10,000 | SIGTERM → error event |
+| `timeoutMs` | 30,000ms | tool tree stopped → `RUNNER_TIMEOUT` error event |
+| `maxOutputBytes` | 10 MB | tool tree stopped → `RUNNER_MAX_OUTPUT_BYTES` error event |
+| `maxEvents` | 10,000 | tool tree stopped → `RUNNER_MAX_EVENTS` error event |
 
-Guardrail hits surface as `ErrorEvent` with `code: 'RUNNER_GUARDRAIL'`.
+"Tool tree stopped" means the tool **and every process it started**
+(`packages/core/src/runner/kill-tree.ts`): on Windows `taskkill /T /F`
+(TerminateProcess for each, so no cleanup runs); elsewhere SIGTERM to the tool
+and to each descendant found in a `ps` snapshot taken just before. A process
+that must outlive the run must therefore not be a descendant of the tool
+(`constraints.md` §4).
 
 ### Resolving `timeoutMs`
 

@@ -73,6 +73,10 @@ Established by stream-deck and logi-options (ADR-0010, ADR-0011):
 - **Fit the run budget.** Declare `timeoutMs` in the manifest when the tool
   needs anything other than the 30 s default, and never leave external state
   broken if the runner kills the tool mid-way.
+- **Don't parent what must outlive the run.** A guardrail stops the tool and
+  every process it started (`execution-model.md`, "Runner Guardrails"). Start a
+  process that must keep running (logi-options restarting the Options+ agent)
+  so it isn't a descendant of the tool: on Windows through `cmd /c start`.
 - **Be idempotent.** Applying the same spec twice is a no-op the second time.
 
 ## 5. Errors and messages

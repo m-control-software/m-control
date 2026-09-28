@@ -154,10 +154,10 @@ upstream falls through to `YTDLP_FAILED`.
 
 - **Budget:** `timeoutMs` is 1 hour. Override it per machine with
   `timeouts.tools["yt-download"]` for very long playlists.
-- **Windows: a timeout does not stop yt-dlp.** The runner stops tools with a
-  signal that Windows implements as TerminateProcess, which does not reach
-  child processes, so yt-dlp finishes (or stalls) on its own. POSIX forwards
-  the signal. The real fix is a process-tree kill in the core runner.
+- **A timeout stops yt-dlp and ffmpeg too.** mctl stops the tool's whole
+  process tree, so an interrupted download leaves a `.part` file that the
+  next run resumes. Needs an mctl built after the process-tree change; an
+  older one stops only the tool and yt-dlp runs on unsupervised.
 - **No signed-in downloads.** Private playlists (Liked, Watch Later),
   age-restricted and members-only videos need cookies. The design notes on
   `cookiesFile`/`cookiesFromBrowser` were deliberately left out of v1.
