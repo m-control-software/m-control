@@ -1,12 +1,9 @@
 # ADR-0014: chrome-bridge — Browser Actions via an Extension and a Native Messaging Host
 
-**Status:** Proposed  
+**Status:** Accepted (2026-09-28, after the host-lifetime tests on the device)  
 **Date:** 2026-09-28  
 **Deciders:** Michał + Claude  
 **Tags:** tools, browser, security, distribution
-
-> **Proposed** until the host-lifetime PoC (Open Question 1) passes on the
-> device. Then flip to Accepted and record the answer in Decision.
 
 ## Context
 
@@ -64,7 +61,23 @@ tools/artifacts/chrome-bridge/
    argument array, no shell, so config resolution, timeouts and guardrails are
    mctl's. It relays each NDJSON event to the extension as a native message.
    The extension shows progress on its badge and a notification with the
-   saved file name, or the error message.
+   saved file name, or the error message. *(Device run: Windows didn't show
+   Chrome's notifications and the badge is hidden unless the extension is
+   pinned, so the same news also goes in a toast in the page, via
+   `scripting` limited to the tab the command ran on.)*
+
+   **Lifetime (Open Questions 1–2, answered on the device, Chrome 154):** the
+   host lets mctl run to the end whatever happens to the port. With the
+   service worker left alone, one open port kept it alive through a
+   3.5-minute run and the result came back. After an extension reload and
+   after quitting Chrome, the host logged the closed port and the download
+   still completed (mctl exit 0, file saved). Chrome doesn't kill the host or
+   its children on Windows, so **no detached spawn is needed**; only the
+   progress of a job whose port closed is lost.
+
+   **One job per URL.** Two runs of one track collide on its file (yt-dlp
+   renames its `.temp.mp3` in place), so the host holds a lock per URL for
+   the job's lifetime and refuses a second one (`ALREADY_RUNNING`).
 4. **Install is a tool action.** `mctl run chrome-bridge action=install`
    writes, outside the repo (under `~/.m-control/chrome-bridge/`): the host
    manifest with absolute paths and the extension's id in `allowed_origins`,
@@ -131,20 +144,26 @@ registry key. **Why rejected:** the bridge is generic; the action is one entry.
 
 ## Open Questions
 
-Status 2026-09-28: the host is built so the child keeps running when the port
-closes (tested with a fake mctl); 1 and 2 still need the device run below.
+Answered on 2026-09-28 (device, Chrome 154.0.8037.57, Windows 11):
 
-1. **Host lifetime.** Does the download survive the native port closing (the
-   service worker suspended, the extension reloaded, Chrome closed)? Chrome may
-   put the host in a Windows job object that kills its children. PoC: start a
-   long download, close Chrome, check the file completes. If it doesn't, spawn
-   mctl detached (breakaway) and accept losing progress reporting for that case.
-2. **MV3 lifetime.** Does an open `connectNative` port keep the service
-   worker alive for the whole download on the installed Chrome version?
-3. **Finding mctl.** Default `~/.m-control/mctl.js` (what `scripts/install.ps1`
-   installs), overridable by an optional `chrome-bridge.mctlPath`. Is that enough?
-   *(Implemented so; the path is written into the launcher at install time.)*
+1. ~~**Host lifetime.**~~ The download survives the port closing: extension
+   reloaded (finished 1 min 49 s later) and Chrome quit (finished 2 min later).
+   No job object kills the host's children; the detached fallback isn't needed.
+2. ~~**MV3 lifetime.**~~ An open `connectNative` port kept the idle service worker
+   alive for a 3.5-minute run (download plus mp3 conversion) and the result arrived.
+3. ~~**Finding mctl.**~~ The default works, **if that mctl is current**. On the
+   device `~/.m-control/mctl.js` was two months old: it ignored yt-download's
+   `timeoutMs` and stopped every run after 30 s (`RUNNER_TIMEOUT`, while yt-dlp
+   carried on unsupervised). `action=install` now warns when it differs from the
+   checkout's build (`mctlCurrent`); keeping mctl updated is the fix.
+
+Still open:
+
 4. **Work laptop.** Is Developer mode / unpacked loading allowed by policy there?
+5. **Runs mctl can't stop.** On Windows mctl's timeout doesn't kill yt-dlp's
+   process tree (yt-download README, Limitations). With a current mctl the 1 h
+   budget makes that rare, but a run killed that way keeps writing after the host
+   released its lock. The fix is the process-tree kill in the core runner.
 
 ## Related Decisions
 

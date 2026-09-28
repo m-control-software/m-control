@@ -102,8 +102,15 @@ Optional, under `tools.chrome-bridge` in `~/.m-control/config.json`.
 
 The host doesn't stop a download when the connection to the extension closes (the
 service worker stops, the extension is reloaded, Chrome is closed): mctl keeps
-running and the file still arrives, only its progress has nobody to go to. See
-ADR-0014 for what was verified on the device. The host logs each run to
+running and the file still arrives, only its progress has nobody to go to. All
+three were verified on the device (ADR-0014). The toast of such a job says so after
+5 minutes without news and disappears; click any toast to dismiss it.
+
+**Keep mctl current.** The host runs the mctl at `mctlPath`, not the repo's. An
+old build ignores yt-download's 1-hour `timeoutMs` and stops every download after
+30 s (`RUNNER_TIMEOUT`). `action=install` warns when that mctl differs from the
+checkout's build (`mctlCurrent: false`); copy `apps/mctl/dist/bundle/index.js` over
+it, which is what `scripts/install.ps1` does. The host logs each run to
 `~/.m-control/chrome-bridge/host.log` (256 KB, one rotation).
 
 ## Errors
