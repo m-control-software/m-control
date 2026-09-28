@@ -76,5 +76,6 @@ a missing catalog file or `DefaultWinPlugin.xliff`, or `test_model.py` /
 internals** (usually after an update). Don't work around the guard. Follow
 **`tools/artifacts/logi-options/docs/maintenance.md`**: run the tests, then the
 controlled-change method with `research/`. Background:
-`tools/artifacts/logi-options/docs/internals.md`, `docs/actions-ring.md`,
+`tools/artifacts/logi-options/docs/internals.md`,
+`tools/artifacts/logi-options/docs/actions-ring.md`,
 ADR-0011, ADR-0013.
