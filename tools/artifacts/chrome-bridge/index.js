@@ -119,6 +119,28 @@ function mctlPath(config) {
   return path.resolve(homeDir(), expanded);
 }
 
+/**
+ * Whether the mctl the host will run is byte-identical to this checkout's
+ * build; undefined when there is no build to compare with. On the reference
+ * machine a two-month-old mctl.js cut every download at 30 s.
+ */
+function sameAsRepoBuild(mctl) {
+  const build = path.resolve(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    'apps',
+    'mctl',
+    'dist',
+    'bundle',
+    'index.js'
+  );
+  if (!fs.existsSync(build) || path.resolve(build) === path.resolve(mctl))
+    return undefined;
+  return fs.readFileSync(build).equals(fs.readFileSync(mctl));
+}
+
 function nextSteps(want) {
   return [
     'In Chrome: chrome://extensions, turn on Developer mode, then "Load unpacked" and pick ' +
@@ -148,6 +170,15 @@ async function main() {
     throw new ToolFailure(
       `mctl not found at ${mctl}. Install it (scripts/install.ps1) or set tools.chrome-bridge.mctlPath.`,
       'MCTL_NOT_FOUND'
+    );
+  }
+  const mctlCurrent = action === 'install' ? sameAsRepoBuild(mctl) : undefined;
+  if (mctlCurrent === false) {
+    log(
+      'warn',
+      `${mctl} differs from this checkout's build (apps/mctl/dist/bundle/index.js). An old mctl ignores ` +
+        "tools' timeoutMs and stops yt-download after 30 s (RUNNER_TIMEOUT); copy the current bundle there " +
+        '(what scripts/install.ps1 does) if downloads fail that way.'
     );
   }
 
@@ -191,6 +222,7 @@ async function main() {
     extensionId: want.extensionId,
     extensionDir: want.extensionDir,
     mctlPath: mctl,
+    ...(mctlCurrent !== undefined ? { mctlCurrent } : {}),
     nodePath: process.execPath,
     changes,
     ...(action === 'install' ? { nextSteps: nextSteps(want) } : {}),

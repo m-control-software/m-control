@@ -143,6 +143,37 @@ describe.skipIf(!runtimeAvailable(TOOL_DIR))(`${id} protocol`, () => {
         expect(run({ action: 'uninstall' }).result!.changed).toBe(false);
       });
 
+      it('warns when the mctl it wires in differs from the repo build', () => {
+        const build = path.resolve(
+          TOOL_DIR,
+          '..',
+          '..',
+          '..',
+          'apps',
+          'mctl',
+          'dist',
+          'bundle',
+          'index.js'
+        );
+        const r = run({ action: 'install', check: 'true' }); // the sandbox mctl.js is a stub
+        if (!fs.existsSync(build)) {
+          expect(r.result!.mctlCurrent).toBeUndefined();
+          return;
+        }
+        expect(r.result!.mctlCurrent).toBe(false);
+        expect(
+          r.events.some(
+            (e) =>
+              e.type === 'log' &&
+              String(e.payload.message).includes('RUNNER_TIMEOUT')
+          )
+        ).toBe(true);
+        fs.copyFileSync(build, path.join(home, 'mctl.js'));
+        expect(
+          run({ action: 'install', check: 'true' }).result!.mctlCurrent
+        ).toBe(true);
+      });
+
       it('fails recoverably when mctl is not where the config says', () => {
         const r = run(
           { action: 'install' },
