@@ -9,7 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`chrome-bridge` tool** (`tools/artifacts/chrome-bridge/`): Installs a Chrome extension's native messaging host so browser actions (YouTube tab to mp3) run through mctl.
+- **`chrome-bridge` tool** (`tools/artifacts/chrome-bridge/`, ADR-0014): a
+  Chrome extension (Manifest V3, pinned id) and a native messaging host. On a
+  YouTube or YouTube Music tab, Ctrl+Shift+Y or the toolbar button saves that
+  track as an mp3 through `mctl run yt-download format=audio`, with badge
+  progress and a notification. The host accepts only allowlisted actions on
+  validated URLs and runs mctl with no shell. `mctl run chrome-bridge
+  action=install|uninstall` (with `check=true`) registers or removes the host.
 
 - **`yt-download` tool** (`tools/media/yt-download/`): downloads YouTube
   videos (mp4) or audio (mp3 with tags and cover art), single videos or whole

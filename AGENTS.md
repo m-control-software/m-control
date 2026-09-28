@@ -34,7 +34,9 @@ references; `agent-status` (node) — dashboard of AI coding-agent sessions;
 `stream-deck` (powershell) — Stream Deck profiles from `*.deck.json` specs;
 `logi-options` (python) — MX Master 4 profiles from `*.logi.json` specs;
 `yt-download` (node) — YouTube video/mp3 downloads via pinned, checksum-verified
-yt-dlp + ffmpeg that `action=setup` installs outside the repo.
+yt-dlp + ffmpeg that `action=setup` installs outside the repo;
+`chrome-bridge` (node) — Chrome extension + native messaging host that runs
+allowlisted browser actions (YouTube tab → mp3) through mctl.
 
 ## Commands
 
