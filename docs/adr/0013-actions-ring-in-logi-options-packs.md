@@ -51,7 +51,8 @@ Extend **`logi-options`**, not a new tool.
    - Actions: `shortcut` (the buttons' grammar), `system` (an LPS system action
      by name, e.g. `media-play-pause` → `$DefaultWin___…`), `nothing` (→ `null`),
      and `raw` (the verbatim reference plus its definition; the export fallback,
-     not portable).
+     not portable). A `shortcut` may carry a `label` (the text the Ring shows;
+     K5), otherwise the Ring shows the shortcut.
    - Folders are not supported: apply rejects them, export fails recoverably
      naming the slot. A slot is never skipped silently.
 2. **Applications, per app as well as global.**
@@ -63,7 +64,8 @@ Extend **`logi-options`**, not a new tool.
      tool never installs Logitech plugins.
    - Chrome is decided by experiment R7 (Open Questions): if a plugin-less
      `chrome` app profile works, `builtin: google-chrome` maps to it and
-     Logitech's plugin is not needed.
+     Logitech's plugin is not needed. *(R7, 2026-09-28: it works, so this is
+     the mapping.)*
 3. **Encoder.** `keyboardKey` is built at apply time. The HKL comes from the
    target machine (the default input layout, `HKCU\Keyboard Layout\Preload\1`,
    then the first `GetKeyboardLayoutList` entry); the scan code from
@@ -151,17 +153,31 @@ by the user's requirement.
 
 ## Open Questions
 
-1. **R5c:** does a plugin-less app Ring created by the tool (not the UI) work
-   when that app is in front?
-2. **R7:** does a plugin-less `chrome` app Ring work without Logitech's
-   ChromeExtension plugin and Logi Web Extension? Decides how
-   `builtin: google-chrome` maps (Decision 2).
-3. **Key coverage:** modifier order for Alt vs Win and Alt vs Shift; digits,
-   punctuation, Space, arrows, Enter. Until recorded, the encoder rejects them.
-4. **Layouts where VK and scan differ from US** (e.g. German QWERTZ): which
+Answered on 2026-09-28 (evidence in `actions-ring.md`):
+
+- ~~**R5c:** does a plugin-less app Ring created by the tool work?~~ **Yes**
+  (`notepad`, never seen by the UI). Plugin-less apps have
+  `defaultProfileName: null`; their profile is the only folder under `Profiles\`.
+- ~~**R7:** does a plugin-less `chrome` Ring work without Logitech's plugin?~~
+  **Yes**: shown with Chrome in front, the item fired, Global elsewhere. So
+  `builtin: google-chrome` maps to the plugin-less app `chrome` (Decision 2), and
+  `@_chromeextension` is only used if it already exists.
+- ~~**Key coverage** (K4).~~ Modifier order is Ctrl, Win, Alt, Shift where
+  observed; digits (`Key1`), `/` (`Oem2`), Space, Left (`ArrowLeft`), Enter
+  (`Return`) are recorded. Still rejected: Ctrl together with Win (order never
+  recorded) and keys never recorded.
+- **Labels (K5):** a free-text `displayName` is shown and kept, so the spec gets
+  an optional `label`.
+- **System actions (S1):** LPS's own list is `DefaultWinPlugin.xliff`
+  (`@commands`), read at run time.
+
+Still open:
+
+1. **Layouts where VK and scan differ from US** (e.g. German QWERTZ): which
    value LPS replays.
-5. **Second machine**, and whether the Global profile folder name differs per
+2. **Second machine**, and whether the Global profile folder name differs per
    install (the tool reads `defaultProfileName` either way).
+3. **Ctrl+Win order** and the remaining keys: record in the UI when needed.
 
 ## Related Decisions
 

@@ -1,7 +1,7 @@
 # Actions Ring — can it be written from a spec?
 
-A feasibility study, not an implementation. Reverse-engineered on 2026-09-27/28 on
-Windows 11 (26200), Options+ agent 2.7.961922, catalog build `853130` (unchanged
+A feasibility study; the implementation is `lib/ring.py` (ADR-0013).
+Reverse-engineered on 2026-09-27/28 on Windows 11 (26200), Options+ agent 2.7.961922, catalog build `853130` (unchanged
 since [internals.md](internals.md)), **LogiPluginService 6.4.1.3246**, MX Master 4,
 with the controlled-change method of [maintenance.md](maintenance.md). Everything
 here was observed unless it says otherwise; see [Evidence](#evidence).
@@ -79,10 +79,28 @@ profile ids of [internals.md](internals.md); they are a separate identity scheme
 | Global | `@_defaultwin` | fallback | yes (constant) |
 | App without a plugin (R3c: 7-Zip) | folder and `processOrBundleName` = **lower-case exe stem** (`7zfm`) | process name only, no path | **yes**, better than settings.db custom apps |
 | App with a plugin (R3: Chrome) | `@_chromeextension`, created by installing plugin `ChromeExtension` 6.0.5 into `LogiPluginService\Plugins\` | the plugin's `applicationPatterns.executablePathPattern` (`Google\\Chrome\\Application\\chrome.exe$`) | only if the plugin is installed; Chrome's also needs the Logi Web Extension in the browser |
+| **Chrome without its plugin (R7)** | plugin-less app `chrome`, written by the tool | process name `chrome` | **yes**: the plugin isn't needed for a Chrome Ring |
 
 A new app profile starts with 8 `null` slots (not a copy of Global). Installing a
 plugin also adds stock profiles (`Default Chrome Profile`) and an app under every
 `Loupedeck7x` device.
+
+**A plugin-less app written by a script works (R5c, R7).** The files the UI
+wrote for 7-Zip, reproduced with deterministic ids, were enough for both `chrome`
+(an app that has a Logitech plugin, not installed) and `notepad` (an app the UI
+never saw, and a Store app). The right Ring showed with the app in front, the
+item fired, and the Global Ring came back with another app in front. The Options+
+UI lists both apps with their icons and edits them like its own (K4).
+
+- **`defaultProfileName` is `null` for plugin-less apps** (R3c, as the UI writes
+  it), and the profile folder name is random. The profile is **the only folder
+  under `Profiles\`**; a tool refuses when there are several. Only plugin apps and
+  `@_defaultwin` name theirs.
+- `ApplicationInfo.displayName` is what the UI shows as the app's name (the UI
+  took 7-Zip's from the exe's version info). The profile's `displayName` is
+  localized by the UI (`"7-Zip File Manager Profil"`) and isn't shown in the Ring.
+- A UI edit of a script-created profile rewrote only what it edited: our item
+  stayed byte-identical, and the file still round-trips (K4).
 
 ## Q4 — Action types
 
@@ -107,9 +125,9 @@ It is **not** the `macro.keystroke {code, modifiers}` card of button slots, so
 
 ### The `keyboardKey` grammar (K1)
 
-Decoded from eight UI recordings (Polish Programmers layout) plus Ctrl+Shift+Esc
-from R1. `research/ring_poc.py`'s `encode()` rebuilds **all nine byte for byte**
-from this grammar and the machine's layout.
+Decoded from fifteen UI recordings (Polish Programmers layout; K1 and K4) plus
+Ctrl+Shift+Esc from R1. `research/ring_poc.py`'s `encode()` rebuilds **all sixteen
+byte for byte** from this grammar and the machine's layout.
 
 ```
 <logical>___<hkl>___<display>___win-<VK>#¤%&+?<flags>#¤%&+?<hkl>#¤%&+?<scan>
@@ -120,13 +138,13 @@ Windows platform part (the fourth field). Everything is decimal.
 
 | Part | Rule | Evidence |
 |---|---|---|
-| `<logical>` | modifiers then key, `+`-joined. Modifiers: `ControlOrCommand`, `AltOrOption`, `Windows`, `Shift`. Keys: `Key<A-Z>`, `F<n>`, `Escape` (also seen in stock items: `Insert`, `Space`, `Key5` for the digit 5) | all K1 rows |
-| modifier order | Ctrl before Alt, Ctrl before Shift, Win before Shift. Alt vs Win, and Alt vs Shift: **guessed** (the encoder uses Ctrl, Alt, Win, Shift) | K1 rows 1–3, 8 |
+| `<logical>` | modifiers then key, `+`-joined. Modifiers: `ControlOrCommand`, `AltOrOption`, `Windows`, `Shift`. Keys: `Key<A-Z>`, `Key<0-9>`, `F<n>`, `Escape`, `Space`, `ArrowLeft`, `Return`, `Oem2` (the `/` key, VK_OEM_2); also seen in stock items: `Insert` | K1, K4 rows |
+| modifier order | **Ctrl, Win, Alt, Shift** as far as observed: Ctrl < Alt, Ctrl < Shift, Win < Shift (K1), Win < Alt, Alt < Shift (K4). Ctrl vs Win was never recorded: the encoder rejects a shortcut with both | K1 rows 1–3, 8; K4 rows 1–2 |
 | `<hkl>` (both) | the HKL of the keyboard layout active in the Options+ window when recording, decimal: `0x04150415` Polish, `0x04090409` US | K2.2 |
-| `<display>` | the UI label: `Ctrl`, `Alt`, `Win`, `Shift`, then the key (`Y`, `F4`, `Escape`), `+`-joined, same order as `<logical>` | all K1 rows |
-| `win-<VK>` | the **Windows virtual-key code** of the key (Y 89 = 0x59, S 83, Z 90, F4 115 = 0x73, F13 124 = 0x7C, Esc 27) | all K1 rows |
-| `<flags>` | a **bitmask** of modifiers: **Alt 2, Shift 4, Win 8, Ctrl 128**. Bits 1, 16, 32, 64 never appeared (**guessed**: unused on Windows) | 132 = Ctrl+Shift, 130 = Ctrl+Alt, 12 = Win+Shift, 2 = Alt, 128 = Ctrl, 0 = none |
-| `<scan>` | the **scan code** (set 1) of the key under that layout (`MapVirtualKeyEx(VK, MAPVK_VK_TO_VSC, hkl)`): Y 21 = 0x15, S 31, Z 44 = 0x2C, F4 62 = 0x3E, F13 100 = 0x64, Esc 1 | all K1 rows |
+| `<display>` | the UI label: `Ctrl`, `Win`, `Alt`, `Shift`, then the key (`Y`, `1`, `F4`, `Escape`, `/`, `ArrowLeft`, `Return`, and a literal space for Space), `+`-joined, same order as `<logical>`. Cosmetic: the UI shows it, nothing replays from it | K1, K4 rows |
+| `win-<VK>` | the **Windows virtual-key code** of the key (Y 89 = 0x59, S 83, Z 90, 1 49, F4 115 = 0x73, F13 124 = 0x7C, Esc 27, Space 32, Left 37, Enter 13, `/` 191 = 0xBF) | K1, K4 rows |
+| `<flags>` | a **bitmask** of modifiers: **Alt 2, Shift 4, Win 8, Ctrl 128**. Bits 1, 16, 32, 64 never appeared (**guessed**: unused on Windows) | 134 = Ctrl+Alt+Shift, 132 = Ctrl+Shift, 130 = Ctrl+Alt, 12 = Win+Shift, 10 = Win+Alt, 2 = Alt, 128 = Ctrl, 0 = none |
+| `<scan>` | the **scan code** (set 1) of the key under that layout (`MapVirtualKeyEx(VK, MAPVK_VK_TO_VSC, hkl)`): Y 21 = 0x15, S 31, Z 44 = 0x2C, 1 2, F4 62 = 0x3E, F13 100 = 0x64, Esc 1, Space 57, Left 75 (no extended bit), Enter 28, `/` 53 | K1, K4 rows |
 
 | Recorded in the UI | Stored `keyboardKey` (`#¤%&+?` shown as ` # `) |
 |---|---|
@@ -139,6 +157,18 @@ Windows platform part (the fourth field). Everything is decimal.
 | RCtrl+Y | `ControlOrCommand+KeyY___{hkl}___Ctrl+Y___win-89 # 128 # {hkl} # 21`: **identical to left Ctrl** |
 | Ctrl+Shift+Z (control: Z/Y as on US) | `ControlOrCommand+Shift+KeyZ___{hkl}___Ctrl+Shift+Z___win-90 # 132 # {hkl} # 44` |
 | Ctrl+Shift+Esc (R1) | `ControlOrCommand+Shift+Escape___{hkl}___Ctrl+Shift+Escape___win-27 # 132 # {hkl} # 1` |
+| Ctrl+Alt+Shift+Y (K4) | `ControlOrCommand+AltOrOption+Shift+KeyY___{hkl}___Ctrl+Alt+Shift+Y___win-89 # 134 # {hkl} # 21` |
+| Win+Alt+Y (K4) | `Windows+AltOrOption+KeyY___{hkl}___Win+Alt+Y___win-89 # 10 # {hkl} # 21` |
+| Ctrl+1 (K4) | `ControlOrCommand+Key1___{hkl}___Ctrl+1___win-49 # 128 # {hkl} # 2` |
+| Ctrl+Shift+/ (K4) | `ControlOrCommand+Shift+Oem2___{hkl}___Ctrl+Shift+/___win-191 # 132 # {hkl} # 53` |
+| Ctrl+Space (K4) | `ControlOrCommand+Space___{hkl}___Ctrl+ ___win-32 # 128 # {hkl} # 57`: the UI shows "Ctrl+ ", but the item is complete |
+| Alt+Left (K4) | `AltOrOption+ArrowLeft___{hkl}___Alt+ArrowLeft___win-37 # 2 # {hkl} # 75` |
+| Ctrl+Enter (K4) | `ControlOrCommand+Return___{hkl}___Ctrl+Return___win-13 # 128 # {hkl} # 28` |
+
+Keys with no recording (Tab, Delete, Home, the other arrows, the other OEM keys, …)
+have names that can be guessed (`ArrowRight`? `Oem1`? `OemComma`?) but weren't
+observed, so the encoder rejects them. A slot the UI made with one of them still
+decompiles, and exports as `raw`.
 
 - **No left/right modifiers.** RCtrl was stored exactly as Ctrl, so the Ring can't
   express `RCTRL` and friends; an encoder must reject them rather than silently map them.
@@ -155,11 +185,49 @@ Windows platform part (the fourth field). Everything is decimal.
 - Mac entries in the stock profile use a different platform part
   (`mac-<keycode>#¤%&+?<CGEventFlags>#¤%&+?<char>#¤%&+?<input source>`), not needed here.
 
+**The label is free text (K5).** An item whose `displayName` is `"YT → mp3"`
+while its shortcut is Ctrl+Shift+Esc showed that label in the Ring and in the
+Options+ UI, kept the non-ASCII arrow (written verbatim, `ensure_ascii=False`),
+survived restarts and a UI edit of another slot, and still fired. No `.ict` was
+written; the Ring drew its own icon.
+
+### System actions (S1)
+
+The installed definition is
+`%ProgramFiles%\Logi\LogiPluginService\Plugins\DefaultWin\localization\DefaultWinPlugin.xliff`,
+group `@commands` of `<file original="$DefaultWin___System">` (English `source`
+labels; `_pl-PL.xliff` etc. hold the translations). A Ring slot references one as
+`$DefaultWin___<Name>`, with no definition in the profile (R0: `MediaPlayPause`,
+`LockWorkstation`, `WindowsScreenshot`, `WindowsMagnifier`, `WindowsExplorer`).
+LogiPluginService 6.4.1.3246 ships:
+
+| `<Name>` | Label | | `<Name>` | Label |
+|---|---|---|---|---|
+| `LockWorkstation` | Lock Workstation | | `NextDesktop` | Next Desktop |
+| `WindowsActions` | Windows Actions (Quick Settings) | | `PreviousDesktop` | Previous Desktop |
+| `WindowsDesktop` | Windows Desktop (show/hide) | | `VolumeUp` | Volume Up |
+| `WindowsExplorer` | Windows Explorer | | `VolumeDown` | Volume Down |
+| `WindowsSettings` | Windows Settings | | `VolumeMute` | Toggle Mute |
+| `WindowsRun` | Windows Run | | `MediaPlayPause` | Play/Pause |
+| `WindowsSearch` | Windows Search | | `MediaStop` | Stop |
+| `WindowsScreenshot` | Windows Screenshot | | `MediaNextTrack` | Next Track |
+| `WindowsEmoji` | Emoji | | `MediaPrevTrack` | Previous Track |
+| `WindowsKeyboardLayout` | Keyboard Layout | | `ActivateMenuBar` | Activate Menu Bar |
+| `WindowsMagnifier` | Magnifier | | `ResetBrightness` | Reset Screen Brightness |
+| `AddDesktop` | Add Desktop | | `ResetVolume` | Toggle Mute (the Volume dial's reset) |
+| `CloseDesktop` | Close Desktop | | | |
+
+Not plain commands, so not in that list for a spec: `Brightness` and `Volume` (group
+`@adjustments`, dials), and `Loupedeck.DefaultWinPlugin.WindowsSettingsApplicationDynamicCommand`
+(a parameterized dynamic command). The DLL's strings match the names; the xliff is
+the readable list, so a tool reads it at run time instead of freezing a copy, as
+it does with the Options+ catalogs.
+
 Other item kinds, **seen in the data, not experimented with**:
 
 | UI offers | Stored as |
 |---|---|
-| System actions (lock, screenshot, magnifier, explorer, media) | `$DefaultWin___<Action>` reference, no definition needed |
+| System actions (lock, screenshot, magnifier, explorer, media) | `$DefaultWin___<Action>` reference, no definition needed (S1 above) |
 | Run program / open file | profile action `$@Generic___@ShellExecute`, `parameters.filePath` (**a machine path**) |
 | Folder | profile action `$@Generic___@OpenFolder`, `parameters.folderName` → `layout.folderPages[name]` |
 | Easy-Switch | profile action `$@Generic___@EasySwitch` (`device`, `channel`) |
@@ -235,8 +303,8 @@ replays from is **not known**.
 1. A second store and owner (LPS) beside `settings.db`, with its own guards
    (round-trip, layout shape, owner-stopped).
 2. A new item encoder (`keyboardKey`), not the card compiler. The grammar is decoded
-   (K1) and reproduced byte for byte; only modifier order for Alt/Win and non-letter
-   keys remain guessed.
+   (K1, K4) and reproduced byte for byte; Ctrl vs Win order and the unrecorded keys
+   are rejected rather than guessed.
 3. Per-machine derivation of the layout HKL, deterministic action ids, and per-app
    profile resolution (`defaultProfileName`, creating the app folder for plugin-less apps).
 
@@ -311,12 +379,11 @@ profile, write and verify steps for Ctrl/Alt/Win/Shift with A–Z, F1–F24 or E
 
 | Question | Experiment that settles it |
 |---|---|
-| Modifier order for Alt vs Win and Alt vs Shift (e.g. Ctrl+Alt+Shift, Win+Alt) | UI-record Ctrl+Alt+Shift+Y and Win+Alt+Y; diff |
-| Digits, punctuation (OEM keys), Space, arrows, Enter: logical names and VK | UI-record Ctrl+1, Ctrl+Shift+/ , Ctrl+Space, Alt+Left; diff |
+| Modifier order for Ctrl vs Win (e.g. Ctrl+Win+Y) | UI-record it; diff. Alt vs Win and Alt vs Shift were settled by K4 |
+| Logical names of the unrecorded keys: other arrows, other OEM keys, Tab, Delete, Home, … | UI-record them; diff. K4 settled digits, `/`, Space, Left, Enter |
 | On a layout where VK and scan differ from US (German QWERTZ), what does LPS replay? | add German, record Ctrl+Y under it, replay under Polish with the key logger |
 | Does *any* installed HKL work, or only one whose VK/scan agree with the key? | same experiment; also write an item with the UK HKL and replay |
 | Second machine | run `ring_poc.py --dry-run`, then R5 there |
-| Writing a new plugin-less app profile from scratch (not UI-created) | R5c: create `Applications\Loupedeck72\<stem>\` programmatically, test with the app in front |
 | Is the Global profile folder name random per install? | compare `defaultProfileName` on a second machine or after a reinstall |
 | Are `settings.db`'s `radial-menu` slots ever read? | not needed for the feature; leave untouched |
 | Logitech account sync of LPS profiles | untested, as for `settings.db` |
@@ -342,6 +409,12 @@ The raw snapshots and file copies stayed under `~/.m-control/research/logi-optio
 | K2.2 | UI, 2026-09-28: re-record Ctrl+Shift+Y with the US layout active in the Options+ window; then select it with Polish active | both `<hkl>` fields became `0x04090409`, all else unchanged; **verified on the device**: it sent Ctrl+Shift+Y under Polish |
 | K3 | kill only the LPS process tree, press a mouse button throughout | agent (same PID) respawned LPS in 1.5 s; buttons kept working (**verified on the device**); Ring back; nothing written |
 | R6b | restore the follow-up's start state (Ring profile, 2 orphaned `.ict`, LPS's daily-backup files, ini), owner stopped | 0 differences after 45 s, except `backup.date` and the Sentry stamp; `settings.db` profiles identical to the follow-up baseline |
+| R7 | 2026-09-28, ChromeExtension plugin **not** installed (no `Plugins\`, only `@_defaultwin`): `ring_poc.py --app chrome --create`: plugin-less app `chrome` (the 7-Zip files of R3c, deterministic ids), Ctrl+Shift+Esc in slot 1, owner stopped | kept byte for byte (30 s). **Verified on the device**: Chrome in front shows the Chrome Ring (slot 1 only), the item opens Task Manager; another app in front shows the Global Ring. **Logitech's plugin and web extension are not needed** |
+| R5c | the same for `notepad` (never seen by the UI; Windows 11 Store Notepad, process `Notepad.exe`) | kept; **verified on the device**: Notepad Ring shown, item fires |
+| K5 | `ring_poc.py --label "YT → mp3"`: only the `displayName` of the Chrome slot-1 item changed | kept; **verified on the device**: "YT → mp3" shown in the Ring and in the Options+ UI, arrow intact, Task Manager still opens |
+| K4 | UI, Polish Programmers: record Ctrl+Alt+Shift+Y, Win+Alt+Y, Ctrl+1, Ctrl+Shift+/, Ctrl+Space, Alt+Left, Ctrl+Enter in turn into slot 2 of the script-created Chrome Ring; a watcher copied the profile after each save | one profile action edited in place per step; the rows above; `encode()` reproduces all 16 recordings byte for byte. The UI left the script-written slot-1 item byte-identical and wrote one `.ict` and one undo point. The Ctrl+Space recording showed "Ctrl+ " in the UI but is complete in the file |
+| S1 | read the installed LPS files (`Plugins\DefaultWin\localization\DefaultWinPlugin.xliff`, `DefaultWinPlugin.dll`, `Logs\plugin_logs\DefaultWin.log`) | the `$DefaultWin___…` list above; nothing written |
+| R6c | restore the phase start (delete `chrome\`, `notepad\`, the undo point; ini from the baseline copy), owner stopped | all 2568 files of the baseline hash manifest identical, except the ini's Sentry stamp; `check=true` in sync |
 
 Known LPS noise, for future diffs: `Logs\`, `Temp\` (`GetServiceState.json`,
 `WebSocketPort.txt`, `WebSocketServer.txt`, `DictionaryCache\`, `mp\MarketplaceInfo.bin`),
