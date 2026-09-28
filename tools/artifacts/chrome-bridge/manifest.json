@@ -7,6 +7,6 @@
   "runtime": "node",
   "entry": "index.js",
   "requiredConfig": [],
-  "optionalConfig": [],
-  "tags": []
+  "optionalConfig": ["chrome-bridge.mctlPath"],
+  "tags": ["artifacts", "browser", "chrome", "youtube", "installer"]
 }

@@ -1,55 +1,32 @@
 #!/usr/bin/env node
 /**
- * chrome-bridge — Tool Protocol v1 (Node.js template)
+ * chrome-bridge — Tool Protocol v1 (ADR-0014).
+ *
+ * Installs (or removes) the native messaging host that lets the m-control
+ * bridge Chrome extension (./extension, loaded unpacked) run allowlisted
+ * actions through mctl. The host itself is ./host/host.js; Chrome starts it,
+ * not mctl. See README.md.
+ *
+ *     mctl run chrome-bridge action=install [check=true]
+ *     mctl run chrome-bridge action=uninstall [check=true]
  *
  * stdin  <- JSON ToolRequest (read to EOF before doing any work)
- * stdout -> NDJSON ToolEvent lines ONLY (never raw console.log)
- * stderr -> raw diagnostic output (allowed, not parsed)
+ * stdout -> NDJSON ToolEvent lines ONLY (lib/protocol.js)
  * exit      0 = success, 1 = expected failure (after error event), >=2 = crash
- *
- * Tools are intentionally plain JS: no TypeScript, no build step, no
- * dependencies. Keep them standalone.
- *
- * The tool id and the required config keys come from manifest.json, so the
- * manifest stays the single source of truth for both.
  */
 
 'use strict';
 
+const os = require('node:os');
+const path = require('node:path');
+const fs = require('node:fs');
+
 const manifest = require('./manifest.json');
+const { ToolFailure, error, log, result, started } = require('./lib/protocol');
+const install = require('./lib/install');
 
-const TOOL_ID = manifest.id;
-
-// ---------------------------------------------------------------------------
-// Protocol helpers
-// ---------------------------------------------------------------------------
-
-function emit(type, payload) {
-  process.stdout.write(
-    JSON.stringify({
-      type,
-      ts: new Date().toISOString(),
-      toolId: TOOL_ID,
-      payload,
-    }) + '\n'
-  );
-}
-
-const started = (meta = {}) => emit('started', { meta });
-const log = (level, message, data) =>
-  emit('log', { level, message, ...(data !== undefined ? { data } : {}) });
-const result = (payload) => emit('result', payload);
-const error = (message, code, recoverable) =>
-  emit('error', { message, code, recoverable });
-
-/** An expected failure the user can act on (or not): error event, exit 1. */
-class ToolFailure extends Error {
-  constructor(message, code, recoverable = true) {
-    super(message);
-    this.code = code;
-    this.recoverable = recoverable;
-  }
-}
+const INPUT_KEYS = ['action', 'check'];
+const ACTIONS = ['install', 'uninstall'];
 
 function readRequest() {
   return new Promise((resolve, reject) => {
@@ -76,7 +53,7 @@ function readRequest() {
 /**
  * Fails with a recoverable CONFIG_MISSING error when any key the manifest
  * declares in requiredConfig is unset or empty — the same rule `mctl doctor`
- * applies. Nothing enforces requiredConfig at run time, so the tool must.
+ * applies. This tool declares none; the check stays so adding one is enforced.
  */
 function requireConfig(config) {
   const missing = (manifest.requiredConfig || []).filter((key) => {
@@ -92,24 +69,132 @@ function requireConfig(config) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Main
-// ---------------------------------------------------------------------------
+function homeDir() {
+  return process.platform === 'win32'
+    ? (process.env.USERPROFILE ?? os.homedir())
+    : os.homedir();
+}
+
+function parseBool(value, key) {
+  if (value === undefined || value === '') return false;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  throw new ToolFailure(
+    `${key} must be true or false, got ${JSON.stringify(value)}.`,
+    'INPUT_INVALID'
+  );
+}
+
+function parseInput(input) {
+  const unknown = Object.keys(input).filter((k) => !INPUT_KEYS.includes(k));
+  if (unknown.length) {
+    throw new ToolFailure(
+      `Unknown input ${unknown.join(', ')}. Valid keys: ${INPUT_KEYS.join(', ')}.`,
+      'INPUT_INVALID'
+    );
+  }
+  if (!ACTIONS.includes(input.action)) {
+    throw new ToolFailure(
+      `action must be ${ACTIONS.join(' or ')}, e.g. mctl run chrome-bridge action=install` +
+        (input.action ? ` (got ${JSON.stringify(input.action)})` : ''),
+      'INPUT_INVALID'
+    );
+  }
+  return { action: input.action, check: parseBool(input.check, 'check') };
+}
+
+function mctlPath(config) {
+  const v = config['chrome-bridge.mctlPath'];
+  if (v !== undefined && v !== null && v !== '' && typeof v !== 'string') {
+    throw new ToolFailure(
+      `tools.chrome-bridge.mctlPath must be a path string, got ${JSON.stringify(v)}.`,
+      'CONFIG_INVALID'
+    );
+  }
+  const raw = v || '~/.m-control/mctl.js';
+  const expanded =
+    raw === '~' || /^~[\\/]/.test(raw)
+      ? path.join(homeDir(), raw.slice(1))
+      : raw;
+  return path.resolve(homeDir(), expanded);
+}
+
+function nextSteps(want) {
+  return [
+    'In Chrome: chrome://extensions, turn on Developer mode, then "Load unpacked" and pick ' +
+      want.extensionDir,
+    `Check that the extension id is ${want.extensionId}.`,
+    'Check chrome://extensions/shortcuts: "Save this YouTube / YouTube Music track as mp3" should be Ctrl+Shift+Y ' +
+      '(Chrome skips a suggested shortcut that is already taken).',
+  ];
+}
 
 async function main() {
   started();
-
   const { context, input = {} } = await readRequest();
   const config = context.config || {};
   requireConfig(config);
+  const { action, check } = parseInput(input);
 
-  log('info', `Running in workspace: ${context.workspaceRoot}`);
+  if (process.platform !== 'win32') {
+    throw new ToolFailure(
+      'chrome-bridge installs through the Windows registry (v1). On macOS and Linux Chrome reads host manifests ' +
+        'from a directory instead; see README.md.',
+      'UNSUPPORTED_PLATFORM'
+    );
+  }
+  const mctl = mctlPath(config);
+  if (action === 'install' && !fs.existsSync(mctl)) {
+    throw new ToolFailure(
+      `mctl not found at ${mctl}. Install it (scripts/install.ps1) or set tools.chrome-bridge.mctlPath.`,
+      'MCTL_NOT_FOUND'
+    );
+  }
 
-  // TODO: implement the tool. `input` holds `mctl run chrome-bridge key=value`
-  // pairs, always as strings. `config` holds every key the manifest declares,
-  // keyed by dot-path (e.g. config['chrome-bridge.apiKey']).
+  const want = install.desired({
+    toolDir: __dirname,
+    stateDir: path.join(homeDir(), '.m-control', 'chrome-bridge'),
+    nodePath: process.execPath,
+    mctlPath: mctl,
+  });
+  const changes = install.plan(action, want, install.currentState(want));
+  const pending = changes.filter(
+    (c) => !['unchanged', 'absent'].includes(c.action)
+  );
+  for (const c of pending)
+    log('info', `${check ? 'would ' : ''}${c.action} ${c.target}`);
 
-  result({ message: 'TODO: implement me', input });
+  if (!check && pending.length) {
+    install.applyChanges(action, want, changes);
+    const after = install.plan(action, want, install.currentState(want));
+    const left = after.filter(
+      (c) => !['unchanged', 'absent'].includes(c.action)
+    );
+    if (left.length) {
+      throw new ToolFailure(
+        `After the ${action}, ${left.map((c) => c.target).join(', ')} still differ. Run it again, or check permissions.`,
+        'VERIFY_FAILED'
+      );
+    }
+  }
+  if (!pending.length)
+    log(
+      'info',
+      `already ${action === 'install' ? 'installed' : 'removed'}; nothing to do`
+    );
+
+  result({
+    action,
+    check,
+    changed: !check && pending.length > 0,
+    hostName: install.HOST_NAME,
+    extensionId: want.extensionId,
+    extensionDir: want.extensionDir,
+    mctlPath: mctl,
+    nodePath: process.execPath,
+    changes,
+    ...(action === 'install' ? { nextSteps: nextSteps(want) } : {}),
+  });
 }
 
 main().then(
