@@ -120,7 +120,12 @@ async function start(action, tab) {
 
   jobs += 1;
   badge('…', BADGE.busy);
-  const title = (current.title || url).replace(/ - YouTube( Music)?$/, '');
+  // The tab title is only a placeholder: YouTube updates it after the URL when
+  // you move to another video, so it can name the previous one. yt-download's
+  // own messages carry the real title and replace it as soon as they arrive.
+  let title = (current.title || url)
+    .replace(/^\(\d+\) /, '') // YouTube's unread-notification counter
+    .replace(/ - YouTube( Music)?$/, '');
   tell(job, `${ACTIONS[action].title}…`, title, 'm-control: started', 'busy');
   let finished = false;
   let saved = [];
@@ -136,14 +141,17 @@ async function start(action, tab) {
       const e = msg.event || {};
       const p = e.payload || {};
       if (e.type === 'log') {
-        const m = /: (\d{1,3})% of /.exec(p.message || '');
+        const text = p.message || '';
+        const named = /^Downloading: (.+) \[[\w-]{11}\]$/.exec(text);
+        const m = /^(.+): (\d{1,3})% of /.exec(text);
+        if (named) title = named[1];
         if (m) {
-          badge(`${m[1]}%`, BADGE.busy);
-          toast(
-            job.tabId,
-            `${ACTIONS[action].title}… ${m[1]}%\n${title}`,
-            'busy'
-          );
+          title = m[1];
+          badge(`${m[2]}%`, BADGE.busy);
+        }
+        if (named || m) {
+          const pct = m ? ` ${m[2]}%` : '';
+          toast(job.tabId, `${ACTIONS[action].title}…${pct}\n${title}`, 'busy');
         }
       } else if (e.type === 'result') {
         saved = (p.items || []).map((i) => i.file).filter(Boolean);
