@@ -107,9 +107,11 @@ function ytDlpEntry(overrides: Partial<Entry> = {}): Entry {
 }
 
 function ffmpegEntry(overrides: Partial<Entry> = {}): Entry {
+  const archive = path.join(assets, 'ffmpeg.tar.xz');
   return {
     url: `${baseUrl}/ffmpeg.tar.xz`,
-    sha256: sha256(path.join(assets, 'ffmpeg.tar.xz')),
+    // The archive is only built off Windows; tests that run on Windows skip ffmpeg.
+    sha256: fs.existsSync(archive) ? sha256(archive) : '0'.repeat(64),
     archive: 'tar.xz',
     binDir: 'ffmpeg-test/bin',
     files: ['ffmpeg', 'ffprobe'],
