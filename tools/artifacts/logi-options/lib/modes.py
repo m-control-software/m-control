@@ -11,6 +11,7 @@ import catalog as cat
 import model
 import packs
 import protocol as pr
+import ring
 import store as st
 import transaction
 from errors import LogiError, SpecError
@@ -50,6 +51,19 @@ class Ctx:
         self.store = st.Store(Path(os.path.expandvars(cfg(config, "dataDir", str(st.LIVE_DATA_DIR)))))
         self.backups_dir = Path(os.path.expandvars(cfg(config, "backupDir", str(backup.DEFAULT_DIR))))
         self.device = str(tool_input.get("device") or DEFAULT_DEVICE)
+        # The Ring store follows the settings store: a copy of settings.db never pairs
+        # with the live Ring unless ringDataDir says so explicitly.
+        ring_dir = cfg(config, "ringDataDir")
+        if ring_dir:
+            self.ring_store = ring.RingStore(Path(os.path.expandvars(str(ring_dir))))
+        else:
+            self.ring_store = ring.RingStore(ring.LIVE_DATA_DIR if self.store.live else None)
+        self._keyboard: ring.Keyboard | None = None
+
+    def keyboard(self) -> ring.Keyboard:
+        if self._keyboard is None:
+            self._keyboard = ring.windows_keyboard()
+        return self._keyboard
 
     def need(self, key: str, example: str) -> str:
         v = self.input.get(key)
@@ -68,7 +82,7 @@ def run(mode: str, tool_input: dict, context: dict, tool_dir: Path, deadline: tr
 
 # ------------------------------------------------------------------ specs -> store
 
-def _jobs(ctx: Ctx):
+def _load(ctx: Ctx):
     files = packs.find_spec_files(ctx.pack_dirs, tool_dir=ctx.tool_dir)
     if not files:
         searched = [str(ctx.tool_dir / "specs")] + ctx.pack_dirs
@@ -76,10 +90,16 @@ def _jobs(ctx: Ctx):
                         ". Put your pack in a directory listed in tools.logi-options.packDirs "
                         "(~/.m-control/config.json); see the tool README.")
     _log("info", f"found {len(files)} spec file(s)")
-    merged = packs.merge(files)
+    return files, packs.merge(files)
+
+
+def _jobs(ctx: Ctx, merged) -> dict[int, tuple]:
+    """Button jobs: id(merged profile) -> (mp, ResolvedApp). Ring-only profiles have none."""
     doc = ctx.store.read().doc
-    jobs, seen = [], {}
+    jobs, seen = {}, {}
     for mp in merged:
+        if not mp.buttons:
+            continue
         r = model.resolve_application(mp.application, doc)
         if r.profile_key in seen:
             raise SpecError(f"{mp.files[0]} and {seen[r.profile_key]} describe the same Options+ profile ({r.label}) "
@@ -87,12 +107,29 @@ def _jobs(ctx: Ctx):
         seen[r.profile_key] = mp.files[0]
         for n in r.notes:
             _log("info", f"{r.label}: {n}")
-        jobs.append((mp, r))
-    return files, jobs
+        jobs[id(mp)] = (mp, r)
+    return jobs
+
+
+def _ring_plans(ctx: Ctx, merged) -> dict[int, ring.Plan]:
+    """Ring plans: id(merged profile) -> Plan, for profiles with actionsRing."""
+    plans, seen = {}, {}
+    for mp in merged:
+        if not mp.ring:
+            continue
+        t = ring.target_for(mp.application, ctx.ring_store)
+        if t.app in seen:
+            raise SpecError(f"{mp.files[0]} and {seen[t.app]} describe the same Actions Ring app ({t.app}) under "
+                            "different application identities; merge them.")
+        seen[t.app] = mp.files[0]
+        for n in t.notes:
+            _log("info", f"{t.label}: {n}")
+        plans[id(mp)] = ring.plan(t, mp.ring, mp.ring_sources, ctx.ring_store, ctx.keyboard)
+    return plans
 
 
 def _composed(ctx: Ctx, jobs):
-    mutators = [model.build_mutator(mp.device, mp.buttons, r, ctx.store.data_dir) for mp, r in jobs]
+    mutators = [model.build_mutator(mp.device, mp.buttons, r, ctx.store.data_dir) for mp, r in jobs.values()]
 
     def mutate(doc: dict) -> dict:
         for m in mutators:
@@ -100,26 +137,42 @@ def _composed(ctx: Ctx, jobs):
         return doc
 
     def verify(doc: dict) -> list[str]:
-        return [p for mp, r in jobs for p in model.verify(mp.device, mp.buttons, r, doc, ctx.store.data_dir)]
+        return [p for mp, r in jobs.values() for p in model.verify(mp.device, mp.buttons, r, doc, ctx.store.data_dir)]
 
     return mutate, verify
 
 
-def _profile_summary(mp, r) -> dict:
-    return {"profile": r.label, "profileKey": r.profile_key, "files": mp.files, "buttons": sorted(mp.buttons)}
+def _ring_verify(ctx: Ctx):
+    return lambda plans: [problem for p in plans for problem in ring.verify(p, ctx.ring_store, ctx.keyboard)]
+
+
+def _profile_summary(mp, r, rp) -> dict:
+    out = {"profile": (r.label if r else rp.target.label), "files": mp.files}
+    if r:
+        out.update(profileKey=r.profile_key, buttons=sorted(mp.buttons))
+    if rp:
+        out.update(ringApp=rp.target.app, actionsRing=[ring.SLOTS[i] for i in sorted(rp.slots)])
+    return out
 
 
 def mode_check(ctx: Ctx) -> dict:
-    files, jobs = _jobs(ctx)
+    files, merged = _load(ctx)
+    jobs, plans = _jobs(ctx, merged), _ring_plans(ctx, merged)
     doc = ctx.store.read().doc
     profiles = []
-    for mp, r in jobs:
-        drift = (["profile does not exist yet"] if r.new_entry or r.profile_key not in doc
-                 else model.verify(mp.device, mp.buttons, r, doc, ctx.store.data_dir))
-        profiles.append({**_profile_summary(mp, r), "inSync": not drift, "drift": drift})
+    for mp in merged:
+        job, rp = jobs.get(id(mp)), plans.get(id(mp))
+        drift = []
+        if job:
+            _, r = job
+            drift += (["profile does not exist yet"] if r.new_entry or r.profile_key not in doc
+                      else model.verify(mp.device, mp.buttons, r, doc, ctx.store.data_dir))
+        if rp:
+            drift += rp.drift
+        profiles.append({**_profile_summary(mp, job[1] if job else None, rp), "inSync": not drift, "drift": drift})
     mutate, verify = _composed(ctx, jobs)
     plan = transaction.apply_change(ctx.store, mutate, verify, ctx.backups_dir, "check", _log, ctx.deadline,
-                                    dry_run=True)
+                                    dry_run=True, ring_plans=list(plans.values()), ring_store=ctx.ring_store)
     in_sync = all(p["inSync"] for p in profiles)
     _log("info" if in_sync else "warn", "in sync" if in_sync else "live configuration differs from the specs")
     return {"inSync": in_sync, "specs": [str(f) for f in files], "profiles": profiles,
@@ -127,27 +180,88 @@ def mode_check(ctx: Ctx) -> dict:
 
 
 def mode_apply(ctx: Ctx) -> dict:
-    files, jobs = _jobs(ctx)
+    files, merged = _load(ctx)
+    jobs, plans = _jobs(ctx, merged), _ring_plans(ctx, merged)
     mutate, verify = _composed(ctx, jobs)
     label = "apply-" + "-".join(sorted({Path(f).name.split(".")[0] for f in files}))[:40]
-    res = transaction.apply_change(ctx.store, mutate, verify, ctx.backups_dir, label, _log, ctx.deadline)
+    res = transaction.apply_change(ctx.store, mutate, verify, ctx.backups_dir, label, _log, ctx.deadline,
+                                   ring_plans=list(plans.values()), ring_store=ctx.ring_store,
+                                   ring_verify=_ring_verify(ctx))
     if not res["changed"]:
         _log("info", "already in sync; nothing written, agent not restarted")
-    return {**res, "specs": [str(f) for f in files], "profiles": [_profile_summary(mp, r) for mp, r in jobs],
+    summaries = [_profile_summary(mp, jobs[id(mp)][1] if id(mp) in jobs else None, plans.get(id(mp)))
+                 for mp in merged]
+    return {**res, "specs": [str(f) for f in files], "profiles": summaries,
             "elapsedS": round(ctx.deadline.elapsed(), 1)}
 
 
 # ------------------------------------------------------------------ store -> specs
 
+def _ring_app_for_handle(ctx: Ctx, handle: str) -> str | None:
+    """global | google-chrome | notepad.exe | an LPS app name -> an existing Ring app."""
+    h = handle.lower()
+    if h == "global":
+        name = ring.GLOBAL_APP
+    else:
+        name = h[:-4] if h.endswith(".exe") else h
+        for app_id, m in ring.BUILTIN_APPS.items():
+            if h in (m["alias"], app_id):
+                name = m["pluginApp"] if ctx.ring_store.read(m["pluginApp"]) else m["stem"]
+    return name if ctx.ring_store.read(name) is not None else None
+
+
 def mode_export(ctx: Ctx) -> dict:
     handle = ctx.need("app", "app=all | app=global | app=rider64.exe")
+    with_ring = pr.parse_bool(ctx.input.get("ring"), "ring", default=True)
     doc = ctx.store.read().doc
-    keys = list(st.profiles(doc)) if handle == "all" else [model.find_profile(doc, h) for h in handle.split(",")]
-    profiles, warnings = [], []
+    warnings: list[str] = []
+    ring_ok = with_ring and ctx.ring_store.available
+    if with_ring and not ctx.ring_store.available:
+        warnings.append("Actions Ring not exported: logi-options.dataDir is a copy and no ringDataDir is set.")
+
+    if handle == "all":
+        keys = list(st.profiles(doc))
+        ring_apps = ctx.ring_store.app_names() if ring_ok else []
+    else:
+        keys, ring_apps = [], []
+        for h in handle.split(","):
+            try:
+                keys.append(model.find_profile(doc, h))
+                found = True
+            except SpecError as e:
+                found, missing = False, e
+            app = _ring_app_for_handle(ctx, h) if ring_ok else None
+            if app:
+                ring_apps.append(app)
+            elif not found:
+                raise missing
+
+    by_app: dict[str, dict] = {}
+    order: list[str] = []
     for k in keys:
         spec, w = model.profile_to_spec(doc, k, ctx.device)
-        profiles.append(spec)
         warnings += w
+        key = model.application_key(spec["application"])
+        by_app[key] = spec
+        order.append(key)
+    systems = ctx.ring_store.systems() if ring_apps else {}
+    for app in ring_apps:
+        prof = ctx.ring_store.read(app)
+        spec_app = ring.spec_application(prof, ctx.ring_store)
+        if spec_app is None:
+            msg = f"Ring app {app} (a Logitech plugin app) has no spec form; not exported."
+            if handle != "all":
+                raise SpecError(msg)
+            warnings.append(msg)
+            continue
+        slots, w = ring.export_slots(prof, systems)
+        warnings += w
+        key = model.application_key(spec_app)
+        if key not in by_app:
+            by_app[key] = {"application": spec_app}
+            order.append(key)
+        by_app[key]["actionsRing"] = slots
+    profiles = [by_app[k] for k in order]
     for w in warnings:
         _log("warn", w)
     pack_id = str(ctx.input.get("pack") or "exported")
@@ -209,7 +323,7 @@ def mode_backups(ctx: Ctx) -> dict:
 
 def mode_restore(ctx: Ctx) -> dict:
     src = backup.resolve(ctx.backups_dir, ctx.need("backup", "backup=latest"))
-    return backup.restore(ctx.store, ctx.backups_dir, src, _log, ctx.deadline)
+    return backup.restore(ctx.store, ctx.backups_dir, src, _log, ctx.deadline, ctx.ring_store)
 
 
 # ------------------------------------------------------------------ information
@@ -217,22 +331,45 @@ def mode_restore(ctx: Ctx) -> dict:
 def mode_list(ctx: Ctx) -> dict:
     doc = ctx.store.read().doc
     defined: dict[str, list[str]] = {}
+    ring_defined: dict[str, list[str]] = {}
     specs = []
     try:
-        files, jobs = _jobs(ctx)
+        files, merged = _load(ctx)
         specs = [str(f) for f in files]
-        defined = {r.profile_key: mp.files for mp, r in jobs}
+        defined = {r.profile_key: mp.files for mp, r in _jobs(ctx, merged).values()}
+        for mp in merged:
+            if mp.ring:
+                ring_defined[ring.target_for(mp.application, ctx.ring_store).app] = mp.files
     except LogiError as e:
         _log("warn", f"specs not loaded: {e}")
     live = []
     for k in st.profiles(doc):
         handle, name = model.profile_label(doc, k)
         live.append({"handle": handle, "name": name, "profileKey": k, "definedIn": defined.get(k)})
-    return {"profiles": live, "specs": specs}
+    out = {"profiles": live, "specs": specs}
+    if ctx.ring_store.available:
+        try:
+            systems = ctx.ring_store.systems()
+        except LogiError:
+            systems = {}
+        rings = []
+        for app in ctx.ring_store.app_names():
+            prof = ctx.ring_store.read(app)
+            slots = {ring.SLOTS[i]: ring.describe(ring.decompile(prof.doc, c.get("pressAction"), systems))
+                     for i, c in enumerate(ring.controls(prof.doc))}
+            rings.append({"app": app, "name": prof.info.get("displayName"),
+                          "application": ring.spec_application(prof, ctx.ring_store),
+                          "definedIn": ring_defined.get(app), "slots": slots})
+        out["rings"] = rings
+    return out
 
 
 def mode_presets(ctx: Ctx) -> dict:
     gesture = model.default_gesture_card(ctx.device)
+    try:
+        systems = sorted(ctx.ring_store.systems())
+    except LogiError as e:
+        systems = [f"unavailable: {e}"]
     return {
         "device": ctx.device,
         "buttons": list(cat.device(ctx.device)["buttons"]),
@@ -244,6 +381,14 @@ def mode_presets(ctx: Ctx) -> dict:
         "keys": sorted(cat.KEYS),
         "builtinApps": sorted(cat.builtin_alias(a) for a in cat.builtin_apps()),
         "presets": dict(sorted(cat.preset_aliases().items())),
+        "actionsRing": {
+            "slots": list(ring.SLOTS),
+            "slotAliases": ring.SLOT_ALIASES,
+            "actionForms": list(ring.ACTION_KEYS),
+            "keys": sorted(ring.KEYS),
+            "systemActions": systems,
+            "builtinApps": sorted(m["alias"] for m in ring.BUILTIN_APPS.values()),
+        },
     }
 
 
@@ -259,7 +404,7 @@ def mode_inspect(ctx: Ctx) -> dict:
     for k in st.profiles(doc):
         spec, warnings = model.profile_to_spec(doc, k, ctx.device)
         profiles.append({"profileKey": k, **spec, "warnings": warnings})
-    return {
+    out = {
         "store": {"path": str(ctx.store.settings_db), "live": ctx.store.live,
                   "schemaVersion": doc.get("schema_version"),
                   "blobBytes": len(snap.blob), "blobSha256": snap.sha256, "lastSavedUtc": snap.date_created},
@@ -271,3 +416,7 @@ def mode_inspect(ctx: Ctx) -> dict:
         "files": files,
         "profiles": profiles,
     }
+    if ctx.ring_store.available:
+        out["ringStore"] = {"path": str(ctx.ring_store.apps_dir), "live": ctx.ring_store.live,
+                            "apps": ctx.ring_store.app_names()}
+    return out

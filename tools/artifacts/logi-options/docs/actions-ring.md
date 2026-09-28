@@ -392,7 +392,7 @@ profile, write and verify steps for Ctrl/Alt/Win/Shift with A–Z, F1–F24 or E
 
 The raw snapshots and file copies stayed under `~/.m-control/research/logi-options/`
 (they contain paths and serials). The UI-written items are preserved in
-[`../research/ring-ui-written.json`](../research/ring-ui-written.json), ready to move to `test/fixtures/`.
+[`../test/fixtures/ring-ui-written.json`](../test/fixtures/ring-ui-written.json), the evidence `test/test_ring.py` checks the implementation against.
 
 | # | Action | Result |
 |---|---|---|

@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import catalog as cat
+import ring
 import store as st
 from errors import SpecError
 
@@ -332,11 +333,17 @@ def icon_fields(doc: dict, entry: dict, data_dir: Path) -> dict:
 
 def validate_profile(dev: str, profile, where: str) -> None:
     if not isinstance(profile, dict):
-        raise SpecError(f"{where}: a profile must be an object with application and buttons.")
-    extra = set(profile) - {"application", "buttons", "description"}
+        raise SpecError(f"{where}: a profile must be an object with application and buttons and/or actionsRing.")
+    extra = set(profile) - {"application", "buttons", "actionsRing", "description"}
     if extra:
         raise SpecError(f"{where}: unknown field(s) {sorted(extra)}.")
     validate_application(profile.get("application"), f"{where}.application")
+    if "buttons" not in profile and "actionsRing" not in profile:
+        raise SpecError(f"{where}: a profile needs buttons, actionsRing, or both.")
+    if "actionsRing" in profile:
+        ring.validate_ring(profile["actionsRing"], f"{where}.actionsRing")
+    if "buttons" not in profile:
+        return
     buttons = profile.get("buttons")
     if not isinstance(buttons, dict) or not buttons:
         raise SpecError(f"{where}.buttons: expected a non-empty object of button -> action.")

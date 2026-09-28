@@ -3,21 +3,19 @@ import * as path from 'path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * Runs the compiler tests (test_model.py, stdlib unittest) under `yarn test`.
- * The Actions Ring tests run on every platform from ring.test.ts.
- *
- * They pin the generated Logitech cards to what the Options+ UI actually wrote
- * in the controlled experiments. Catalog-dependent cases skip themselves when
- * Options+ is not installed; the Python side reports which.
+ * Runs the Actions Ring tests (test_ring.py, stdlib unittest) under `yarn test`
+ * on every platform: lib/ring.py has no Windows imports, and the tests work on a
+ * fixture LogiPluginService tree in a temp directory. They pin the encoder,
+ * compiler and patcher to what the Options+ UI wrote (fixtures/ring-ui-written.json).
  */
 
 const TEST_DIR = __dirname;
-const windowsOnly = process.platform === 'win32' ? describe : describe.skip;
+const PYTHON = process.platform === 'win32' ? 'python' : 'python3';
 
-windowsOnly('logi-options compiler (python unittest)', () => {
+describe('logi-options Actions Ring (python unittest)', () => {
   it('matches the UI-written evidence', () => {
     const r = spawnSync(
-      'python',
+      PYTHON,
       [
         '-m',
         'unittest',
@@ -25,7 +23,7 @@ windowsOnly('logi-options compiler (python unittest)', () => {
         '-s',
         TEST_DIR,
         '-p',
-        'test_model.py',
+        'test_ring.py',
         '-v',
       ],
       { cwd: path.resolve(TEST_DIR, '..'), encoding: 'utf8' }

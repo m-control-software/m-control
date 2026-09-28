@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""logi-options - Logi Options+ mouse profiles from declarative *.logi.json packs.
+"""logi-options - Logi Options+ mouse profiles (buttons and Actions Ring) from declarative *.logi.json packs.
 
 Tool Protocol v1: stdin <- one JSON ToolRequest (read to EOF first);
 stdout -> NDJSON ToolEvent lines only; exit 0 ok, 1 expected failure, 2 crash.
 
     mctl run logi-options                       apply every discovered spec (one agent restart; no-op if in sync)
     mctl run logi-options check=true            validate + drift report + planned change; writes nothing
-    mctl run logi-options mode=export app=all out=C:/path/personal.logi.json [pack=personal] [force=true]
+    mctl run logi-options mode=export app=all out=C:/path/personal.logi.json [pack=personal] [force=true] [ring=false]
     mctl run logi-options mode=list | presets | inspect | backups | backup
     mctl run logi-options mode=remove app=rider64.exe
     mctl run logi-options mode=restore backup=latest
@@ -26,7 +26,7 @@ sys.path.insert(0, str(TOOL_DIR / "lib"))
 import protocol as pr  # noqa: E402
 
 MODES = ("apply", "check", "export", "list", "presets", "inspect", "remove", "restore", "backup", "backups")
-INPUT_KEYS = {"mode", "check", "app", "out", "pack", "force", "backup", "device"}
+INPUT_KEYS = {"mode", "check", "app", "out", "pack", "force", "backup", "device", "ring"}
 
 
 def main() -> int:

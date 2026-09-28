@@ -3,7 +3,7 @@
   "id": "logi-options",
   "version": "0.1.0",
   "name": "Logi Options+ Profiles",
-  "description": "Applies Logitech Options+ mouse profiles (MX Master 4) from declarative *.logi.json packs; check, export, restore",
+  "description": "Applies Logitech Options+ mouse profiles and Actions Ring items (MX Master 4) from declarative *.logi.json packs; check, export, restore",
   "runtime": "python",
   "entry": "main.py",
   "timeoutMs": 30000,
@@ -12,7 +12,8 @@
   ],
   "optionalConfig": [
     "logi-options.dataDir",
-    "logi-options.backupDir"
+    "logi-options.backupDir",
+    "logi-options.ringDataDir"
   ],
   "tags": ["artifacts", "logitech", "mouse", "devices", "generator"]
 }

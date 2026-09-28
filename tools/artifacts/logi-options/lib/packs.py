@@ -14,8 +14,8 @@ so a packDir may be one pack or a root holding several (e.g. m-control-personal)
 Merge rules:
   - profiles are keyed by (device, application); several packs may contribute
     buttons to the same profile
-  - the same button on the same profile from two places is a hard error,
-    never a silent overwrite
+  - the same button, or the same Actions Ring slot, on the same profile from
+    two places is a hard error, never a silent overwrite
   - a pack that is absent contributes nothing
 """
 from __future__ import annotations
@@ -28,6 +28,7 @@ from pathlib import Path
 
 import catalog as cat
 import model
+import ring
 from errors import SpecError
 
 SUFFIX = ".logi.json"
@@ -41,6 +42,8 @@ class MergedProfile:
     buttons: dict = field(default_factory=dict)          # button -> action
     sources: dict = field(default_factory=dict)          # button -> "file#profiles[i]"
     files: list = field(default_factory=list)
+    ring: dict = field(default_factory=dict)             # Ring slot (canonical name) -> action
+    ring_sources: dict = field(default_factory=dict)     # Ring slot -> "file#profiles[i]"
 
 
 def find_spec_files(search_dirs: list[str], tool_dir: Path | None = None) -> list[Path]:
@@ -101,7 +104,14 @@ def merge(files: list[Path]) -> list[MergedProfile]:
                 _merge_application(mp, p["application"], where)
             if str(path) not in mp.files:
                 mp.files.append(str(path))
-            for button, action in p["buttons"].items():
+            for slot, action in p.get("actionsRing", {}).items():
+                name = ring.SLOTS[ring.slot_index(slot, where)]
+                if name in mp.ring:
+                    raise SpecError(f"Actions Ring slot '{name}' of {key[1]} is set twice: in "
+                                    f"{mp.ring_sources[name]} and in {where}. Remove one of them.")
+                mp.ring[name] = action
+                mp.ring_sources[name] = where
+            for button, action in p.get("buttons", {}).items():
                 canonical_button = cat.BUTTON_ALIASES.get(button, button)
                 if canonical_button in mp.buttons:
                     raise SpecError(f"Button '{canonical_button}' of {key[1]} is set twice: in "

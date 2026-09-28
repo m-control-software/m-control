@@ -190,4 +190,129 @@ suite('logi-options protocol', () => {
     // Strict parse plus event order, attribution and exit-code agreement.
     expectProtocol(runTool({ check: 'true' }), 'logi-options');
   }, 30_000);
+
+  describe('with an Actions Ring fixture (logi-options.ringDataDir)', () => {
+    let ringDir: string;
+    const ring = () => ({ 'logi-options.ringDataDir': ringDir });
+    const chromeProfile = () =>
+      path.join(
+        ringDir,
+        'Applications',
+        'Loupedeck72',
+        'chrome',
+        'Profiles',
+        '5174E3B276955CB58C8778AC2271201F',
+        'ProfileInfo.json'
+      );
+
+    beforeEach(() => {
+      ringDir = path.join(root, 'lps');
+      const r = spawnSync(
+        'python',
+        [path.join(FIXTURES, 'make_ring_store.py'), ringDir],
+        { encoding: 'utf8' }
+      );
+      expect(r.status, r.stderr).toBe(0);
+    });
+
+    const ringSpec = [
+      {
+        application: { global: true },
+        actionsRing: { top: { system: 'media-play-pause' } },
+      },
+      {
+        application: { builtin: 'google-chrome' },
+        actionsRing: {
+          top: { shortcut: 'CTRL+SHIFT+Y', label: 'YT → mp3' },
+        },
+      },
+    ];
+
+    it('applies Ring slots in one transaction without touching the agent, then is idempotent', () => {
+      writePack('p', ringSpec);
+      const settings = hash(path.join(dataDir, 'settings.db'));
+      const check = runTool({ check: 'true' }, ring());
+      expect(check.status, JSON.stringify(check.error)).toBe(0);
+      expect(check.result!.inSync).toBe(false);
+      expect(fs.existsSync(chromeProfile())).toBe(false);
+
+      const first = runTool({}, ring());
+      expect(first.status, JSON.stringify(first.error)).toBe(0);
+      expect(first.result!.changed).toBe(true);
+      expect(first.result!.verified).toBe(true);
+      expect(first.result!.agentRestarted).toBe(false);
+      expect(fs.readFileSync(chromeProfile(), 'utf-8')).toContain('YT → mp3');
+      // A Ring-only change leaves settings.db alone; its backup holds the Ring.
+      expect(hash(path.join(dataDir, 'settings.db'))).toBe(settings);
+      const [backup] = fs.readdirSync(backupDir);
+      expect(
+        fs.existsSync(path.join(backupDir, backup, 'ring', 'manifest.json'))
+      ).toBe(true);
+
+      const second = runTool({}, ring());
+      expect(second.result!.changed).toBe(false);
+      expect(runTool({ check: 'true' }, ring()).result!.inSync).toBe(true);
+    }, 60_000);
+
+    it('restore=latest puts the Ring back, removing the app it created', () => {
+      writePack('p', ringSpec);
+      expect(runTool({}, ring()).status).toBe(0);
+      const restored = runTool({ mode: 'restore', backup: 'latest' }, ring());
+      expect(restored.status, JSON.stringify(restored.error)).toBe(0);
+      expect(fs.existsSync(path.dirname(path.dirname(chromeProfile())))).toBe(
+        false
+      );
+    }, 60_000);
+
+    it('export refuses a folder naming the slot, and round-trips once it is gone', () => {
+      const out = path.join(root, 'exported', 'all.logi.json');
+      const refused = runTool({ mode: 'export', app: 'all' }, ring());
+      expect(refused.status).toBe(1);
+      expect(String(refused.error!.message)).toContain('slot right');
+      expect(String(refused.error!.message)).toContain('ring=false');
+      expect(
+        runTool({ mode: 'export', app: 'all', ring: 'false' }, ring()).status
+      ).toBe(0);
+
+      writePack('p', [
+        {
+          application: { global: true },
+          actionsRing: { right: { nothing: true } },
+        },
+      ]);
+      expect(runTool({}, ring()).status).toBe(0);
+      const exp = runTool({ mode: 'export', app: 'all', out }, ring());
+      expect(exp.status, JSON.stringify(exp.error)).toBe(0);
+      const check = runTool(
+        { check: 'true' },
+        { ...ring(), 'logi-options.packDirs': [path.dirname(out)] }
+      );
+      expect(check.status, JSON.stringify(check.error)).toBe(0);
+      expect(check.result!.inSync).toBe(true);
+    }, 60_000);
+
+    it('refuses two packs setting the same Ring slot, naming both files', () => {
+      const slot = {
+        application: { global: true },
+        actionsRing: { '1': { nothing: true } },
+      };
+      writePack('a', [slot], path.join(packDir, 'one'));
+      writePack(
+        'b',
+        [{ ...slot, actionsRing: { top: { nothing: true } } }],
+        path.join(packDir, 'two')
+      );
+      const { status, error } = runTool({ check: 'true' }, ring());
+      expect(status).toBe(1);
+      expect(String(error!.message)).toContain(path.join('one', 'a.logi.json'));
+      expect(String(error!.message)).toContain(path.join('two', 'b.logi.json'));
+    }, 30_000);
+
+    it('never pairs a copied settings store with the live Ring', () => {
+      writePack('p', ringSpec);
+      const { status, error } = runTool({ check: 'true' }); // no ringDataDir
+      expect(status).toBe(1);
+      expect(String(error!.message)).toContain('ringDataDir');
+    }, 30_000);
+  });
 });
