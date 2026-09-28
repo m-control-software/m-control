@@ -30,9 +30,13 @@ WATCH = [  # (root, recursive, excluded top-level subdirectories)
     (ROAMING / "logioptionsplus", True, {"Cache", "Code Cache", "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache",
                                          "Shared Dictionary", "Crashpad", "blob_storage"}),
     (st.PROGRAM_DATA, False, set()),  # catalogs at top level only; depots/ is the install payload
-    (LOCAL / "Logi" / "LogiPluginService", True, {"PluginHosts", "Media", "Temp"}),
+    # The whole plugin service tree (Actions Ring research, docs/actions-ring.md): the Ring's
+    # storage was unknown, so nothing is excluded. Temp holds two locked caches; they get "error".
+    (LOCAL / "Logi" / "LogiPluginService", True, set()),
+    (st.PROGRAM_DATA.parent / "Logi", True, set()),
+    (st.PROGRAM_DATA.parent / "Logishrd" / "LogiOptionsPlus", True, {"analytics", "analytics_stash_app_events"}),
 ]
-REG_KEYS = [r"Software\Logitech\LogiOptionsPlus", r"Software\Logitech\SharedSettings"]
+REG_KEYS = [r"Software\Logitech", r"Software\Loupedeck"]
 
 
 def file_records() -> list[dict]:
