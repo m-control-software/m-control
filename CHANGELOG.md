@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`chrome-bridge` tool** (`tools/artifacts/chrome-bridge/`): Installs a Chrome extension's native messaging host so browser actions (YouTube tab to mp3) run through mctl.
+
 - **`yt-download` tool** (`tools/media/yt-download/`): downloads YouTube
   videos (mp4) or audio (mp3 with tags and cover art), single videos or whole
   playlists. yt-dlp and ffmpeg are not vendored and never taken from `PATH`:

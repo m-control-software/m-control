@@ -1,0 +1,36 @@
+# chrome-bridge
+
+> Installs a Chrome extension's native messaging host so browser actions (YouTube tab to mp3) run through mctl.
+
+## Usage
+
+```bash
+mctl run chrome-bridge
+mctl run chrome-bridge key=value        # key=value pairs become the tool's input
+mctl run chrome-bridge --json           # raw NDJSON event passthrough
+```
+
+## Config
+
+Only keys the manifest declares reach the tool: `requiredConfig` (the tool
+can't work without them; `mctl doctor` reports unset ones) and `optionalConfig`
+(read when present). They are resolved against the `tools` section of
+`~/.m-control/config.json` and passed as a flat map in `context.config`, keyed by
+the dot-path (e.g. `"chrome-bridge.apiKey"`).
+
+If a run can take more than 30 s, declare `timeoutMs` in the manifest.
+
+| Key | Description |
+|-----|-------------|
+| *(none yet)* | |
+
+A run with a required key unset fails with a recoverable `CONFIG_MISSING`
+error naming the key.
+
+## External dependencies
+
+- *(none)* — or list binaries/services required, e.g. `kubectl`, `az` CLI
+
+## Notes
+
+TODO: Known limitations, quirks, future improvements.
