@@ -76,14 +76,29 @@ function showToast(text, kind) {
       font: '13px/1.4 system-ui, sans-serif',
       boxShadow: '0 2px 10px rgba(0,0,0,.45)',
       whiteSpace: 'pre-line',
+      cursor: 'pointer',
     });
+    el.title = 'Click to dismiss';
+    el.addEventListener('click', () => el.remove());
     document.documentElement.appendChild(el);
   }
   el.style.background = { ok: '#188038', error: '#d93025' }[kind] || '#1a73e8';
   el.textContent = text;
   clearTimeout(Number(el.dataset.timer));
-  if (kind !== 'busy')
+  if (kind !== 'busy') {
     el.dataset.timer = String(setTimeout(() => el.remove(), 7000));
+  } else {
+    // Nobody may be left to update it (the extension was reloaded, the service
+    // worker restarted): after 5 minutes without news, say so and go away. A
+    // long mix's silent mp3 conversion takes ~3-4 minutes.
+    el.dataset.timer = String(
+      setTimeout(() => {
+        el.style.background = '#5f6368';
+        el.textContent = `${text}\nNo news for 5 minutes. The download may still finish; check Downloads.`;
+        el.dataset.timer = String(setTimeout(() => el.remove(), 15000));
+      }, 300000)
+    );
+  }
 }
 
 /** One job's news: a notification (replaced in place by id) plus the page toast. */
