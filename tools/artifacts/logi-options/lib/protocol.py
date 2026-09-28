@@ -11,6 +11,12 @@ from datetime import datetime, timezone
 
 TOOL_ID = "logi-options"  # must match manifest.id
 
+# mctl speaks UTF-8 on both pipes. Python on Windows defaults a pipe to the ANSI
+# code page (cp1250 here), which can't encode e.g. a Ring label "YT → mp3".
+for _stream in (sys.stdin, sys.stdout):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8")
+
 
 def emit(event_type: str, payload: dict) -> None:
     event = {"type": event_type, "ts": datetime.now(timezone.utc).isoformat(), "toolId": TOOL_ID, "payload": payload}
