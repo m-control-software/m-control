@@ -72,7 +72,14 @@ tools/artifacts/chrome-bridge/
    (`process.execPath`) and of `mctl.js`. It then sets the HKCU key.
    `check=true` reports what would change; `uninstall` removes all of it.
    Loading the unpacked extension stays a documented manual step.
-5. **Where it lives.** In this repo: it is generic code with no personal
+5. **Discovery stops at a tool's directory** *(added 2026-09-28, during the
+   build)*. Chrome requires `extension/manifest.json` by that name, and mctl's
+   discovery walked the whole tools root, so it reported the extension's
+   manifest as a broken tool manifest on every run. Discovery now treats a
+   directory holding `manifest.json` as a tool and never descends into it
+   (core change, CHANGELOG "Changed"). Chosen over copying the extension out
+   of the repo at install time, which would need a re-install for every change.
+6. **Where it lives.** In this repo: it is generic code with no personal
    data, a few hundred lines with no build. It moves to its own repo only if
    it ever needs a build step or Web Store publishing (ADR-0009, rule 2).
 
@@ -124,6 +131,9 @@ registry key. **Why rejected:** the bridge is generic; the action is one entry.
 
 ## Open Questions
 
+Status 2026-09-28: the host is built so the child keeps running when the port
+closes (tested with a fake mctl); 1 and 2 still need the device run below.
+
 1. **Host lifetime.** Does the download survive the native port closing (the
    service worker suspended, the extension reloaded, Chrome closed)? Chrome may
    put the host in a Windows job object that kills its children. PoC: start a
@@ -133,6 +143,7 @@ registry key. **Why rejected:** the bridge is generic; the action is one entry.
    worker alive for the whole download on the installed Chrome version?
 3. **Finding mctl.** Default `~/.m-control/mctl.js` (what `scripts/install.ps1`
    installs), overridable by an optional `chrome-bridge.mctlPath`. Is that enough?
+   *(Implemented so; the path is written into the launcher at install time.)*
 4. **Work laptop.** Is Developer mode / unpacked loading allowed by policy there?
 
 ## Related Decisions
