@@ -149,10 +149,22 @@ async function start(action, tab) {
           title = m[1];
           badge(`${m[2]}%`, BADGE.busy);
         }
-        if (named || m) {
-          const pct = m ? ` ${m[2]}%` : '';
-          toast(job.tabId, `${ACTIONS[action].title}…${pct}\n${title}`, 'busy');
+        // After the download, ffmpeg converts without reporting progress; a long
+        // mix can take minutes, so say so instead of freezing at the last %.
+        const converting = /^Processing: /.test(text);
+        if (named || m || converting) {
+          const state = converting
+            ? ' converting to mp3'
+            : m
+              ? ` ${m[2]}%`
+              : '';
+          toast(
+            job.tabId,
+            `${ACTIONS[action].title}…${state}\n${title}`,
+            'busy'
+          );
         }
+        if (converting) badge('mp3', BADGE.busy);
       } else if (e.type === 'result') {
         saved = (p.items || []).map((i) => i.file).filter(Boolean);
         if (p.failed && p.failed.length)
