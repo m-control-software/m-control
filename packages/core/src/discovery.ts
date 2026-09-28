@@ -27,6 +27,8 @@ export interface DiscoveryResult {
 
 /**
  * Scan one or more tools root directories recursively for manifest.json files.
+ * The search stops at the first manifest.json on each path: a tool's own
+ * subdirectories are never scanned.
  *
  * Structure expected:
  *   <toolsRoot>/<category>/<tool-id>/manifest.json
@@ -118,8 +120,18 @@ export function loadManifest(manifestPath: string): DiscoveredTool {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-/** Recursively find all manifest.json files under dir. */
+/**
+ * Recursively find tool manifests under dir. A directory holding a
+ * manifest.json is a tool, and everything below it belongs to that tool:
+ * discovery doesn't descend into it, so a tool may ship files that happen to
+ * be called manifest.json (a browser extension's, a package's).
+ */
 function findManifests(dir: string): string[] {
+  const own = path.join(dir, 'manifest.json');
+  if (fs.existsSync(own) && fs.statSync(own).isFile()) {
+    return [own];
+  }
+
   const results: string[] = [];
 
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

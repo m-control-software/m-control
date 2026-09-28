@@ -12,7 +12,7 @@ How the orchestrator discovers, invokes, and processes output from tools.
 mctl run <id>
      │
      ▼
-[Discovery] scan tools/**/manifest.json
+[Discovery] scan tools/**/manifest.json, stopping at each tool's directory
      │  reads: manifestVersion, id, runtime, entry
      ▼
 [Config] load ~/.m-control/config.json

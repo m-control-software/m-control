@@ -127,7 +127,9 @@ tool's directory). Add a new check to `verify.mjs`, never only to the workflow.
 merged): `M_CONTROL_TOOLS_ROOT` (several paths joined by the OS path
 delimiter), then `paths.toolsRoots` in config, then the repo's `tools/` (only
 when mctl runs from a checkout). Discovery is automatic; there is no
-registration step.
+registration step. A directory holding `manifest.json` is a tool, and
+discovery never descends into it: files below it (a browser extension's own
+`manifest.json`) belong to the tool.
 
 **Runtimes** — one `ProcessRunner` for all of them; the runtime only changes the
 spawn command (`resolveSpawnCommand`): node → the running Node binary; python →

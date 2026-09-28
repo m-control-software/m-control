@@ -161,6 +161,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Discovery stops at a tool's directory.** A directory holding
+  `manifest.json` is a tool; discovery no longer scans below it, so a tool can
+  ship files named `manifest.json` (chrome-bridge's extension) without `mctl`
+  reporting them as broken tool manifests. No tool nested one before, so
+  nothing to migrate.
+
 - **`stream-deck` enforces its required config.** With `profileName` or
   `packDirs` unset it used to carry on (on Windows, toward installing the
   shared pack under the spec's name) and fail later with a null-path error.

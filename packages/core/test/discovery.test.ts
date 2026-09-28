@@ -56,6 +56,32 @@ describe('discoverTools', () => {
     );
   });
 
+  it("never descends into a tool's own directory", () => {
+    // e.g. a Chrome extension shipped inside a tool (chrome-bridge/extension/)
+    writeManifest(path.join(root, 'cat', 'tool'), validManifest('tool'));
+    writeManifest(path.join(root, 'cat', 'tool', 'extension'), {
+      manifest_version: 3,
+      name: 'not a tool',
+    });
+    writeManifest(
+      path.join(root, 'cat', 'tool', 'nested', 'deeper'),
+      validManifest('nested-tool')
+    );
+
+    const result = discoverTools(root);
+    expect(result.tools.map((t) => t.manifest.id)).toEqual(['tool']);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('treats a directory with an invalid manifest as a tool too', () => {
+    writeManifest(path.join(root, 'broken'), '{ not json');
+    writeManifest(path.join(root, 'broken', 'sub'), validManifest('inside'));
+
+    const result = discoverTools(root);
+    expect(result.tools).toEqual([]);
+    expect(result.errors).toHaveLength(1);
+  });
+
   it('collects invalid manifests as non-fatal errors', () => {
     writeManifest(path.join(root, 'ok'), validManifest('ok-tool'));
     writeManifest(path.join(root, 'bad-json'), '{ not json');
