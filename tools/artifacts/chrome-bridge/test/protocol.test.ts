@@ -94,69 +94,74 @@ describe.skipIf(!runtimeAvailable(TOOL_DIR))(`${id} protocol`, () => {
     }
   );
 
-  describe.skipIf(!windows)('on Windows, in a sandbox', () => {
-    const stateDir = () => path.join(home, '.m-control', 'chrome-bridge');
+  // reg.exe takes a second or more per call, so these outgrow the 5 s default.
+  describe.skipIf(!windows)(
+    'on Windows, in a sandbox',
+    { timeout: 60_000 },
+    () => {
+      const stateDir = () => path.join(home, '.m-control', 'chrome-bridge');
 
-    it('check=true plans the install and writes nothing', () => {
-      const r = run({ action: 'install', check: 'true' });
-      expectProtocol(r, id);
-      expect(r.status).toBe(0);
-      expect(r.result!.changed).toBe(false);
-      expect(
-        (r.result!.changes as Array<{ action: string }>).map((c) => c.action)
-      ).toEqual(['create', 'create', 'create']);
-      expect(fs.existsSync(stateDir())).toBe(false);
-      expect(regValue()).toBeUndefined();
-    });
-
-    it('installs once, is idempotent, and uninstalls everything', () => {
-      const first = run({ action: 'install' });
-      expectProtocol(first, id);
-      expect(first.result!.changed).toBe(true);
-      const manifestFile = path.join(
-        stateDir(),
-        'com.m_control.chrome_bridge.json'
-      );
-      expect(regValue()).toBe(manifestFile);
-      const hostManifest = JSON.parse(fs.readFileSync(manifestFile, 'utf-8'));
-      expect(hostManifest.allowed_origins).toEqual([
-        `chrome-extension://${first.result!.extensionId}/`,
-      ]);
-      const cmd = fs.readFileSync(hostManifest.path, 'utf-8');
-      expect(cmd).toContain(process.execPath);
-      expect(cmd).toContain(path.join(home, 'mctl.js'));
-
-      expect(run({ action: 'install' }).result!.changed).toBe(false);
-
-      const check = run({ action: 'uninstall', check: 'true' });
-      expect(check.result!.changed).toBe(false);
-      expect(fs.existsSync(manifestFile)).toBe(true);
-
-      const removed = run({ action: 'uninstall' });
-      expect(removed.result!.changed).toBe(true);
-      expect(fs.existsSync(stateDir())).toBe(false);
-      expect(regValue()).toBeUndefined();
-      expect(run({ action: 'uninstall' }).result!.changed).toBe(false);
-    });
-
-    it('fails recoverably when mctl is not where the config says', () => {
-      const r = run(
-        { action: 'install' },
-        { 'chrome-bridge.mctlPath': path.join(home, 'nope.js') }
-      );
-      expect(r.error).toMatchObject({
-        code: 'MCTL_NOT_FOUND',
-        recoverable: true,
+      it('check=true plans the install and writes nothing', () => {
+        const r = run({ action: 'install', check: 'true' });
+        expectProtocol(r, id);
+        expect(r.status).toBe(0);
+        expect(r.result!.changed).toBe(false);
+        expect(
+          (r.result!.changes as Array<{ action: string }>).map((c) => c.action)
+        ).toEqual(['create', 'create', 'create']);
+        expect(fs.existsSync(stateDir())).toBe(false);
+        expect(regValue()).toBeUndefined();
       });
-      expect(regValue()).toBeUndefined();
-    });
 
-    it('rejects a mctlPath that is not a string', () => {
-      const r = run({ action: 'install' }, { 'chrome-bridge.mctlPath': 42 });
-      expect(r.error).toMatchObject({
-        code: 'CONFIG_INVALID',
-        recoverable: true,
+      it('installs once, is idempotent, and uninstalls everything', () => {
+        const first = run({ action: 'install' });
+        expectProtocol(first, id);
+        expect(first.result!.changed).toBe(true);
+        const manifestFile = path.join(
+          stateDir(),
+          'com.m_control.chrome_bridge.json'
+        );
+        expect(regValue()).toBe(manifestFile);
+        const hostManifest = JSON.parse(fs.readFileSync(manifestFile, 'utf-8'));
+        expect(hostManifest.allowed_origins).toEqual([
+          `chrome-extension://${first.result!.extensionId}/`,
+        ]);
+        const cmd = fs.readFileSync(hostManifest.path, 'utf-8');
+        expect(cmd).toContain(process.execPath);
+        expect(cmd).toContain(path.join(home, 'mctl.js'));
+
+        expect(run({ action: 'install' }).result!.changed).toBe(false);
+
+        const check = run({ action: 'uninstall', check: 'true' });
+        expect(check.result!.changed).toBe(false);
+        expect(fs.existsSync(manifestFile)).toBe(true);
+
+        const removed = run({ action: 'uninstall' });
+        expect(removed.result!.changed).toBe(true);
+        expect(fs.existsSync(stateDir())).toBe(false);
+        expect(regValue()).toBeUndefined();
+        expect(run({ action: 'uninstall' }).result!.changed).toBe(false);
       });
-    });
-  });
+
+      it('fails recoverably when mctl is not where the config says', () => {
+        const r = run(
+          { action: 'install' },
+          { 'chrome-bridge.mctlPath': path.join(home, 'nope.js') }
+        );
+        expect(r.error).toMatchObject({
+          code: 'MCTL_NOT_FOUND',
+          recoverable: true,
+        });
+        expect(regValue()).toBeUndefined();
+      });
+
+      it('rejects a mctlPath that is not a string', () => {
+        const r = run({ action: 'install' }, { 'chrome-bridge.mctlPath': 42 });
+        expect(r.error).toMatchObject({
+          code: 'CONFIG_INVALID',
+          recoverable: true,
+        });
+      });
+    }
+  );
 });
