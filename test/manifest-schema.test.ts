@@ -115,6 +115,15 @@ describe('manifest schema agrees with validateManifest', () => {
             path.basename(f) === 'manifest.json' && !f.includes('node_modules')
         )
         .map((f) => path.join(dir, f))
+        // Discovery stops at a tool's directory; a manifest.json below one
+        // (e.g. chrome-bridge's extension) is the tool's own file.
+        .filter(
+          (f, _, all) =>
+            !all.some(
+              (other) =>
+                other !== f && f.startsWith(path.dirname(other) + path.sep)
+            )
+        )
     );
     expect(manifests.length).toBeGreaterThan(0);
     for (const f of manifests) {

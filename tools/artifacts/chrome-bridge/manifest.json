@@ -1,0 +1,12 @@
+{
+  "manifestVersion": 1,
+  "id": "chrome-bridge",
+  "version": "0.1.0",
+  "name": "Chrome Bridge",
+  "description": "Installs a Chrome extension's native messaging host so browser actions (YouTube tab to mp3) run through mctl",
+  "runtime": "node",
+  "entry": "index.js",
+  "requiredConfig": [],
+  "optionalConfig": ["chrome-bridge.mctlPath"],
+  "tags": ["artifacts", "browser", "chrome", "youtube", "installer"]
+}

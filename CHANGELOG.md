@@ -20,6 +20,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the same transaction and agent restart as the buttons. New optional config
   `logi-options.ringDataDir`.
 
+- **`chrome-bridge` tool** (`tools/artifacts/chrome-bridge/`, ADR-0014): a
+  Chrome extension (Manifest V3, pinned id) and a native messaging host. On a
+  YouTube or YouTube Music tab, Ctrl+Shift+Y or the toolbar button saves that
+  track as an mp3 through `mctl run yt-download format=audio`, with progress
+  in a toast on the page, on the badge and in a notification; one job per
+  track at a time. The host accepts only allowlisted actions on validated URLs
+  and runs mctl with no shell, and a download survives the extension or
+  Chrome closing. `mctl run chrome-bridge action=install|uninstall` (with
+  `check=true`) registers or removes the host.
+
 - **`yt-download` tool** (`tools/media/yt-download/`): downloads YouTube
   videos (mp4) or audio (mp3 with tags and cover art), single videos or whole
   playlists. yt-dlp and ffmpeg are not vendored and never taken from `PATH`:
@@ -163,6 +173,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Copilot. Assistant files are thin pointers; `CLAUDE.md` + `docs/` stay canonical.
 
 ### Changed
+
+- **Discovery stops at a tool's directory.** A directory holding
+  `manifest.json` is a tool; discovery no longer scans below it, so a tool can
+  ship files named `manifest.json` (chrome-bridge's extension) without `mctl`
+  reporting them as broken tool manifests. No tool nested one before, so
+  nothing to migrate.
 
 - **`stream-deck` enforces its required config.** With `profileName` or
   `packDirs` unset it used to carry on (on Windows, toward installing the

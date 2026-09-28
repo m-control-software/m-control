@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "m-control bridge",
+  "version": "0.1.0",
+  "description": "Runs allowlisted m-control actions on the current tab: YouTube / YouTube Music to mp3.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy6zAr840ydldJeJIKwKCEI++33GiQSrY77idn7gBa2k8VqZROQpQto+XBQzAHn2JZJ9UGKUPD5JCbpmq7plW0xZl02BeovjEp9UpbpMiEjCri5dq/ux0jYj/JrwUBtVgDB0o4k0Y93RK2IU6xVKctcXOcswO9LAVTMgymzn9OdreUl+wjRChfjRdOOKhu+3lIHmb82RKIfP/j4zexE0k5yYJW8WnCtLUsMTZjWY91R7gLm2nVArV2Bwqrk7tUuoveIYlUMVniLaM1VKzs9cCaJG9ZNb741RaNWLqRz+EWMMhDFkcfvWBzF+3VtizRcyjyyCPx/JWs15jKMzk03vibQIDAQAB",
+  "minimum_chrome_version": "116",
+  "permissions": ["activeTab", "nativeMessaging", "notifications", "scripting"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_title": "Save this YouTube track as mp3 (m-control)",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png" }
+  },
+  "commands": {
+    "yt-audio": {
+      "suggested_key": { "default": "Ctrl+Shift+Y" },
+      "description": "Save this YouTube / YouTube Music track as mp3"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
