@@ -1,6 +1,6 @@
 # Actions Ring — can it be written from a spec?
 
-A feasibility study, not an implementation. Reverse-engineered on 2026-09-27 on
+A feasibility study, not an implementation. Reverse-engineered on 2026-09-27/28 on
 Windows 11 (26200), Options+ agent 2.7.961922, catalog build `853130` (unchanged
 since [internals.md](internals.md)), **LogiPluginService 6.4.1.3246**, MX Master 4,
 with the controlled-change method of [maintenance.md](maintenance.md). Everything
@@ -8,7 +8,9 @@ here was observed unless it says otherwise; see [Evidence](#evidence).
 
 **Verdict: B — feasible with transformations.** A keyboard-shortcut Ring item was
 written programmatically, kept by its owner, shown in the Ring and the UI, and
-opened Task Manager on the device; a second apply changed nothing. The Ring is
+opened Task Manager on the device; a second apply changed nothing. The shortcut
+encoding is decoded and reproduced byte for byte; the layout id must be filled in
+per machine but need not match the active layout. The Ring is
 *not* in `settings.db` but in a second store with a second owner, and its items are
 not Logitech cards, so it needs its own (small) compiler.
 
@@ -97,22 +99,57 @@ plugin also adds stock profiles (`Default Chrome Profile`) and an app under ever
 ```
 
 It is **not** the `macro.keystroke {code, modifiers}` card of button slots, so
-`catalog`/`model` cannot compile it; it needs its own encoder. `keyboardKey` has
-four `___`-separated fields plus a platform part split by the literal `#¤%&+?`:
+`catalog`/`model` cannot compile it; it needs its own encoder.
 
-| Part | Observed | Meaning |
+### The `keyboardKey` grammar (K1)
+
+Decoded from eight UI recordings (Polish Programmers layout) plus Ctrl+Shift+Esc
+from R1. `research/ring_poc.py`'s `encode()` rebuilds **all nine byte for byte**
+from this grammar and the machine's layout.
+
+```
+<logical>___<hkl>___<display>___win-<VK>#¤%&+?<flags>#¤%&+?<hkl>#¤%&+?<scan>
+```
+
+`___` separates the four fields, and the literal `#¤%&+?` separates the parts of the
+Windows platform part (the fourth field). Everything is decimal.
+
+| Part | Rule | Evidence |
 |---|---|---|
-| logical keys | `ControlOrCommand+Shift+Escape` | layout-independent names (`ControlOrCommand`, `Shift`, `KeyC`, `Key5`, `Space`, `Insert`, `Escape`) |
-| field 2 | `{hkl}` | the keyboard layout (HKL) the UI recorded with; `4108` in Mac entries |
-| display | `Ctrl+Shift+Escape` | UI text |
-| `win-<VK>` | `win-27` | Windows virtual-key code (VK_ESCAPE) |
-| modifier flags | `132` | **not decoded**: only Ctrl+Shift was observed |
-| layout again | `{hkl}` | same HKL |
-| trailing | `1` | **not decoded** |
+| `<logical>` | modifiers then key, `+`-joined. Modifiers: `ControlOrCommand`, `AltOrOption`, `Windows`, `Shift`. Keys: `Key<A-Z>`, `F<n>`, `Escape` (also seen in stock items: `Insert`, `Space`, `Key5` for the digit 5) | all K1 rows |
+| modifier order | Ctrl before Alt, Ctrl before Shift, Win before Shift. Alt vs Win, and Alt vs Shift: **guessed** (the encoder uses Ctrl, Alt, Win, Shift) | K1 rows 1–3, 8 |
+| `<hkl>` (both) | the HKL of the keyboard layout active in the Options+ window when recording, decimal: `0x04150415` Polish, `0x04090409` US | K2.2 |
+| `<display>` | the UI label: `Ctrl`, `Alt`, `Win`, `Shift`, then the key (`Y`, `F4`, `Escape`), `+`-joined, same order as `<logical>` | all K1 rows |
+| `win-<VK>` | the **Windows virtual-key code** of the key (Y 89 = 0x59, S 83, Z 90, F4 115 = 0x73, F13 124 = 0x7C, Esc 27) | all K1 rows |
+| `<flags>` | a **bitmask** of modifiers: **Alt 2, Shift 4, Win 8, Ctrl 128**. Bits 1, 16, 32, 64 never appeared (**guessed**: unused on Windows) | 132 = Ctrl+Shift, 130 = Ctrl+Alt, 12 = Win+Shift, 2 = Alt, 128 = Ctrl, 0 = none |
+| `<scan>` | the **scan code** (set 1) of the key under that layout (`MapVirtualKeyEx(VK, MAPVK_VK_TO_VSC, hkl)`): Y 21 = 0x15, S 31, Z 44 = 0x2C, F4 62 = 0x3E, F13 100 = 0x64, Esc 1 | all K1 rows |
 
-A stock `Insert` item in the shipped profile has **no platform part at all**
-(`Insert___269222921___Insert___`), which suggests the platform part is optional.
-Untested.
+| Recorded in the UI | Stored `keyboardKey` (`#¤%&+?` shown as ` # `) |
+|---|---|
+| Ctrl+Shift+Y | `ControlOrCommand+Shift+KeyY___{hkl}___Ctrl+Shift+Y___win-89 # 132 # {hkl} # 21` |
+| Ctrl+Alt+Y | `ControlOrCommand+AltOrOption+KeyY___{hkl}___Ctrl+Alt+Y___win-89 # 130 # {hkl} # 21` |
+| Win+Shift+S | `Windows+Shift+KeyS___{hkl}___Win+Shift+S___win-83 # 12 # {hkl} # 31` |
+| Alt+F4 | `AltOrOption+F4___{hkl}___Alt+F4___win-115 # 2 # {hkl} # 62` |
+| Y | `KeyY___{hkl}___Y___win-89 # 0 # {hkl} # 21` |
+| F13 (injected, the keyboard has none) | `F13___{hkl}___F13___win-124 # 0 # {hkl} # 100` |
+| RCtrl+Y | `ControlOrCommand+KeyY___{hkl}___Ctrl+Y___win-89 # 128 # {hkl} # 21`: **identical to left Ctrl** |
+| Ctrl+Shift+Z (control: Z/Y as on US) | `ControlOrCommand+Shift+KeyZ___{hkl}___Ctrl+Shift+Z___win-90 # 132 # {hkl} # 44` |
+| Ctrl+Shift+Esc (R1) | `ControlOrCommand+Shift+Escape___{hkl}___Ctrl+Shift+Escape___win-27 # 132 # {hkl} # 1` |
+
+- **No left/right modifiers.** RCtrl was stored exactly as Ctrl, so the Ring can't
+  express `RCTRL` and friends; an encoder must reject them rather than silently map them.
+- **Playback sends left modifiers.** LPS sent `LCtrl`, `LShift`, `Y` as injected
+  events (`SendInput`, `dwExtraInfo` 0), modifiers pressed first and released last.
+- **The UI edits in place.** Re-recording keeps the action's GUID and rewrites its
+  body, so a written item's id says nothing about its content: compare content.
+- **The platform part is required (K2.1).** Two forms were written with the PoC and
+  both were loaded and labelled "Ctrl+Shift+Y", but **selecting them sent nothing**:
+  `short` (`…KeyY______Ctrl+Shift+Y___`, no platform part, no layout) and `nolayout`
+  (platform part kept, both `<hkl>` empty). The full form sent Ctrl+Shift+Y. The stock
+  `Insert___269222921___Insert___` item has no platform part, so it is probably inert
+  on Windows too (**guessed**; it isn't in any Ring slot).
+- Mac entries in the stock profile use a different platform part
+  (`mac-<keycode>#¤%&+?<CGEventFlags>#¤%&+?<char>#¤%&+?<input source>`), not needed here.
 
 Other item kinds, **seen in the data, not experimented with**:
 
@@ -135,7 +172,26 @@ Other item kinds, **seen in the data, not experimented with**:
 | plugin app name (`@_chromeextension`) | no, but exists only once the plugin is installed | mapped; refuse if absent |
 | profile folder name (`409DF296…`) | **unknown** (came with the installed package; may be per install) | **resolved** from `ApplicationInfo.json` → `defaultProfileName`, never hard-coded |
 | action GUIDs | yes: random in the UI | **regenerated** deterministically (`uuid5`, as for custom apps) |
-| `keyboardKey` HKL | yes: the keyboard layout | **derived** on the target (`GetKeyboardLayout`), or dropped if the short form works |
+| `keyboardKey` HKL | yes: the keyboard layout | **filled in** on the target, never taken from the spec (K2; see below) |
+| `keyboardKey` scan code | per layout, but equal for letters and F-keys on Polish/US | **derived** on the target (`MapVirtualKeyEx`) |
+
+### Can the spec omit the layout id? (K2)
+
+**The spec omits it; apply must fill it in.** An empty layout makes the item inert
+(K2.1). But it doesn't have to match the layout in use: an item recorded under US
+(`0x04090409`) fired correctly with Polish active (K2.2). So apply writes any valid
+HKL installed on the target, in this order:
+
+1. the default input layout: `HKCU\Keyboard Layout\Preload\1` (a KLID such as
+   `00000415`), as the HKL the system loaded for it, or
+2. the first entry of `GetKeyboardLayoutList`, or
+3. `GetKeyboardLayout(0)` of the applying process (what `ring_poc.py` does; for a
+   console process it returned the default layout here).
+
+It must also compute `<scan>` with `MapVirtualKeyEx` for *that* HKL. Only layouts
+that put the key at the same VK and scan code as US were tested. On a layout where
+they differ (German QWERTZ: Y and Z swapped), which of VK, scan and HKL LPS
+replays from is **not known**.
 | `ShellExecute.filePath` | yes: a path | would need resolving like custom-app paths |
 | `.ict` icons, `lastModifiedTimeUtc`, `Snapshots\`, ini | UI state | not written (icons optional, R5) |
 
@@ -160,6 +216,13 @@ Other item kinds, **seen in the data, not experimented with**:
   on four LPS updates (`KeyboardKeyConverter 6.0.2`, `6.1.0`, `ai 6.1.3`, …, 2026-09-03).
 - **One restart for both stores:** a Ring write fits inside the existing agent
   stop → write → start window of `transaction.apply_change`.
+- **LPS alone can be restarted (K3), but that is not a write window.** Killing only
+  `LogiPluginService.exe` (tree: `…Ext.exe` and its host) left the agent running; the
+  agent respawned LPS after **1.5 s** (old process gone after 1.2 s), `…Ext.exe`
+  followed, and the Ring came back. **The mouse buttons kept working throughout**
+  (verified on the device). So a Ring-only change could be *reloaded* without
+  touching the buttons. But with the agent respawning LPS in about 1.5 s,
+  "kill LPS, then write" is a race: writes still need the agent tree stopped.
 
 ## Q7 — Verdict
 
@@ -167,8 +230,9 @@ Other item kinds, **seen in the data, not experimented with**:
 
 1. A second store and owner (LPS) beside `settings.db`, with its own guards
    (round-trip, layout shape, owner-stopped).
-2. A new item encoder (`keyboardKey`), not the card compiler; its modifier flags
-   and trailing field are undecoded beyond Ctrl+Shift+Esc.
+2. A new item encoder (`keyboardKey`), not the card compiler. The grammar is decoded
+   (K1) and reproduced byte for byte; only modifier order for Alt/Win and non-letter
+   keys remain guessed.
 3. Per-machine derivation of the layout HKL, deterministic action ids, and per-app
    profile resolution (`defaultProfileName`, creating the app folder for plugin-less apps).
 
@@ -212,15 +276,15 @@ Transformations the implementation needs:
 | Step | From spec | To LPS |
 |---|---|---|
 | slot | `top` | `controls[controlId=0]` |
-| shortcut | `CTRL+SHIFT+ESC` | `keyboardKey` string (logical names, VK, modifier flags, target HKL) + a profile action in the UI's key order |
+| shortcut | `CTRL+SHIFT+ESC` | `keyboardKey` per [the grammar](#the-keyboardkey-grammar-k1): logical names, VK, flag bits, the target's HKL and scan code; plus a profile action in the UI's key order. Reject `RCTRL`/`RSHIFT`/`RALT`/`RWIN` (not expressible) |
 | action id | the shortcut | `$@Generic___@ProfileAction___` + `uuid5(RING_NAMESPACE, "keyboard:" + keyboardKey)` → idempotent |
 | app | `rider64.exe` | `Applications\Loupedeck72\rider64\` (+ `ApplicationInfo.json`, profile with 8 `null` slots) |
 | profile | — | `ApplicationInfo.json` → `defaultProfileName` |
 | replace/remove | a slot that pointed at one of **our** ids | drop that profile action if nothing references it any more; never touch others |
 | verify | decompile `pressAction` → action → `keyboardKey` logical part | equal to the spec (the drift check, as for buttons) |
 
-`research/ring_poc.py` implements the slot, shortcut, id, profile, write and verify
-steps for Ctrl+Shift+Esc.
+`research/ring_poc.py` implements the slot, shortcut (`--shortcut`, `encode()`), id,
+profile, write and verify steps for Ctrl/Alt/Win/Shift with A–Z, F1–F24 or Esc.
 
 ## Risks after an Options+ / LPS update
 
@@ -237,10 +301,11 @@ steps for Ctrl+Shift+Esc.
 
 | Question | Experiment that settles it |
 |---|---|
-| `keyboardKey` modifier flags (`132`) and trailing field for other shortcuts | UI-record Ctrl+Alt+Y, Win+Shift+S, Alt+F4, a bare letter; diff (like E1) |
-| Is the platform part optional (portable string without the HKL)? | R5b: write the short form `…___Ctrl+Shift+Escape___`, test on the device |
-| Second machine / other keyboard layout | run `ring_poc.py --dry-run`, then R5 there |
-| Can LPS be restarted alone (no agent restart, buttons stay live)? | kill only `LogiPluginService.exe`, see whether the agent respawns it |
+| Modifier order for Alt vs Win and Alt vs Shift (e.g. Ctrl+Alt+Shift, Win+Alt) | UI-record Ctrl+Alt+Shift+Y and Win+Alt+Y; diff |
+| Digits, punctuation (OEM keys), Space, arrows, Enter: logical names and VK | UI-record Ctrl+1, Ctrl+Shift+/ , Ctrl+Space, Alt+Left; diff |
+| On a layout where VK and scan differ from US (German QWERTZ), what does LPS replay? | add German, record Ctrl+Y under it, replay under Polish with the key logger |
+| Does *any* installed HKL work, or only one whose VK/scan agree with the key? | same experiment; also write an item with the UK HKL and replay |
+| Second machine | run `ring_poc.py --dry-run`, then R5 there |
 | Writing a new plugin-less app profile from scratch (not UI-created) | R5c: create `Applications\Loupedeck72\<stem>\` programmatically, test with the app in front |
 | Is the Global profile folder name random per install? | compare `defaultProfileName` on a second machine or after a reinstall |
 | Are `settings.db`'s `radial-menu` slots ever read? | not needed for the feature; leave untouched |
@@ -262,7 +327,17 @@ The raw snapshots and file copies stayed under `~/.m-control/research/logi-optio
 | R4 | UI: remove the Global item | slot → `null`; profile action and `.ict` left orphaned; not byte-identical to R0 |
 | R5 | `ring_poc.py`: owner stopped (it was already quit), write the item into slot 5 of the R4 state, deterministic id, no `.ict`, restart | kept byte for byte (60 s, no LPS re-save); **verified on the device**: item shown with label and icon, Task Manager opens; shown in the UI; second apply a no-op with no process touched |
 | R6 | restore LPS (minus `Logs\`, `Temp\`) and `cc_config.json` from the session-start copy, owner stopped | 0 differences after 45 s of LPS running, except LPS's `Sentry/LastOsCrashReportChecked` start stamp; `settings.db` profiles and `profile_keys` identical to R0 |
+| K1 | UI, 2026-09-27, Polish Programmers layout: record 8 shortcuts in turn into Global slot 1 (the list in [the grammar](#the-keyboardkey-grammar-k1)); a watcher took a full snapshot before and after each | each step changed only the Ring profile and its `.ict` (plus one UI undo point); one profile action edited in place; the grammar above; `encode()` reproduces all 8 (+R1) byte for byte |
+| K2.1 | `ring_poc.py --form short`, then `--form nolayout`, then `--form full` (control), Ctrl+Shift+Y in slot 1, each with the owner stopped | all three kept and labelled "Ctrl+Shift+Y" in the Ring. **Verified on the device with a low-level key logger**: `short` and `nolayout` sent nothing; `full` sent injected LCtrl↓ LShift↓ Y↓ Y↑ LShift↑ LCtrl↑ |
+| K2.2 | UI, 2026-09-28: re-record Ctrl+Shift+Y with the US layout active in the Options+ window; then select it with Polish active | both `<hkl>` fields became `0x04090409`, all else unchanged; **verified on the device**: it sent Ctrl+Shift+Y under Polish |
+| K3 | kill only the LPS process tree, press a mouse button throughout | agent (same PID) respawned LPS in 1.5 s; buttons kept working (**verified on the device**); Ring back; nothing written |
+| R6b | restore the follow-up's start state (Ring profile, 2 orphaned `.ict`, LPS's daily-backup files, ini), owner stopped | 0 differences after 45 s, except `backup.date` and the Sentry stamp; `settings.db` profiles identical to the follow-up baseline |
 
 Known LPS noise, for future diffs: `Logs\`, `Temp\` (`GetServiceState.json`,
-`WebSocketPort.txt`, `WebSocketServer.txt`, `DictionaryCache\`), the ini's `Sentry/…`
-line, `Snapshots\*.st4`, and the daily `Applications.Backups` zip.
+`WebSocketPort.txt`, `WebSocketServer.txt`, `DictionaryCache\`, `mp\MarketplaceInfo.bin`),
+the ini's `Sentry/…` line, `Snapshots\*.st4`, and `Applications.Backups`. LPS's daily
+backup: on its first start of a day it writes `backup.date`, zips `Applications\` and
+keeps the zip only if its hash differs from `backup.hash`. So a zip taken during an
+experiment captures test state, and after restoring you'll see one more `backup.date` change.
+Agent-side: `easy_switch…deviceId` can renumber across restarts, and
+`%PROGRAMDATA%\LogiOptionsPlus\periodic_check.json` is the updater's daily check.

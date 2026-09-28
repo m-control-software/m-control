@@ -1,5 +1,5 @@
 {
-  "_comment": "Actions Ring items exactly as the Options+ UI (LogiPluginService 6.4.1.3246) wrote them in experiments R1-R4 (docs/actions-ring.md). Only the Ring's press controls and the items they reference; no paths, serials or host names. '{hkl}' stands for the decimal HKL of the keyboard layout active when the shortcut was recorded (read per machine). Profile JSON is serialized by json.dumps(indent=4, ensure_ascii=False) with CRLF, in the key order shown.",
+  "_comment": "Actions Ring items exactly as the Options+ UI (LogiPluginService 6.4.1.3246) wrote them in experiments R1-R4 and K1-K2 (docs/actions-ring.md). Only the Ring's press controls and the items they reference; no paths, serials or host names. '{hkl}' stands for the decimal HKL of the keyboard layout active when the shortcut was recorded (read per machine). Profile JSON is serialized by json.dumps(indent=4, ensure_ascii=False) with CRLF, in the key order shown.",
   "optionsPlusBuild": "853130",
   "logiPluginServiceVersion": "6.4.1.3246",
   "file": "LogiPluginService\\Applications\\Loupedeck72\\<app>\\Profiles\\<defaultProfileName>\\ProfileInfo.json",
@@ -435,5 +435,43 @@
       "rotateAction": null
     },
     "orphanedProfileActionKept": true
+  },
+  "k1_keyboardKey_by_recorded_shortcut": {
+    "_comment": "Polish (Programmers) layout active. One profile action, edited in place by the UI for each step; all other fields of the action are identical to k1_first_action_full below.",
+    "Ctrl+Shift+Y": "ControlOrCommand+Shift+KeyY___{hkl}___Ctrl+Shift+Y___win-89#¤%&+?132#¤%&+?{hkl}#¤%&+?21",
+    "Ctrl+Alt+Y": "ControlOrCommand+AltOrOption+KeyY___{hkl}___Ctrl+Alt+Y___win-89#¤%&+?130#¤%&+?{hkl}#¤%&+?21",
+    "Win+Shift+S": "Windows+Shift+KeyS___{hkl}___Win+Shift+S___win-83#¤%&+?12#¤%&+?{hkl}#¤%&+?31",
+    "Alt+F4": "AltOrOption+F4___{hkl}___Alt+F4___win-115#¤%&+?2#¤%&+?{hkl}#¤%&+?62",
+    "Y": "KeyY___{hkl}___Y___win-89#¤%&+?0#¤%&+?{hkl}#¤%&+?21",
+    "F13": "F13___{hkl}___F13___win-124#¤%&+?0#¤%&+?{hkl}#¤%&+?100",
+    "RCtrl+Y (stored as Ctrl+Y)": "ControlOrCommand+KeyY___{hkl}___Ctrl+Y___win-89#¤%&+?128#¤%&+?{hkl}#¤%&+?21",
+    "Ctrl+Shift+Z": "ControlOrCommand+Shift+KeyZ___{hkl}___Ctrl+Shift+Z___win-90#¤%&+?132#¤%&+?{hkl}#¤%&+?44"
+  },
+  "k1_first_action_full": {
+    "$type": "Loupedeck.Service.ApplicationProfileCommand, LoupedeckService",
+    "isCommand": true,
+    "name": "$@Generic___@ProfileAction___E943E35B6B6449DB9719C29843E7C3F4",
+    "templateActionName": "$@Generic___@KeyboardKey",
+    "actionParameters": {
+      "$type": "Loupedeck.ActionEditorActionParameters, PluginApi",
+      "parameters": {
+        "$type": "Loupedeck.StringDictionaryNoCase, PluginApi",
+        "keyboardKey": "ControlOrCommand+Shift+KeyY___{hkl}___Ctrl+Shift+Y___win-89#¤%&+?132#¤%&+?{hkl}#¤%&+?21"
+      },
+      "count": 1
+    },
+    "displayName": "Ctrl+Shift+Y",
+    "description": "Activate a keyboard shortcut with a single press or hold down for continuous use like a keyboard key",
+    "groupName": "",
+    "superGroupName": "@macro",
+    "isProfileAction": true,
+    "isMultiState": false,
+    "isResetCommand": false,
+    "adjustmentName": null,
+    "states": null
+  },
+  "k2_recorded_under_us_layout": {
+    "_comment": "The same Ctrl+Shift+Y re-recorded with the US layout active: only the two {hkl} fields change (the US HKL instead of the Polish one); VK 89, flags 132 and scan 21 are unchanged.",
+    "keyboardKey": "ControlOrCommand+Shift+KeyY___{hkl}___Ctrl+Shift+Y___win-89#¤%&+?132#¤%&+?{hkl}#¤%&+?21"
   }
 }

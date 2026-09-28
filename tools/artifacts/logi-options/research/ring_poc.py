@@ -1,11 +1,12 @@
 """Developer script (run directly, NOT via mctl): proof of concept that an Actions Ring
 slot can be written from a spec. Experiment R5 in docs/actions-ring.md.
 
-    python research/ring_poc.py [--slot 5] [--app @_defaultwin] [--dry-run]
+    python research/ring_poc.py [--slot 5] [--app @_defaultwin] [--shortcut CTRL+SHIFT+ESC]
+                                [--form full|short|nolayout] [--dry-run]
     python research/ring_poc.py --rollback <backup dir>
 
-Puts a keyboard-shortcut item (Ctrl+Shift+Esc; the only shortcut whose encoding was
-observed) into one slot of a Ring profile owned by LogiPluginService.exe:
+Puts a keyboard-shortcut item into one slot of a Ring profile owned by LogiPluginService.exe
+(experiments R5 and K2 in docs/actions-ring.md):
 
     Applications\\Loupedeck72\\<app>\\Profiles\\<defaultProfileName>\\ProfileInfo.json
 
@@ -46,11 +47,38 @@ BACKUP_ROOT = Path.home() / ".m-control" / "research" / "logi-options" / "ring-p
 RING_NAMESPACE = uuid.UUID("5b0f3c1e-7a42-4d7e-9c35-2f6a8e1d4b90")
 SEP = "#¤%&+?"  # field separator inside the platform part of keyboardKey (observed)
 
-# The one shortcut whose encoding the UI was observed writing (R1, R3):
-#   <logical keys>___<layout>___<display text>___win-<VK>#¤%&+?<modifier flags>#¤%&+?<layout>#¤%&+?1
-# <layout> is the HKL of the keyboard layout the UI recorded with, so it is read from
-# this machine. The modifier flags (132) and the trailing 1 are not decoded yet.
-SHORTCUT = {"logical": "ControlOrCommand+Shift+Escape", "display": "Ctrl+Shift+Escape", "vk": 27, "mods": 132}
+# keyboardKey grammar (docs/actions-ring.md, K1), as the UI writes it ("full" form):
+#   <logical>___<hkl>___<display>___win-<VK>#¤%&+?<flags>#¤%&+?<hkl>#¤%&+?<scan code>
+# <hkl> is the keyboard layout (HKL, decimal) and <scan code> depends on it, so both are
+# read from this machine. Modifiers in UI order: (spec name, logical, display, flag bit).
+MODIFIERS = [("CTRL", "ControlOrCommand", "Ctrl", 128), ("ALT", "AltOrOption", "Alt", 2),
+             ("WIN", "Windows", "Win", 8), ("SHIFT", "Shift", "Shift", 4)]  # Alt vs Win order: guessed
+KEYS = {"ESC": ("Escape", "Escape", 0x1B)}
+KEYS.update({chr(c): (f"Key{chr(c)}", chr(c), c) for c in range(ord("A"), ord("Z") + 1)})
+KEYS.update({f"F{n}": (f"F{n}", f"F{n}", 0x6F + n) for n in range(1, 25)})
+FORMS = {
+    "full": "as the UI writes it",
+    "short": "logical keys and display only: no layout, no platform part",
+    "nolayout": "platform part kept (VK, flags, scan) but both layout fields empty",
+}
+
+
+def encode(shortcut: str, form: str = "full") -> tuple[str, str]:
+    """'CTRL+SHIFT+Y' -> (keyboardKey, display text). Raises ValueError on anything unobserved."""
+    *mods, key = [p.strip().upper() for p in shortcut.split("+")]
+    if key not in KEYS or any(m not in {n for n, *_ in MODIFIERS} for m in mods) or len(set(mods)) != len(mods):
+        raise ValueError(f"{shortcut}: only CTRL/ALT/WIN/SHIFT with A-Z, F1-F24 or ESC were observed")
+    used = [m for m in MODIFIERS if m[0] in mods]
+    logical_key, display_key, vk = KEYS[key]
+    logical = "+".join([m[1] for m in used] + [logical_key])
+    display = "+".join([m[2] for m in used] + [display_key])
+    flags = sum(m[3] for m in used)
+    hkl = ctypes.windll.user32.GetKeyboardLayout(0) & 0xFFFFFFFF
+    scan = ctypes.windll.user32.MapVirtualKeyExW(vk, 0, ctypes.c_void_p(hkl))  # MAPVK_VK_TO_VSC
+    if form == "short":
+        return f"{logical}______{display}___", display
+    layout = "" if form == "nolayout" else str(hkl)
+    return f"{logical}___{layout}___{display}___win-{vk}{SEP}{flags}{SEP}{layout}{SEP}{scan}", display
 
 
 def canonical(doc: dict) -> bytes:
@@ -98,13 +126,7 @@ def controls(doc: dict) -> list[dict]:
     return doc["layout"]["layoutModes"][0]["workspaces"][0]["pressPages"][0]["controls"]
 
 
-def keyboard_key() -> str:
-    hkl = ctypes.windll.user32.GetKeyboardLayout(0) & 0xFFFFFFFF
-    s = SHORTCUT
-    return f"{s['logical']}___{hkl}___{s['display']}___win-{s['vk']}{SEP}{s['mods']}{SEP}{hkl}{SEP}1"
-
-
-def action_for(key: str) -> dict:
+def action_for(key: str, display: str) -> dict:
     """A profile action in the exact key order the UI writes (R1)."""
     name = "$@Generic___@ProfileAction___" + uuid.uuid5(RING_NAMESPACE, "keyboard:" + key).hex.upper()
     return {
@@ -117,7 +139,7 @@ def action_for(key: str) -> dict:
             "parameters": {"$type": "Loupedeck.StringDictionaryNoCase, PluginApi", "keyboardKey": key},
             "count": 1,
         },
-        "displayName": SHORTCUT["display"],
+        "displayName": display,
         "description": "Activate a keyboard shortcut with a single press or hold down for continuous use "
                        "like a keyboard key",
         "groupName": "",
@@ -208,6 +230,9 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--watch", type=float, default=45.0, help="seconds to watch for the owner's re-save")
     ap.add_argument("--rollback", metavar="BACKUP_DIR")
+    ap.add_argument("--shortcut", default="CTRL+SHIFT+ESC", help="CTRL/ALT/WIN/SHIFT + A-Z, F1-F24 or ESC")
+    ap.add_argument("--form", choices=sorted(FORMS), default="full",
+                    help="; ".join(f"{k}: {v}" for k, v in FORMS.items()))
     args = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
     if args.rollback:
@@ -217,10 +242,10 @@ def main() -> int:
     try:
         path = profile_path(args.app)
         doc, raw = read_profile(path)
+        action = action_for(*encode(args.shortcut, args.form))
     except (OSError, ValueError) as e:
         return fail(str(e))
 
-    action = action_for(keyboard_key())
     changes = patch(doc, args.slot, action)
     print(f"profile: {path}\nkeyboardKey: {action['actionParameters']['parameters']['keyboardKey']}")
     if not changes:
