@@ -204,6 +204,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   retired and CI no longer triggers on it. Known-good versions are release
   tags.
 
+### Fixed
+
+- **`yarn verify` timing out on Windows.** `test/manifest-schema.test.ts`
+  walked the whole repo (`node_modules` and `.git` included) before filtering
+  for manifests; it now walks only `tools/` and `templates/`. The agent-status
+  protocol tests get a 30 s budget: on Windows each run lists processes
+  through `powershell.exe` + `Get-CimInstance`, which can take longer than
+  Vitest's 5 s default.
+- **CRLF checkouts failing lint.** `.gitattributes` pins LF in every working
+  tree regardless of `core.autocrlf` (CRLF only for `.cmd`/`.bat`).
+
 ### Removed
 
 - `package-lock.json` (the repo uses Yarn), `.claude/rules/` (restated

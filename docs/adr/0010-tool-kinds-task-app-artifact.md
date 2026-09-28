@@ -386,6 +386,9 @@ Resolve before flipping to Accepted:
    `artifact` pointing at an unpacked-extension dir, or accept it as a
    pointer plus manual install steps? Do *not* invent a fourth kind for a
    single case.
+   **Answered 2026-09-28** by [ADR-0014](0014-chrome-bridge-native-messaging.md):
+   an ordinary `task` that installs a native messaging host, plus one manual
+   "Load unpacked".
 4. **`app` lifecycle.** Does `kind: "app"` need `mctl stop` / `mctl status`,
    or is launch-and-forget sufficient? Launch-and-forget is the smaller
    v1 and can be revisited once two apps exist.

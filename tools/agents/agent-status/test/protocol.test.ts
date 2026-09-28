@@ -39,7 +39,11 @@ afterEach(() => {
   fs.rmSync(sandbox, { recursive: true, force: true });
 });
 
-describe('agent-status', () => {
+// On Windows every run lists processes through powershell.exe +
+// Get-CimInstance (index.js, listProcesses), which alone can take several
+// seconds on a busy machine: past Vitest's 5 s default, below the tool's own
+// 15 s scan timeout.
+describe('agent-status', { timeout: 30_000 }, () => {
   it('reports an empty dashboard when no provider has sessions', () => {
     const r = run({});
     expectProtocol(r, 'agent-status');

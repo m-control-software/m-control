@@ -1,0 +1,8 @@
+# LF in the repository and in every working tree, whatever core.autocrlf says.
+# Prettier and the linters expect LF; a Windows checkout with autocrlf=true
+# otherwise fails `yarn lint` on files nobody touched.
+* text=auto eol=lf
+
+# cmd.exe mis-parses labels and GOTO in LF batch files.
+*.cmd text eol=crlf
+*.bat text eol=crlf

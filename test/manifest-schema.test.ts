@@ -101,14 +101,21 @@ describe('manifest schema agrees with validateManifest', () => {
   });
 
   it('accepts every manifest shipped in tools/ and templates/', () => {
-    const manifests = fs
-      .readdirSync(REPO_ROOT, { recursive: true, encoding: 'utf-8' })
-      .filter(
-        (f) =>
-          /^(tools|templates)[\\/]/.test(f) &&
-          path.basename(f) === 'manifest.json' &&
-          !f.includes('node_modules')
-      );
+    // Walk only the two roots, never the repo root: a recursive walk from the
+    // root enumerates node_modules and .git before any filter applies, which
+    // on Windows took longer than the test timeout.
+    const manifests = ['tools', 'templates'].flatMap((dir) =>
+      fs
+        .readdirSync(path.join(REPO_ROOT, dir), {
+          recursive: true,
+          encoding: 'utf-8',
+        })
+        .filter(
+          (f) =>
+            path.basename(f) === 'manifest.json' && !f.includes('node_modules')
+        )
+        .map((f) => path.join(dir, f))
+    );
     expect(manifests.length).toBeGreaterThan(0);
     for (const f of manifests) {
       const m = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, f), 'utf-8'));

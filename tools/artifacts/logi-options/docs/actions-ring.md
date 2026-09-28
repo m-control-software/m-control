@@ -14,6 +14,10 @@ per machine but need not match the active layout. The Ring is
 *not* in `settings.db` but in a second store with a second owner, and its items are
 not Logitech cards, so it needs its own (small) compiler.
 
+**Decided in [ADR-0013](../../../../docs/adr/0013-actions-ring-in-logi-options-packs.md).**
+Where this study and the ADR differ (v1 scope, action ids, drift equality), the
+ADR wins; "Proposed spec shape" below is the study's input to it.
+
 ## Q1 — Storage
 
 | Location | Holds | Changed by a Ring edit? |
@@ -242,6 +246,12 @@ executes a written item.
 
 ## Proposed spec shape
 
+The input to ADR-0013, kept as written. ADR-0013 changed three things: v1 also
+has `system` and `raw` actions, action ids derive from the spec action
+(`uuid5(RING_NAMESPACE, "shortcut:CTRL+SHIFT+Y")`), not from the encoded
+`keyboardKey`, and a slot is in sync when it decompiles to the spec action,
+whatever installed HKL it carries.
+
 Additive, optional, per profile, next to `buttons` (so `specVersion` stays 1;
 implementation decides):
 
@@ -277,7 +287,7 @@ Transformations the implementation needs:
 |---|---|---|
 | slot | `top` | `controls[controlId=0]` |
 | shortcut | `CTRL+SHIFT+ESC` | `keyboardKey` per [the grammar](#the-keyboardkey-grammar-k1): logical names, VK, flag bits, the target's HKL and scan code; plus a profile action in the UI's key order. Reject `RCTRL`/`RSHIFT`/`RALT`/`RWIN` (not expressible) |
-| action id | the shortcut | `$@Generic___@ProfileAction___` + `uuid5(RING_NAMESPACE, "keyboard:" + keyboardKey)` → idempotent |
+| action id | the shortcut | `$@Generic___@ProfileAction___` + `uuid5(RING_NAMESPACE, "shortcut:" + canonical spec shortcut)` → idempotent, same on every machine and layout (ADR-0013; `ring_poc.py` still hashes the encoded `keyboardKey`) |
 | app | `rider64.exe` | `Applications\Loupedeck72\rider64\` (+ `ApplicationInfo.json`, profile with 8 `null` slots) |
 | profile | — | `ApplicationInfo.json` → `defaultProfileName` |
 | replace/remove | a slot that pointed at one of **our** ids | drop that profile action if nothing references it any more; never touch others |
