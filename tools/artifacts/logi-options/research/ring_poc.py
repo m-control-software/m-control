@@ -2,8 +2,13 @@
 slot can be written from a spec. Experiment R5 in docs/actions-ring.md.
 
     python research/ring_poc.py [--slot 5] [--app @_defaultwin] [--shortcut CTRL+SHIFT+ESC]
-                                [--form full|short|nolayout] [--dry-run]
+                                [--form full|short|nolayout] [--label TEXT] [--dry-run]
+    python research/ring_poc.py --app chrome --create [--display-name "Google Chrome"] ...
     python research/ring_poc.py --rollback <backup dir>
+
+--create makes a plugin-less LPS application the way the UI did for 7-Zip (R3c, R7, R5c):
+Applications\\Loupedeck72\\<exe stem>\\ApplicationInfo.json plus one profile with 8 empty slots,
+with deterministic ids instead of the UI's random ones. Its rollback deletes the app folder.
 
 Puts a keyboard-shortcut item into one slot of a Ring profile owned by LogiPluginService.exe
 (experiments R5 and K2 in docs/actions-ring.md):
@@ -51,10 +56,14 @@ SEP = "#¤%&+?"  # field separator inside the platform part of keyboardKey (obse
 #   <logical>___<hkl>___<display>___win-<VK>#¤%&+?<flags>#¤%&+?<hkl>#¤%&+?<scan code>
 # <hkl> is the keyboard layout (HKL, decimal) and <scan code> depends on it, so both are
 # read from this machine. Modifiers in UI order: (spec name, logical, display, flag bit).
-MODIFIERS = [("CTRL", "ControlOrCommand", "Ctrl", 128), ("ALT", "AltOrOption", "Alt", 2),
-             ("WIN", "Windows", "Win", 8), ("SHIFT", "Shift", "Shift", 4)]  # Alt vs Win order: guessed
-KEYS = {"ESC": ("Escape", "Escape", 0x1B)}
+# Order observed (K1, K4): Ctrl < Alt, Ctrl < Shift, Win < Alt, Win < Shift, Alt < Shift.
+# Ctrl vs Win was never recorded, so a shortcut with both is rejected.
+MODIFIERS = [("CTRL", "ControlOrCommand", "Ctrl", 128), ("WIN", "Windows", "Win", 8),
+             ("ALT", "AltOrOption", "Alt", 2), ("SHIFT", "Shift", "Shift", 4)]
+KEYS = {"ESC": ("Escape", "Escape", 0x1B), "SPACE": ("Space", " ", 0x20), "LEFT": ("ArrowLeft", "ArrowLeft", 0x25),
+        "ENTER": ("Return", "Return", 0x0D), "SLASH": ("Oem2", "/", 0xBF)}  # K4
 KEYS.update({chr(c): (f"Key{chr(c)}", chr(c), c) for c in range(ord("A"), ord("Z") + 1)})
+KEYS.update({str(d): (f"Key{d}", str(d), 0x30 + d) for d in range(10)})  # K4 Key1; stock items: Key5
 KEYS.update({f"F{n}": (f"F{n}", f"F{n}", 0x6F + n) for n in range(1, 25)})
 FORMS = {
     "full": "as the UI writes it",
@@ -63,17 +72,21 @@ FORMS = {
 }
 
 
-def encode(shortcut: str, form: str = "full") -> tuple[str, str]:
+def encode(shortcut: str, form: str = "full", hkl: int | None = None) -> tuple[str, str]:
     """'CTRL+SHIFT+Y' -> (keyboardKey, display text). Raises ValueError on anything unobserved."""
     *mods, key = [p.strip().upper() for p in shortcut.split("+")]
     if key not in KEYS or any(m not in {n for n, *_ in MODIFIERS} for m in mods) or len(set(mods)) != len(mods):
-        raise ValueError(f"{shortcut}: only CTRL/ALT/WIN/SHIFT with A-Z, F1-F24 or ESC were observed")
+        raise ValueError(f"{shortcut}: only CTRL/ALT/WIN/SHIFT with A-Z, 0-9, F1-F24, ESC, SPACE, LEFT, ENTER "
+                         "or SLASH were observed")
+    if {"CTRL", "WIN"} <= set(mods):
+        raise ValueError(f"{shortcut}: the order of Ctrl and Win was never observed")
     used = [m for m in MODIFIERS if m[0] in mods]
     logical_key, display_key, vk = KEYS[key]
     logical = "+".join([m[1] for m in used] + [logical_key])
     display = "+".join([m[2] for m in used] + [display_key])
     flags = sum(m[3] for m in used)
-    hkl = ctypes.windll.user32.GetKeyboardLayout(0) & 0xFFFFFFFF
+    if hkl is None:
+        hkl = ctypes.windll.user32.GetKeyboardLayout(0) & 0xFFFFFFFF
     scan = ctypes.windll.user32.MapVirtualKeyExW(vk, 0, ctypes.c_void_p(hkl))  # MAPVK_VK_TO_VSC
     if form == "short":
         return f"{logical}______{display}___", display
@@ -99,13 +112,73 @@ def lps_pids() -> list[int]:
     return [p for n, p in st.list_processes() if n.lower() in LPS_PROCESSES]
 
 
+def app_dir(app: str) -> Path:
+    return LPS_DATA / "Applications" / RING_DEVICE / app
+
+
 def profile_path(app: str) -> Path:
-    app_dir = LPS_DATA / "Applications" / RING_DEVICE / app
-    info = json.loads((app_dir / "ApplicationInfo.json").read_text(encoding="utf-8-sig"))
+    """defaultProfileName, or (plugin-less apps: the UI writes null, R3c) the only profile folder."""
+    info = json.loads((app_dir(app) / "ApplicationInfo.json").read_text(encoding="utf-8-sig"))
     name = info.get("defaultProfileName")
     if not name:
-        raise ValueError(f"{app} has no defaultProfileName; pick the profile in the Options+ UI once")
-    return app_dir / "Profiles" / name / "ProfileInfo.json"
+        found = [p for p in (app_dir(app) / "Profiles").iterdir() if (p / "ProfileInfo.json").is_file()]
+        if len(found) != 1:
+            raise ValueError(f"{app} has no defaultProfileName and {len(found)} profiles; expected exactly one")
+        name = found[0].name
+    return app_dir(app) / "Profiles" / name / "ProfileInfo.json"
+
+
+def _gid(*parts: str) -> str:
+    """Deterministic 32-hex upper-case id, the shape of the UI's random ones."""
+    return uuid.uuid5(RING_NAMESPACE, ":".join(parts)).hex.upper()
+
+
+CONTROL_TYPE = "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService"
+
+
+def _page(name: str, display: str) -> dict:
+    return {"$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutPage7, LoupedeckService",
+            "name": name, "displayName": display, "description": None,
+            "controls": [{"$type": CONTROL_TYPE, "controlId": i, "pressAction": None, "rotateAction": None}
+                         for i in range(8)]}
+
+
+def new_app(stem: str, display: str) -> tuple[dict, str, dict]:
+    """(ApplicationInfo, profile folder name, ProfileInfo) in the exact shape and key order the UI
+    wrote for the plugin-less 7-Zip app (R3c), with deterministic ids."""
+    info = {"$type": "Loupedeck.Service.SupportedApplicationInfo, LoupedeckService",
+            "name": stem, "displayName": display, "description": None, "deviceType": RING_DEVICE,
+            "nativePluginName": None, "hasNativePlugin": False, "processOrBundleName": stem,
+            "modes": [{"$type": "Loupedeck.Service.ApplicationMode, LoupedeckService",
+                       "name": "main", "parentModeName": None, "displayName": "Main"}],
+            "defaultProfileName": None, "isEnabled": True}
+    profile_name, workspace = _gid("profile", stem), _gid("workspace", stem)
+    now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "0Z"
+    profile = {
+        "$type": "Loupedeck.Service.ApplicationProfile, LoupedeckService",
+        "name": profile_name, "profileFlags": "None", "displayName": f"{display} Profile", "description": None,
+        "deviceType": RING_DEVICE, "applicationName": stem, "nativePluginName": None, "hasNativePlugin": False,
+        "additionalNativePluginNames": ["DefaultWin"], "lastModifiedTimeUtc": now,
+        "profileSettings": {
+            "$type": "Loupedeck.DictionaryNoCase`1[[System.String, System.Private.CoreLib]], PluginApi"},
+        "actionImages90": None, "actionImages60": None, "wheelImages": None, "actionColors": None,
+        "layout": {
+            "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayout7, LoupedeckService",
+            "deviceType": RING_DEVICE, "profileFlags": "None",
+            "layoutModes": [{
+                "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutMode7, LoupedeckService",
+                "deviceType": RING_DEVICE, "modeName": "main", "parentModeName": None, "actions": None,
+                "dynamicButtonPages": None, "dynamicEncoderPages": None,
+                "workspaces": [{
+                    "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutWorkspace7, LoupedeckService",
+                    "name": workspace, "displayName": "Workspace 1", "description": None,
+                    "pressPages": [_page(_gid("press-page", stem), "Page (1)")],
+                    "rotatePages": [_page(_gid("rotate-page", stem), "Dial Page")]}],
+                "homeWorkspaceName": workspace}],
+            "folderPages": []},
+        "macroCommands": [], "macroAdjustments": [], "profileCommands": [], "profileAdjustments": [],
+        "conversionHistory": None, "packageName": None, "packageVersion": None, "profileActions": []}
+    return info, profile_name, profile
 
 
 def read_profile(path: Path) -> tuple[dict, bytes]:
@@ -126,7 +199,7 @@ def controls(doc: dict) -> list[dict]:
     return doc["layout"]["layoutModes"][0]["workspaces"][0]["pressPages"][0]["controls"]
 
 
-def action_for(key: str, display: str) -> dict:
+def action_for(key: str, display: str, label: str | None = None) -> dict:
     """A profile action in the exact key order the UI writes (R1)."""
     name = "$@Generic___@ProfileAction___" + uuid.uuid5(RING_NAMESPACE, "keyboard:" + key).hex.upper()
     return {
@@ -139,7 +212,7 @@ def action_for(key: str, display: str) -> dict:
             "parameters": {"$type": "Loupedeck.StringDictionaryNoCase, PluginApi", "keyboardKey": key},
             "count": 1,
         },
-        "displayName": display,
+        "displayName": label or display,
         "description": "Activate a keyboard shortcut with a single press or hold down for continuous use "
                        "like a keyboard key",
         "groupName": "",
@@ -211,6 +284,14 @@ def watch(path: Path, written: bytes, seconds: float) -> bytes:
 
 def rollback(src: Path) -> int:
     manifest = json.loads((src / "manifest.json").read_text(encoding="utf-8"))
+    if manifest.get("created"):
+        created = Path(manifest["created"])
+        if not created.exists():
+            print("the created app folder is already gone; nothing to do")
+            return 0
+        with_owner_stopped(lambda: shutil.rmtree(created))
+        print(f"removed {created}")
+        return 0
     target = Path(manifest["source"])
     good = (src / "profile" / target.name).read_bytes()
     if sha(good) != manifest["sha256"]:
@@ -230,19 +311,32 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--watch", type=float, default=45.0, help="seconds to watch for the owner's re-save")
     ap.add_argument("--rollback", metavar="BACKUP_DIR")
-    ap.add_argument("--shortcut", default="CTRL+SHIFT+ESC", help="CTRL/ALT/WIN/SHIFT + A-Z, F1-F24 or ESC")
+    ap.add_argument("--shortcut", default="CTRL+SHIFT+ESC",
+                    help="CTRL/ALT/WIN/SHIFT + A-Z, 0-9, F1-F24, ESC, SPACE, LEFT, ENTER or SLASH")
     ap.add_argument("--form", choices=sorted(FORMS), default="full",
                     help="; ".join(f"{k}: {v}" for k, v in FORMS.items()))
+    ap.add_argument("--label", help="displayName of the item, if it should differ from the shortcut (K5)")
+    ap.add_argument("--create", action="store_true", help="create the plugin-less app --app if it is missing")
+    ap.add_argument("--display-name", help="with --create: the app's displayName (default: the exe stem)")
     args = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
     if args.rollback:
         return rollback(Path(args.rollback))
     if not 1 <= args.slot <= 8:
         return fail("--slot must be 1..8")
+    created = None
     try:
-        path = profile_path(args.app)
-        doc, raw = read_profile(path)
-        action = action_for(*encode(args.shortcut, args.form))
+        action = action_for(*encode(args.shortcut, args.form), label=args.label)
+        if args.create and not app_dir(args.app).exists():
+            if args.app.startswith("@") or args.app != args.app.lower() or "." in args.app:
+                return fail("--create takes a lower-case exe stem, e.g. chrome or notepad")
+            created, profile_name, doc = new_app(args.app, args.display_name or args.app)
+            path = app_dir(args.app) / "Profiles" / profile_name / "ProfileInfo.json"
+            raw = b""
+            print(f"creating plugin-less app {app_dir(args.app)}")
+        else:
+            path = profile_path(args.app)
+            doc, raw = read_profile(path)
     except (OSError, ValueError) as e:
         return fail(str(e))
 
@@ -256,10 +350,25 @@ def main() -> int:
         return 0
 
     new = canonical(doc)
-    dest = backup(path, "pre-ring-poc")
+    if created is not None:
+        dest = BACKUP_ROOT / f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}-pre-create-{args.app}"
+        dest.mkdir(parents=True)
+        (dest / "manifest.json").write_text(json.dumps({"created": str(app_dir(args.app)),
+                                                        "created_at": dt.datetime.now().isoformat()}, indent=2),
+                                            encoding="utf-8")
+    else:
+        dest = backup(path, "pre-ring-poc")
     print(f"backup: {dest}")
 
     def write() -> None:
+        if created is not None:
+            if app_dir(args.app).exists():
+                raise RuntimeError(f"{app_dir(args.app)} appeared since it was checked; nothing was written")
+            path.parent.mkdir(parents=True)
+            (app_dir(args.app) / "ApplicationInfo.json").write_bytes(canonical(created))
+            path.write_bytes(new)
+            print(f"  created {app_dir(args.app)} ({len(new)} bytes profile)")
+            return
         if sha(path.read_bytes()) != sha(raw):
             raise RuntimeError(f"{path.name} changed since it was read; nothing was written")
         tmp = path.with_suffix(".json.ring-poc-tmp")
