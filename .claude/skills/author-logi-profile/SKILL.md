@@ -1,6 +1,6 @@
 ---
 name: author-logi-profile
-description: Create or change Logitech MX Master 4 button, gesture or per-application mouse profiles (Logi Options+) by writing *.logi.json specs and applying them with `mctl run logi-options`. Use when the user asks to set up, change, remap, back up, export, sync or restore mouse buttons, thumb gestures, the haptic panel, thumb wheel or an app-specific mouse profile (e.g. "make my mouse do X in Rider", "set up the MX Master for VS Code", "copy my mouse setup to this machine", "what are my mouse buttons set to"). Also use when logi-options reports a storage/round-trip/catalog error after an Options+ update.
+description: Create or change Logitech MX Master 4 button, gesture, Actions Ring or per-application mouse profiles (Logi Options+) by writing *.logi.json specs and applying them with `mctl run logi-options`. Use when the user asks to set up, change, remap, back up, export, sync or restore mouse buttons, thumb gestures, the haptic panel, the Actions Ring (radial menu) and its items, thumb wheel or an app-specific mouse profile (e.g. "make my mouse do X in Rider", "put a Chrome-only item on the Actions Ring", "set up the MX Master for VS Code", "copy my mouse setup to this machine", "what are my mouse buttons set to"). Also use when logi-options reports a storage/round-trip/catalog error after an Options+ update.
 ---
 
 # Author a Logi Options+ profile
@@ -26,9 +26,15 @@ grammar. Don't restate it from memory; the details matter.
      *or* `gestures`, never both. A request that implies both is physically
      impossible: say so, and propose where the other action should go (usually
      `haptic-panel` or `top`).
+   - **The haptic panel opens the Actions Ring**; the Ring's 8 items are a
+     separate `actionsRing` map (slots `top` … `top-left`, clockwise), per
+     application or global. A request for "a Ring item" is `actionsRing`, not
+     a `haptic-panel` binding. Ring shortcuts accept fewer keys than buttons
+     (spec-format.md, `actionsRing`); give an item a `label` when the shortcut
+     alone doesn't say what it does.
    - v1 does not cover device settings (pointer speed, SmartShift, scroll
-     direction, haptics), macros, or other devices. Say so rather than
-     approximating.
+     direction, haptics), macros, Ring folders, or other devices. Say so
+     rather than approximating.
    - Only listed buttons change. A new profile starts from Logitech defaults,
      not from the Global profile.
 4. **Get real shortcuts from the application's actual key bindings**, never
@@ -46,12 +52,16 @@ grammar. Don't restate it from memory; the details matter.
    false` when already in sync). If it reports `verified: false`, run
    `check=true` again after a moment.
 8. **Ask the user to try it at the device.** The tool can verify what Options+
-   stored; only a person can verify what the button does in the app.
+   stored; only a person can verify what the button does in the app. For the
+   Ring even more so: LogiPluginService never re-saves, so "verified" means
+   only that the file is what was written. Ask them to open the Ring with the
+   app in front and select the item.
 
 ## Never
 
-- Edit `settings.db` directly, or write to it while `logioptionsplus_agent.exe` runs.
-  All writes go through the tool.
+- Edit `settings.db` or the Ring's `ProfileInfo.json` directly, or write either
+  while `logioptionsplus_agent.exe` / `LogiPluginService.exe` runs. All writes go
+  through the tool.
 - Sync or copy `settings.db` between machines. Sync the spec files instead.
 - Commit backups, research snapshots, or exported packs containing personal
   setup into m-control. Snapshots hold host names, serials, and app command lines.
@@ -59,9 +69,12 @@ grammar. Don't restate it from memory; the details matter.
 
 ## When the tool refuses
 
-Errors mentioning the settings.db row layout, "round-trips byte-identically",
-a missing catalog file, or `test_model.py` failures mean **Options+ changed its
+Errors mentioning the settings.db row layout, "round-trips byte-identically"
+(settings.db or a Ring `ProfileInfo.json`), the Ring's layout ("controls 0..7"),
+a missing catalog file or `DefaultWinPlugin.xliff`, or `test_model.py` /
+`test_ring.py` failures mean **Options+ or LogiPluginService changed its
 internals** (usually after an update). Don't work around the guard. Follow
 **`tools/artifacts/logi-options/docs/maintenance.md`**: run the tests, then the
 controlled-change method with `research/`. Background:
-`tools/artifacts/logi-options/docs/internals.md`, ADR-0011.
+`tools/artifacts/logi-options/docs/internals.md`, `docs/actions-ring.md`,
+ADR-0011, ADR-0013.

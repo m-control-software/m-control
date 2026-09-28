@@ -32,6 +32,7 @@ have written, byte for byte ([internals.md](internals.md#how-the-ui-builds-a-car
 - **`device`:** `mx-master-4`, the only device in v1. Another model is one entry
   in `lib/catalog.py` `DEVICES`; see [maintenance.md](maintenance.md#adding-a-device).
 - **Unknown fields are errors.** This is deliberate: it catches typos and invented fields.
+- **A profile** has `buttons`, [`actionsRing`](#actionsring--the-actions-ring), or both.
 
 ## `application` — exactly one of
 
@@ -114,6 +115,55 @@ physics, not a tool limitation: the MX Master 4 has one thumb button.
 - Keys are sent as USB HID usages, i.e. physical positions. On a non-US layout,
   `SLASH` is the key where US `/` sits.
 
+## `actionsRing` — the Actions Ring
+
+The radial menu the haptic panel opens (`haptic-panel` → `show-radial-menu`).
+Each application can have its own Ring; an app without one shows the Global Ring.
+
+```json
+{ "application": { "builtin": "google-chrome" },
+  "actionsRing": {
+    "top":   { "shortcut": "CTRL+SHIFT+Y", "label": "YT → mp3" },
+    "right": { "system": "media-play-pause" },
+    "left":  { "nothing": true }
+  } }
+```
+
+**Slots**, clockwise from the top, as the UI numbers them: `top` (1), `top-right` (2),
+`right` (3), `bottom-right` (4), `bottom` (5), `bottom-left` (6), `left` (7),
+`top-left` (8). The numbers `"1"`…`"8"` are aliases.
+
+| Action | Example | Notes |
+|---|---|---|
+| `shortcut` | `{"shortcut": "CTRL+SHIFT+Y"}` | the [shortcut grammar](#shortcut-grammar), limited to what the Ring stores (below) |
+| `shortcut` + `label` | `{"shortcut": "CTRL+SHIFT+Y", "label": "YT → mp3"}` | the text the Ring shows; without it the Ring shows the shortcut |
+| `system` | `{"system": "media-play-pause"}` | one of LogiPluginService's system actions: `lock-workstation`, `windows-explorer`, `windows-screenshot`, `windows-magnifier`, `volume-up`, `media-next-track`, … Full list: `mctl run logi-options mode=presets` (`actionsRing.systemActions`) |
+| `nothing` | `{"nothing": true}` | an empty slot |
+| `raw` | `{"raw": {"pressAction": "$…", "definition": {…}}}` | a verbatim LogiPluginService item (macro, plugin action, run program). Export's lossless fallback, not portable |
+
+**Ring shortcuts.** Modifiers `CTRL SHIFT ALT WIN`. Keys `A`–`Z`, `0`–`9`,
+`F1`–`F24`, `ESC`, `SPACE`, `LEFT`, `ENTER`, `SLASH`. That is what the UI was seen
+writing ([actions-ring.md](actions-ring.md#the-keyboardkey-grammar-k1)); other keys,
+`CTRL` together with `WIN`, and right-hand modifiers are rejected rather than guessed
+(the Ring stores only left-hand modifiers). The keyboard layout is filled in per
+machine; an item written under another installed layout counts as in sync.
+
+**Applications** map to Ring apps like this:
+
+| `application` | Ring app | Notes |
+|---|---|---|
+| `{"global": true}` | the Global Ring (`@_defaultwin`) | must exist (it does once Options+ ran with an MX Master 4) |
+| `{"executable": "notepad.exe", "name": "Notepad"}` | `notepad`, matched by process name | created if missing; `name` is the label in the Options+ UI. `searchPaths` isn't needed: the Ring matches the process name only |
+| `{"builtin": "google-chrome"}` | `chrome`; Logitech's `@_chromeextension` only if its plugin is installed | no Logitech plugin or browser extension needed. Other built-ins have no Ring mapping yet: use `executable` |
+
+- **Only listed slots are written.** Other slots, and every item the UI made,
+  stay byte-identical. An item the tool wrote and no slot uses any more is
+  removed; the UI's own leftovers are not.
+- **Folders** aren't supported. A slot holding one can be overwritten; `mode=export`
+  refuses to export it and names the slot (`ring=false` exports without the Ring).
+- A profile may have only `actionsRing`: then nothing in settings.db changes and the
+  executable doesn't have to be installed.
+
 ## Choosing the shortcuts (read this before writing a profile)
 
 A binding is only right if the application really does what you expect on
@@ -144,7 +194,7 @@ button set in two places is an error that names both files.
 ## Workflow
 
 ```powershell
-mctl run logi-options mode=presets     # vocabulary: buttons, presets, gesture presets, keys, built-in apps
+mctl run logi-options mode=presets     # vocabulary: buttons, presets, gesture presets, keys, built-in apps, Ring slots/system actions
 mctl run logi-options check=true       # validate every pack, report drift, show the planned change; writes nothing
 mctl run logi-options                  # apply: backup -> stop agent -> patch -> start -> verify (~15 s; mouse on defaults meanwhile)
 mctl run logi-options mode=export app=rider64.exe out=C:/path/to/pack/rider.logi.json   # adopt a change made in the UI
@@ -158,6 +208,7 @@ into the pack first.
 
 - Device settings: pointer speed, SmartShift sensitivity, scroll direction,
   haptic strength. These live only in the Global profile and are left untouched.
-- The Actions Ring's own contents, macros, and Smart Actions authoring
-  (existing ones survive as `card`/`raw`).
+- Macros and Smart Actions authoring (existing ones survive as `card`/`raw`,
+  on the Ring too), Ring folders, and Ring actions other than shortcuts and
+  system actions (open URL, run program, …: `raw` only).
 - Other devices (keyboards, other mice), and macOS.

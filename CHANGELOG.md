@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Actions Ring in `logi-options` packs** (ADR-0013): a profile may carry
+  `actionsRing` next to (or instead of) `buttons`: slots `top` … `top-left`
+  (or `1`–`8`), each a `shortcut` (with an optional `label`), a `system`
+  action (LogiPluginService's own list, read from the installed plugin), `nothing`, or
+  `raw`. Per application: Global, any executable (a plugin-less Ring app
+  is created), and `builtin: google-chrome`, which needs no Logitech plugin.
+  `check=true`, apply, `mode=export` (`ring=false` leaves it out),
+  `list`, `presets`, `inspect` and `restore` cover it; the Ring write runs in
+  the same transaction and agent restart as the buttons. New optional config
+  `logi-options.ringDataDir`.
+
 - **`yt-download` tool** (`tools/media/yt-download/`): downloads YouTube
   videos (mp4) or audio (mp3 with tags and cover art), single videos or whole
   playlists. yt-dlp and ffmpeg are not vendored and never taken from `PATH`:
@@ -206,6 +217,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`logi-options` crashing on non-ASCII output.** It emits events with
+  `ensure_ascii=False`, but on Windows Python gives a pipe the ANSI code page,
+  so any non-ASCII text failed as `INVALID_INPUT`. stdin and stdout are now
+  UTF-8, as mctl expects.
 - **`yarn verify` timing out on Windows.** `test/manifest-schema.test.ts`
   walked the whole repo (`node_modules` and `.git` included) before filtering
   for manifests; it now walks only `tools/` and `templates/`. The agent-status

@@ -189,4 +189,4 @@ Still open:
 
 - `tools/artifacts/logi-options/docs/actions-ring.md` — findings, grammar, evidence R0–R6, K1–K3
 - `tools/artifacts/logi-options/research/ring_poc.py` — the PoC writer
-- `tools/artifacts/logi-options/research/ring-ui-written.json` — UI-written evidence
+- `tools/artifacts/logi-options/test/fixtures/ring-ui-written.json` — UI-written evidence

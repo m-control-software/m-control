@@ -17,6 +17,7 @@ observed, not assumed. Re-verify after Options+ updates
 | `%APPDATA%\logioptionsplus\` | Electron profile (window geometry, IndexedDB UI cache) | churns, but not authoritative: the UI rebuilt correctly from the agent after every external write |
 | `%PROGRAMDATA%\LogiOptionsPlus\depots\<build>\` | **Logitech's catalogs**: card presets, built-in apps, device packages | no. Read-only input for the compiler, never copied into this repo |
 | `HKCU\Software\Logitech\LogiOptionsPlus\Data` | 4 binary values; they rotate together with `accounts_refresh_token_expiration` | encrypted account tokens, not settings |
+| `%LOCALAPPDATA%\Logi\LogiPluginService\Applications\Loupedeck72\` | **the Actions Ring**: one folder per Ring app, owned by LogiPluginService | no (a Ring edit changes only this). See [below](#the-actions-ring-a-second-store) |
 
 ## settings.db
 
@@ -113,6 +114,24 @@ Cards from 2025 lack tags that today's UI adds, and the agent loads both. The
 decompiler (`model.card_action`) ignores them. Two cards are equal when they
 decompile to the same portable action.
 
+## The Actions Ring: a second store
+
+The Ring's content isn't in settings.db (its 8 `radial-menu-virtual-device`
+slots are dormant). It is `ProfileInfo.json` per Ring app, owned by
+LogiPluginService (LPS). The reverse engineering, the `keyboardKey` grammar and
+the evidence are in [actions-ring.md](actions-ring.md); `lib/ring.py` implements it
+(ADR-0013). What the tool relies on:
+
+| Fact | Evidence | Guard in `lib/ring.py` |
+|---|---|---|
+| `json.dumps(indent=4, ensure_ascii=False)` + CRLF, declared key order, is byte-identical | Q6 | `read_profile`: round trip |
+| one mode, one workspace, one press page, controls 0..7; `deviceType` `Loupedeck72` | Q2 | `check_shape` |
+| LPS never re-saves on start or stop; the UI edits only what it edits | Q6, K4 | `verify`: the file is still what was written |
+| LPS is a child of the agent, which respawns it in ~1.5 s | K3 | writes only with the agent tree stopped, LPS gone within 1 s |
+| plugin-less apps: `defaultProfileName` null, one profile folder | R3c, R5c | `read_profile`: refuses several |
+| ids are random in the UI | R1 | ours are `uuid5(RING_NAMESPACE, <spec action>)`; only those are ever replaced or removed |
+| the keyboard layout (HKL) in an item needn't match the active one, but can't be empty | K2 | encoded per machine; any installed HKL is in sync |
+
 ## Process model and reload behaviour
 
 | Process | Role |
@@ -120,7 +139,7 @@ decompile to the same portable action.
 | `logioptionsplus_updater.exe` | service `OptionsPlusUpdaterService` (SYSTEM, auto-start). Installs updates and launches the agent in the console user's session. It does **not** respawn a stopped agent (watched 25 s) |
 | `logioptionsplus_agent.exe` | the backend and **sole writer of settings.db**. Owns the device, resolves the foreground app, executes actions. Pipe `\\.\pipe\logitech_kiros_agent-<hash>`; TCP `0.0.0.0:59869` (likely Flow) |
 | `logioptionsplus_appbroker.exe` | spawned by the agent; survives an agent tree-kill harmlessly |
-| `LogiPluginService.exe` / `…Ext.exe` | plugin host (Actions Ring, marketplace); children of the agent |
+| `LogiPluginService.exe` / `…Ext.exe` | plugin host (Actions Ring, marketplace); children of the agent. **Sole writer of the Ring store**; stopped with the agent's tree and restarted by it (~5–17 s after the agent) |
 | `logioptionsplus.exe` ×N | Electron UI, a client of the agent. It never touched settings.db |
 
 What applying a change needs:

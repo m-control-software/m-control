@@ -10,6 +10,7 @@ that produced [internals.md](internals.md).
 ```powershell
 python -m unittest discover -s tools/artifacts/logi-options/test -p "test_*.py" -v
 mctl run logi-options check=true
+mctl run logi-options mode=list        # the Ring apps decompile (no "raw" where a shortcut used to be)
 ```
 
 All green plus `inSync: true` means nothing is left to do.
@@ -25,6 +26,14 @@ All green plus `inSync: true` means nothing is left to do.
 | `test_model` failures `*_byte_identical_to_ui` | the UI now writes cards differently: tags, fields, keystroke message | tests |
 | `The agent did not keep the change` (auto-rollback) | the agent rejected, rewrote, or normalized what was written | `transaction.apply_change` |
 | `verified: false` | the agent hadn't re-saved within the time budget. Usually harmless; confirm with `check=true` | `transaction.wait_for_resave` |
+| `ProfileInfo.json no longer round-trips byte for byte` | LogiPluginService's JSON writer changed (Newtonsoft settings, a migration) | `ring.read_profile` |
+| `expected one press page with controls 0..7` / `one layout mode` / `deviceType` | the Ring's layout changed (more slots, pages, another device type) | `ring.check_shape` |
+| `no defaultProfileName and N profiles` | a plugin-less Ring app has several profiles; the tool can't tell which one LPS uses | `ring.read_profile` |
+| `DefaultWinPlugin.xliff not found` / `no @commands group` | the system-action list moved | `ring.system_actions` |
+| `LogiPluginService is still running after the Options+ agent stopped` | LPS is no longer part of the agent's process tree | `ring.wait_owner_stopped` |
+| `… changed since it was read` | the UI (or LPS) wrote the Ring between planning and writing; nothing was written | `ring.precheck` |
+| a slot exports as `raw` where it used to be a shortcut | the `keyboardKey` format changed; `ring.decode` no longer accepts it (a spec shortcut then shows as drift, never as a silent rewrite) | `ring.decode` |
+| `test_ring` failures | the UI now writes Ring items differently | tests |
 
 The guards fire **before** anything is written, except the last two, which fire
 after a write the tool then rolls back (or tells you how to roll back).
@@ -53,6 +62,29 @@ Rules that kept the original research safe:
   and contain host names, serials, and app command lines.
 - One change per experiment, and prove "no noise" with an idle control pair first.
 
+## Re-deriving the Actions Ring
+
+Same method, a different store (`%LOCALAPPDATA%\Logi\LogiPluginService`). The
+Ring's evidence and experiments are in [actions-ring.md](actions-ring.md).
+
+1. Back up first: copy `LogiPluginService\` (minus `Logs\`, `Temp\`) outside the repo,
+   and `mctl run logi-options mode=backup`.
+2. In the Options+ UI, change **one** Ring item. A watcher that copies the app's
+   `ProfileInfo.json` whenever it changes (as K4 did) captures each step without a
+   full snapshot. `research/snapshot.py` still covers the whole tree.
+3. Diff what the UI wrote against `ring.keyboard_action` / `ring.encode` for the same spec.
+   - A new key or modifier order: add it to `ring.KEYS` / `ring.MODIFIERS` only once it
+     was recorded, and add the recording to `test/fixtures/ring-ui-written.json`
+     (replace the layout id with `{hkl}`).
+   - A new item kind (open URL, folder): write it with `research/ring_poc.py`-style code
+     first, owner stopped, and confirm on the device that it fires before the tool
+     writes it.
+4. Update `optionsPlusBuild` / `logiPluginServiceVersion` in the fixture, and actions-ring.md.
+
+Rules on top of the ones above: never write while LogiPluginService runs (its own
+`LoupedeckSettings.ini` says so); the Ring's only proof of "kept" is the device, since
+LPS never re-saves.
+
 ## The time budget
 
 `mctl run` kills a tool when its run budget runs out, and on Windows that kill
@@ -63,7 +95,8 @@ enforces this). Declaring it matters: without it, a user's
 - keeps its own 26 s deadline,
 - refuses to stop the agent with less than 12 s left,
 - keeps the stop → write → start window to a few seconds, and restarts the agent in `finally` (also on Ctrl+C),
-- after that, only waits for the agent's re-save. A kill there is harmless.
+- after that, only waits for the agent's re-save and for LogiPluginService to be
+  back (5–17 s observed). A kill there is harmless.
 
 If a machine is slow enough that applies report `verified: false` routinely, the
 fix is a longer budget, not a longer sleep: raise `timeoutMs` in the manifest and
