@@ -49,7 +49,7 @@ ProfileInfo.json   (Newtonsoft: "$type" on every object, declared key order, 4-s
 ├── layout.layoutModes[0].workspaces[0]
 │   └── pressPages[0].controls[0..7]            THE RING: controlId 0..7
 │       └── {controlId, pressAction: "<action ref>" | null, rotateAction}
-├── layout.folderPages[]                        a folder item's own 8 controls (the way past 8 items)
+├── layout.folderPages[]                        a folder item's own page: only its used controls, at most 4 (F1, F2)
 ├── profileActions[]                            parameterized items; name = "$@Generic___@ProfileAction___<GUID>"
 │   └── {templateActionName, actionParameters.parameters{…}, displayName, …}
 ├── macroCommands[] / macroAdjustments[]        multi-step macros; name = "<GUID>", ref "$@Generic___@Macro___<GUID>"
@@ -57,7 +57,8 @@ ProfileInfo.json   (Newtonsoft: "$type" on every object, declared key order, 4-s
 ```
 
 - **8 slots**, `controlId` 0 = top, then **clockwise** (0 top, 2 right, 4 bottom, 6 left),
-  matching the UI's "Slot 1…8". No 9th slot; folders nest further pages.
+  matching the UI's "Slot 1…8". No 9th slot; a folder (one level deep, 4 items, no nesting: F3) is the way past 8,
+  see [Folders and macros](#folders-and-macros).
 - **Order is positional.** Moving an item (R2) rewrote only the two `pressAction`
   strings; the referenced action is untouched.
 - **Empty slot:** `"pressAction": null` (R3 empty profiles, R4 removal).
@@ -229,10 +230,10 @@ Other item kinds, **seen in the data, not experimented with**:
 |---|---|
 | System actions (lock, screenshot, magnifier, explorer, media) | `$DefaultWin___<Action>` reference, no definition needed (S1 above) |
 | Run program / open file | profile action `$@Generic___@ShellExecute`, `parameters.filePath` (**a machine path**) |
-| Folder | profile action `$@Generic___@OpenFolder`, `parameters.folderName` → `layout.folderPages[name]` |
+| Folder | profile action `$@Generic___@OpenFolder`, `parameters.folderName` → `layout.folderPages[name]`; **experimented, F0–F7**: [Folders and macros](#folders-and-macros) |
 | Easy-Switch | profile action `$@Generic___@EasySwitch` (`device`, `channel`) |
 | Open URL, keyboard modifier, date/time, stopwatch, … | `@Generic` dynamic actions (`OpenUrlDynamicAction`, `KeyboardShortcutDynamicAction`, … in `Logs\plugin_logs\Generic.log`); storage not observed |
-| Smart Actions / AI prompts ("Reply with ChatGPT", "Ask Perplexity") | most likely `macroCommands` (multi-step macros); not experimented |
+| Smart Actions / AI prompts ("Reply with ChatGPT", "Ask Perplexity") | `macroCommands` (M2): ordinary multi-step macros of the built-in Generic plugin, no marketplace plugin. A verbatim copy into another app's Ring was tried (M1): [Folders and macros](#folders-and-macros) |
 | Plugin actions (Chrome: new tab, find, downloads, …) | `$ChromeExtension___Loupedeck.ChromeExtensionPlugin.Actions.<Command>` |
 
 ## Q5 — Portability
@@ -364,6 +365,68 @@ Transformations the implementation needs:
 `research/ring_poc.py` implements the slot, shortcut (`--shortcut`, `encode()`), id,
 profile, write and verify steps for Ctrl/Alt/Win/Shift with A–Z, F1–F24 or Esc.
 
+## Folders and macros
+
+Researched 2026-10-01 (F0–F7, M1–M2 in [Evidence](#evidence)) on a **newer build** than the rest of this
+study: Options+ agent 2.8.981479, LogiPluginService 6.4.2.3414, catalog build `876310` (Options+ updated itself in between;
+the Ring's format did not change: every test and `check=true` pass as before). Windows 11 (26200), Polish UI, MX Master 4.
+**No tool change**: folders are still not in the spec (ADR-0013), so `mode=export` still refuses a Ring with one (F7). This
+is the evidence a later decision needs. The UI-written bodies are in
+[`../test/fixtures/ring-ui-written.json`](../test/fixtures/ring-ui-written.json) (`f0_*` … `m1_*`, URLs, paths and text replaced),
+and `FolderEvidence` in `test/test_ring.py` pins them.
+
+**Verdict.** A folder **can be compiled byte for byte**: `research/ring_poc.py --folder` rebuilds the UI-written action,
+page and item exactly, a folder it wrote was kept by LPS, opened on the device and fired both of its items (F6), and a second run
+wrote nothing. A **macro can be copied to another app's Ring verbatim**, because it needs nothing from the profile it came
+from (M2), and the copy behaved like the original on the device (M1, [Macros](#macros-m2-m1)).
+
+### A folder is three things (F0, F1)
+
+| Part | Where | Notes |
+|---|---|---|
+| the folder action | `profileActions[]`: `name` `$@Generic___@ProfileAction___<G>`, `templateActionName` `$@Generic___@OpenFolder`, `parameters.folderName` = `<G>` | `displayName` is the label (default "Folder"); `description` "Group and nest multiple actions" (the older UI that made the Global folder wrote `""`); `groupName` is the UI language's word for "Folders" ("Foldery" here, "Folders" in the older one); `superGroupName` `@navigation` |
+| the folder page | `layout.folderPages[]`: `name` `<G>`, `displayName` **always the generic "Folder"** (the label is not stored here), the same `description` | `controls[]` holds **only the used controls**, ids `0…n-1`. A new page starts with none |
+| the slot | `pressPages[0].controls[k].pressAction` = the action's `name` | as for any item |
+
+- **One GUID** is the action's name, the page's name and `folderName`. The UI saves it in steps (F1): the action first, with
+  `folderName: ""`; 0.4 s later the page, `folderName` and the slot together. Each item is then a new profile action (a
+  shortcut also gets an `.ict` icon) followed by a new control on the page.
+- **Items are the same references as Ring slots:** a profile action, `$DefaultWin___<Name>` (no definition) or
+  `$@Generic___@Macro___<id>`. The existing Global folder holds four macros.
+- **4 slots** (F2): the open folder shows 4, two used and two "Add action"; the Global folder uses ids 0–3. Nothing is reserved
+  in the file for going back: the folder button at the bottom of the screen is UI only.
+- **No nesting** (F3): inside a folder the Folder action is disabled. **No gaps** (F4b): the UI refuses to move an item into an
+  empty folder slot; swapping two items is allowed. So a folder's items are a dense prefix of at most four.
+- **Rename** (F4a) rewrites only the action's `displayName`. **Move** (F4b) exchanges two `pressAction` strings, like R2.
+- **Delete** (F5) removes the action and the page and nulls the slot. The items' own profile actions (and `.ict`) stay behind,
+  as in R4; a system reference leaves nothing.
+- **Locale and version are cosmetic:** `groupName` and `description` differ between Polish and English and between UI versions,
+  and nothing replays from them. The PoC wrote the English `groupName` and the current description under a Polish UI and the
+  folder worked (F6). An in-sync check should ignore both, as it ignores the HKL.
+
+What a spec would need, **not decided**: `{"folder": {"label": "…", "items": [1–4 actions]}}`; items limited to shortcut, system
+and `raw` (a macro); no nesting and no gaps (the UI forbids both); ids derived from the content, as for shortcuts (the PoC hashes
+label and items, so a rename replaces the folder's id and its page). It would also let export stop refusing the Global Ring,
+and let a per-app Ring copy a folder's items.
+
+### Macros (M2, M1)
+
+- **What they are** (M2): `macroCommands[]`, referenced as `$@Generic___@Macro___<name>`. The six macros in the Global Ring (two on the
+  Ring, four in the folder) use **only the built-in Generic plugin**: inline actions whose arguments are part of the step's name
+  (`$@Generic___@ExecuteApplication___<url or program>`, `$@Generic___@Sleep___<ms>`) and editor commands defined inside the macro
+  (`KeyboardKey`, `SendText`). No marketplace plugin, no Smart-Action or AI-prompt service: "Ask Perplexity" and the like are
+  macros that open a URL; "Reply with ChatGPT" copies the selection, opens the site, sleeps, sends a text and pastes.
+- **Self-contained:** none of the six refers to another action of the profile, so there is nothing that must exist in a target
+  profile. They do carry what they were made with: some steps are keystrokes, and a `keyboardKey` has three forms in this data: with
+  a Windows platform part (like a Ring item, it fires), the older form without one (K2.1 found that inert for a Ring item), and a
+  Mac-only part (`mac-<code>`, which cannot fire on Windows; the ChatGPT macro's last step is one).
+- **Copy** (M1): `ring_poc.py --macro <GUID>` appends the macro object, key order included, to the target's `macroCommands` and points a
+  slot at `$@Generic___@Macro___<name>`. The result is byte-identical to the original, and LPS kept it.
+- **It behaves like the original** (M1, **verified on the device**): the Global "New Note" macro (launch Notepad, wait 1 s, Ctrl+N)
+  took Notepad from 1 tab to 2 when fired from the Global Ring with Notepad in the background, and from 1 tab to 2 when
+  fired from the copy in the Notepad Ring with Notepad in front. Which step makes the second tab, the launch or the Ctrl+N
+  (stored in the older `keyboardKey` form), was not separated, and the copy question doesn't need it.
+
 ## Risks after an Options+ / LPS update
 
 | Most likely break | Caught by ("refuse, not corrupt") |
@@ -387,6 +450,9 @@ profile, write and verify steps for Ctrl/Alt/Win/Shift with A–Z, F1–F24 or E
 | Is the Global profile folder name random per install? | compare `defaultProfileName` on a second machine or after a reinstall |
 | Are `settings.db`'s `radial-menu` slots ever read? | not needed for the feature; leave untouched |
 | Logitech account sync of LPS profiles | untested, as for `settings.db` |
+| Which id should a spec folder get: content (label + items, as the PoC does) or label only? | a decision for the ADR: with content, a rename or an item change replaces the folder's id and page; with the label alone, two folders of one name collide |
+| Does a keystroke in the older `keyboardKey` form (no platform part) fire inside a macro? | M1 copied a macro with one and it behaved like the original (1 → 2 tabs from both Rings), but the launch alone may have made the tab. Copy or write a macro whose only step is that keystroke |
+| Do `groupName`/`description` of a folder matter to anything but the UI's labels? | F6 worked with the English values under a Polish UI; the UI's own edit of a PoC folder was not recorded |
 
 ## Evidence
 
@@ -415,6 +481,21 @@ The raw snapshots and file copies stayed under `~/.m-control/research/logi-optio
 | K4 | UI, Polish Programmers: record Ctrl+Alt+Shift+Y, Win+Alt+Y, Ctrl+1, Ctrl+Shift+/, Ctrl+Space, Alt+Left, Ctrl+Enter in turn into slot 2 of the script-created Chrome Ring; a watcher copied the profile after each save | one profile action edited in place per step; the rows above; `encode()` reproduces all 16 recordings byte for byte. The UI left the script-written slot-1 item byte-identical and wrote one `.ict` and one undo point. The Ctrl+Space recording showed "Ctrl+ " in the UI but is complete in the file |
 | S1 | read the installed LPS files (`Plugins\DefaultWin\localization\DefaultWinPlugin.xliff`, `DefaultWinPlugin.dll`, `Logs\plugin_logs\DefaultWin.log`) | the `$DefaultWin___…` list above; nothing written |
 | R6c | restore the phase start (delete `chrome\`, `notepad\`, the undo point; ini from the baseline copy), owner stopped | all 2568 files of the baseline hash manifest identical, except the ini's Sentry stamp; `check=true` in sync |
+| F0 | 2026-10-01, read-only: decompile every slot of the Global Ring, its folder page and the six macros | slot `right` is a folder ("Explore AI"): an `OpenFolder` action whose `folderName` is its own GUID, a page titled "Folder", four controls (ids 0–3), each a macro. The two macros on the Ring and the four in the folder are self-contained (M2). Global `ProfileInfo.json`: 52 707 B, last written 2026-01-27, never touched below |
+| F1 | UI: a Notepad Ring added (S0: a plugin-less app, as R3c), a Folder in its slot 1, then Ctrl+Shift+Esc and Media Play/Pause inside it; a watcher kept every saved version | six saves; the folder is an action, a page and a slot reference, all one GUID; the page starts with no controls and gains only the used ones; one `.ict` (the shortcut). The file round-trips byte for byte |
+| F2 | UI: the same folder, open | 4 slots, two used and two "Add action"; nothing reserved in the file (the folder button at the bottom is UI only) |
+| F3 | UI: add a Folder inside the folder | the action is disabled; nothing written. No nesting |
+| F4 | UI: (a) rename the folder; (b) move an item into an empty folder slot; (c) swap the two items | (a) only the action's `displayName`; the page keeps "Folder". (b) refused by the UI, nothing saved. (c) two `pressAction` strings exchanged, `controlId` order unchanged |
+| F5 | UI: delete the folder | action and page removed, slot `null`; the shortcut's profile action and `.ict` left behind; the system item left nothing |
+| F6 | `ring_poc.py --app notepad --slot 1 --folder Folder --folder-item CTRL+SHIFT+ESC --folder-item system:MediaPlayPause` into the emptied Notepad Ring, owner stopped | kept byte for byte (45 s, no LPS re-save). **Verified on the device** (user: "PASS"; the checklist was: the folder shows, opens, both items fire). A second run: "already in the desired state", no process touched, same hash. The PoC's action, page and item equal the UI's F1 bodies byte for byte, key order included (`FolderEvidence`) |
+| F7 | `mctl run logi-options mode=export app=all` (no `out=`) | refused: `Ring app @_defaultwin, slot right: it is a folder ('Explore AI'), which a Ring spec can't express (ADR-0013). Move the folder's items to slots, or export without the Ring: ring=false. [SPEC_INVALID]`; with `ring=false` the export works |
+| M1 | `ring_poc.py --app notepad --slot 2 --macro 4C29B55B…` (the Global "New Note" macro: launch Notepad, wait 1 s, Ctrl+N) into the Notepad Ring, owner stopped | kept byte for byte; the copy equals the Global macro, key order included. **Verified on the device:** fired from the Notepad Ring (Notepad in front) and from the Global Ring (Notepad in the background), each took Notepad from 1 tab to 2 |
+| M2 | read-only: the steps, plugins and references of the six Ring macros | Generic plugin only; every step inline or defined inside the macro; nothing refers to the profile. "Reply with ChatGPT" ends in a Mac-only keystroke |
+| R6d | restore the phase start: the Notepad Ring copied aside, the UI-created `notepad` app deleted and the ini put back from the baseline copy, owner stopped | after 45 s all 2568 files of the baseline hash manifest identical except the ini's Sentry stamp; the Global profile's SHA-256 equals the F0 value (`479FC647…F3B7`); `check=true` back to its earlier drift (the unapplied Chrome Ring) |
+
+The raw files of F0–F7 and M1–M2 (the watcher's log with its `MARK` lines, every saved version of every file under `Applications\`,
+the baseline hash manifest) stay under `~/.m-control/research/logi-options/ring-folders/`; the watcher and the diff script are in
+`~/.m-control/research/logi-options/scripts/` (`watch_ring.py`, `mark.py`, `jdiff.py`), kept out of the repo like K4's.
 
 Known LPS noise, for future diffs: `Logs\`, `Temp\` (`GetServiceState.json`,
 `WebSocketPort.txt`, `WebSocketServer.txt`, `DictionaryCache\`, `mp\MarketplaceInfo.bin`),
