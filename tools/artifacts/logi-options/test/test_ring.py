@@ -19,8 +19,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "lib"))
 sys.path.insert(0, str(HERE / "fixtures"))
+sys.path.insert(0, str(HERE.parent / "research"))  # FolderEvidence checks the research PoC against the evidence
 
 import ring  # noqa: E402
+import ring_poc  # noqa: E402
 from errors import SpecError, StoreError  # noqa: E402
 from make_ring_store import HKL_PL, make_ring_store, with_hkl  # noqa: E402
 
@@ -398,6 +400,57 @@ class Export(Tree):
         got = {a: ring.spec_application(self.store.read(a), self.store) for a in self.store.app_names()}
         self.assertEqual(got, {ring.GLOBAL_APP: {"global": True}, "chrome": {"builtin": "google-chrome"},
                                "notepad": {"executable": "notepad.exe", "name": "Notepad"}})
+
+
+class FolderEvidence(unittest.TestCase):
+    """Folders and macros as the UI wrote them (F0-F5, M1 in docs/actions-ring.md), and the research PoC that
+    reproduces them. Nothing here is a tool feature: folders are not in the spec (ADR-0013)."""
+
+    F1 = EVIDENCE["f1_folder_ui_written"]
+    GUID = F1["folderAction"]["name"].rsplit("___", 1)[1]
+
+    def test_the_folder_action_page_and_parameter_share_one_guid(self):
+        self.assertEqual(self.F1["folderAction"]["actionParameters"]["parameters"]["folderName"], self.GUID)
+        self.assertEqual(self.F1["folderPage"]["name"], self.GUID)
+        self.assertEqual(self.F1["pressControl"]["pressAction"], self.F1["folderAction"]["name"])
+        # the UI saves the action first, with an empty folderName, and fills it in with the page
+        self.assertEqual(self.F1["folderAction_firstSave"]["actionParameters"]["parameters"]["folderName"], "")
+
+    def test_a_folder_page_holds_only_used_controls_as_a_dense_prefix_of_at_most_four(self):
+        for page in (self.F1["folderPage"], EVIDENCE["f0_global_folder"]["folderPage"]):
+            ids = [c["controlId"] for c in page["controls"]]
+            self.assertEqual(ids, list(range(len(ids))))
+            self.assertLessEqual(len(ids), ring_poc.FOLDER_MAX_ITEMS)
+        self.assertEqual(len(EVIDENCE["f0_global_folder"]["folderPage"]["controls"]), 4)
+
+    def test_the_poc_builds_the_ui_folder_byte_for_byte(self):
+        refs = [c["pressAction"] for c in self.F1["folderPage"]["controls"]]
+        # json.dumps, not ==: the key order is part of the evidence
+        self.assertEqual(json.dumps(ring_poc.folder_action(self.GUID, "Folder", group="Foldery")),
+                         json.dumps(self.F1["folderAction"]))
+        self.assertEqual(json.dumps(ring_poc.folder_page(self.GUID, refs)), json.dumps(self.F1["folderPage"]))
+
+    def test_the_poc_writes_a_folder_once_and_refuses_what_the_ui_refuses(self):
+        doc = ring_poc.new_app("notepad", "Notepad")[2]
+        items = ["system:MediaPlayPause", "system:LockWorkstation"]
+        first = ring_poc.patch_folder(doc, 1, "Folder", items)
+        self.assertEqual(len(first), 3)  # the action, the page, the slot
+        self.assertEqual([c["controlId"] for c in doc["layout"]["folderPages"][0]["controls"]], [0, 1])
+        self.assertEqual(ring_poc.patch_folder(doc, 1, "Folder", items), [])
+        for bad in ([], ["system:A"] * (ring_poc.FOLDER_MAX_ITEMS + 1)):
+            with self.assertRaises(ValueError):
+                ring_poc.patch_folder(doc, 1, "Other", bad)
+
+    def test_a_copied_macro_is_verbatim_and_needs_nothing_else_from_its_profile(self):
+        macro = {**EVIDENCE["f0_macros_sanitized"]["multiStep_launchWaitKeystroke"], "name": "A" * 32}
+        doc = ring_poc.new_app("notepad", "Notepad")[2]
+        self.assertEqual(len(ring_poc.patch_macro(doc, 2, macro)), 2)  # the macro, the slot
+        self.assertEqual(json.dumps(doc["macroCommands"][0]), json.dumps(macro))
+        self.assertEqual(doc["profileActions"], [])  # no other definition was needed
+        self.assertEqual(ring_poc.patch_macro(doc, 2, macro), [])
+        own = {e["name"] for e in macro["actionEditorCommands"]}
+        for step in macro["actions"]:  # every step is an inline Generic action or defined inside the macro
+            self.assertTrue(step in own or step.startswith("$@Generic___@"), step)
 
 
 if __name__ == "__main__":

@@ -483,5 +483,352 @@
     "Ctrl+Space": "ControlOrCommand+Space___{hkl}___Ctrl+ ___win-32#¤%&+?128#¤%&+?{hkl}#¤%&+?57",
     "Alt+Left": "AltOrOption+ArrowLeft___{hkl}___Alt+ArrowLeft___win-37#¤%&+?2#¤%&+?{hkl}#¤%&+?75",
     "Ctrl+Enter": "ControlOrCommand+Return___{hkl}___Ctrl+Return___win-13#¤%&+?128#¤%&+?{hkl}#¤%&+?28"
+  },
+  "_comment_folders": "F0-F5 and M1 (docs/actions-ring.md, 'Folders and macros'), 2026-10-01, on a NEWER build than the rest of this file: Options+ agent 2.8.981479, LogiPluginService 6.4.2.3414, catalog build 876310 (the entries above are LPS 6.4.1.3246 / 853130; Options+ updated itself in between, and the Ring format did not change). Folders and macros exactly as the UI wrote them, in a plugin-less 'notepad' Ring the UI created, plus the Global Ring's own folder and macros with every URL, program path, free text and name replaced by a <placeholder>. '{hkl}' as above.",
+  "f0_global_folder": {
+    "_comment": "F0: the Global Ring's own folder in slot 'right', made by an older UI (description '', groupName English). The action carries the user's label; the page keeps the generic title 'Folder'. The page holds 4 controls (ids 0-3), every item a macro. Label and macro GUIDs replaced.",
+    "pressControl": {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 2,
+      "pressAction": "$@Generic___@ProfileAction___<FOLDER GUID>",
+      "rotateAction": null
+    },
+    "folderAction": {
+      "$type": "Loupedeck.Service.ApplicationProfileCommand, LoupedeckService",
+      "isCommand": true,
+      "name": "$@Generic___@ProfileAction___<FOLDER GUID>",
+      "templateActionName": "$@Generic___@OpenFolder",
+      "actionParameters": {
+        "$type": "Loupedeck.ActionEditorActionParameters, PluginApi",
+        "parameters": {
+          "$type": "Loupedeck.StringDictionaryNoCase, PluginApi",
+          "folderName": "<FOLDER GUID>"
+        },
+        "count": 1
+      },
+      "displayName": "<label>",
+      "description": "",
+      "groupName": "Folders",
+      "superGroupName": "@navigation",
+      "isProfileAction": true,
+      "isMultiState": false,
+      "isResetCommand": false,
+      "adjustmentName": null,
+      "states": null
+    },
+    "folderPage": {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutPage7, LoupedeckService",
+      "name": "<FOLDER GUID>",
+      "displayName": "Folder",
+      "description": "",
+      "controls": [
+        {
+          "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+          "controlId": 0,
+          "pressAction": "$@Generic___@Macro___<GUID 1>",
+          "rotateAction": null
+        },
+        {
+          "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+          "controlId": 1,
+          "pressAction": "$@Generic___@Macro___<GUID 2>",
+          "rotateAction": null
+        },
+        {
+          "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+          "controlId": 2,
+          "pressAction": "$@Generic___@Macro___<GUID 3>",
+          "rotateAction": null
+        },
+        {
+          "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+          "controlId": 3,
+          "pressAction": "$@Generic___@Macro___<GUID 4>",
+          "rotateAction": null
+        }
+      ]
+    }
+  },
+  "f0_macros_sanitized": {
+    "_comment": "M2: the six macros in the Global Ring (two on the Ring, four in the folder) all use only the built-in 'Generic' plugin: inline dynamic actions in the name ($@Generic___@ExecuteApplication___<arg>, $@Generic___@Sleep___<ms>) and editor commands defined in the macro itself (KeyboardKey, SendText). None references another action of the profile. Two kinds of keyboardKey occur: with a Windows platform part (fires) and the older form without one, which K2.1 found inert, and a Mac-only part (mac-<code>), which is inert on Windows. Arguments, names and text are replaced.",
+    "openUrl": {
+      "$type": "Loupedeck.Service.ApplicationProfileMacroCommand, LoupedeckService",
+      "isCommand": true,
+      "name": "<openUrl GUID>",
+      "displayName": "<macro>",
+      "description": "",
+      "groupName": "",
+      "superGroupName": "@macro",
+      "supportedOs": "All",
+      "supportedModes": [
+        "system"
+      ],
+      "showAsSingleAction": true,
+      "actionEditorCommands": [],
+      "isMultiState": false,
+      "actions": [
+        "$@Generic___@ExecuteApplication___<url>"
+      ]
+    },
+    "openProgram": {
+      "$type": "Loupedeck.Service.ApplicationProfileMacroCommand, LoupedeckService",
+      "isCommand": true,
+      "name": "<openProgram GUID>",
+      "displayName": "<macro>",
+      "description": "",
+      "groupName": "",
+      "superGroupName": "@macro",
+      "supportedOs": "All",
+      "supportedModes": [],
+      "showAsSingleAction": true,
+      "actionEditorCommands": [],
+      "isMultiState": false,
+      "actions": [
+        "$@Generic___@ExecuteApplication___<program path>||||<working directory>"
+      ]
+    },
+    "multiStep_launchWaitKeystroke": {
+      "$type": "Loupedeck.Service.ApplicationProfileMacroCommand, LoupedeckService",
+      "isCommand": true,
+      "name": "<multiStep_launchWaitKeystroke GUID>",
+      "displayName": "<macro>",
+      "description": "",
+      "groupName": "",
+      "superGroupName": "@macro",
+      "supportedOs": "All",
+      "supportedModes": [],
+      "showAsSingleAction": false,
+      "actionEditorCommands": [
+        {
+          "$type": "Loupedeck.Service.MacroActionEditorCommand, LoupedeckService",
+          "name": "bmQTf51Mf81RBUwZOmpWi",
+          "templateName": "$@Generic___@KeyboardKey",
+          "actionParameters": {
+            "$type": "System.Collections.Generic.Dictionary`2[[System.String, System.Private.CoreLib],[System.String, System.Private.CoreLib]], System.Private.CoreLib",
+            "keyboardKey": "ControlOrCommand+KeyN___{hkl}___Ctrl+N___"
+          }
+        }
+      ],
+      "isMultiState": false,
+      "actions": [
+        "$@Generic___@ExecuteApplication___shell:AppsFolder\\<package family>!App",
+        "$@Generic___@Sleep___1000",
+        "bmQTf51Mf81RBUwZOmpWi"
+      ]
+    },
+    "multiStep_copyOpenSendTextPasteEnter": {
+      "$type": "Loupedeck.Service.ApplicationProfileMacroCommand, LoupedeckService",
+      "isCommand": true,
+      "name": "<multiStep_copyOpenSendTextPasteEnter GUID>",
+      "displayName": "<macro>",
+      "description": "",
+      "groupName": "",
+      "superGroupName": "@macro",
+      "supportedOs": "All",
+      "supportedModes": [],
+      "showAsSingleAction": false,
+      "actionEditorCommands": [
+        {
+          "$type": "Loupedeck.Service.MacroActionEditorCommand, LoupedeckService",
+          "name": "wtuIn7aTSIAGVwdrw20Vx",
+          "templateName": "$@Generic___@KeyboardKey",
+          "actionParameters": {
+            "$type": "System.Collections.Generic.Dictionary`2[[System.String, System.Private.CoreLib],[System.String, System.Private.CoreLib]], System.Private.CoreLib",
+            "keyboardKey": "ControlOrCommand+KeyC___{hkl}___Ctrl+C___win-67#¤%&+?128#¤%&+?{hkl}#¤%&+?46"
+          }
+        },
+        {
+          "$type": "Loupedeck.Service.MacroActionEditorCommand, LoupedeckService",
+          "name": "Y3gE1ld1txnOeH7F5rP9T",
+          "templateName": "$@Generic___@KeyboardKey",
+          "actionParameters": {
+            "$type": "System.Collections.Generic.Dictionary`2[[System.String, System.Private.CoreLib],[System.String, System.Private.CoreLib]], System.Private.CoreLib",
+            "keyboardKey": "ControlOrCommand+KeyV___{hkl}___Ctrl+V___win-86#¤%&+?128#¤%&+?{hkl}#¤%&+?47"
+          }
+        },
+        {
+          "$type": "Loupedeck.Service.MacroActionEditorCommand, LoupedeckService",
+          "name": "xYBaObTsrKMhwYanYMVNg",
+          "templateName": "$@Generic___@KeyboardKey",
+          "actionParameters": {
+            "$type": "System.Collections.Generic.Dictionary`2[[System.String, System.Private.CoreLib],[System.String, System.Private.CoreLib]], System.Private.CoreLib",
+            "keyboardKey": "Return___4108___Return___mac-36#¤%&+?0#¤%&+?\r#¤%&+?com.apple.keylayout.<layout>"
+          }
+        },
+        {
+          "$type": "Loupedeck.Service.MacroActionEditorCommand, LoupedeckService",
+          "name": "2E855596E4DA49708D4626A400C2F43C",
+          "templateName": "$@Generic___@SendText",
+          "actionParameters": {
+            "$type": "System.Collections.Generic.Dictionary`2[[System.String, System.Private.CoreLib],[System.String, System.Private.CoreLib]], System.Private.CoreLib",
+            "text": "<text>",
+            "useClipboard": "false"
+          }
+        }
+      ],
+      "isMultiState": false,
+      "actions": [
+        "wtuIn7aTSIAGVwdrw20Vx",
+        "$@Generic___@ExecuteApplication___<url>",
+        "$@Generic___@Sleep___1000",
+        "2E855596E4DA49708D4626A400C2F43C",
+        "Y3gE1ld1txnOeH7F5rP9T",
+        "xYBaObTsrKMhwYanYMVNg"
+      ]
+    }
+  },
+  "f1_folder_ui_written": {
+    "_comment": "UI, Polish: a Folder added to slot 1 of an empty Notepad Ring, then Ctrl+Shift+Esc and Media Play/Pause added inside it. Saves in order: (1) profileActions += folderAction with folderName ''; (2) 0.4 s later folderPages += folderPage, folderName := its GUID, slot 1 := the folder; (3) profileActions += itemAction; (4) page.controls[0] := item (+ an .ict icon for the item only); (5) page.controls[1] := the system action. The page starts with NO controls and gains only the used ones: it is not padded to 8.",
+    "pressControl": {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 0,
+      "pressAction": "$@Generic___@ProfileAction___D76C0CAB0A2746AF80B4934E04D71BC8",
+      "rotateAction": null
+    },
+    "folderAction_firstSave": {
+      "$type": "Loupedeck.Service.ApplicationProfileCommand, LoupedeckService",
+      "isCommand": true,
+      "name": "$@Generic___@ProfileAction___D76C0CAB0A2746AF80B4934E04D71BC8",
+      "templateActionName": "$@Generic___@OpenFolder",
+      "actionParameters": {
+        "$type": "Loupedeck.ActionEditorActionParameters, PluginApi",
+        "parameters": {
+          "$type": "Loupedeck.StringDictionaryNoCase, PluginApi",
+          "folderName": ""
+        },
+        "count": 1
+      },
+      "displayName": "Folder",
+      "description": "Group and nest multiple actions",
+      "groupName": "Foldery",
+      "superGroupName": "@navigation",
+      "isProfileAction": true,
+      "isMultiState": false,
+      "isResetCommand": false,
+      "adjustmentName": null,
+      "states": null
+    },
+    "folderAction": {
+      "$type": "Loupedeck.Service.ApplicationProfileCommand, LoupedeckService",
+      "isCommand": true,
+      "name": "$@Generic___@ProfileAction___D76C0CAB0A2746AF80B4934E04D71BC8",
+      "templateActionName": "$@Generic___@OpenFolder",
+      "actionParameters": {
+        "$type": "Loupedeck.ActionEditorActionParameters, PluginApi",
+        "parameters": {
+          "$type": "Loupedeck.StringDictionaryNoCase, PluginApi",
+          "folderName": "D76C0CAB0A2746AF80B4934E04D71BC8"
+        },
+        "count": 1
+      },
+      "displayName": "Folder",
+      "description": "Group and nest multiple actions",
+      "groupName": "Foldery",
+      "superGroupName": "@navigation",
+      "isProfileAction": true,
+      "isMultiState": false,
+      "isResetCommand": false,
+      "adjustmentName": null,
+      "states": null
+    },
+    "folderPage": {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutPage7, LoupedeckService",
+      "name": "D76C0CAB0A2746AF80B4934E04D71BC8",
+      "displayName": "Folder",
+      "description": "Group and nest multiple actions",
+      "controls": [
+        {
+          "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+          "controlId": 0,
+          "pressAction": "$@Generic___@ProfileAction___741A935342684D479B7FD5A397605A4F",
+          "rotateAction": null
+        },
+        {
+          "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+          "controlId": 1,
+          "pressAction": "$DefaultWin___MediaPlayPause",
+          "rotateAction": null
+        }
+      ]
+    },
+    "itemAction": {
+      "$type": "Loupedeck.Service.ApplicationProfileCommand, LoupedeckService",
+      "isCommand": true,
+      "name": "$@Generic___@ProfileAction___741A935342684D479B7FD5A397605A4F",
+      "templateActionName": "$@Generic___@KeyboardKey",
+      "actionParameters": {
+        "$type": "Loupedeck.ActionEditorActionParameters, PluginApi",
+        "parameters": {
+          "$type": "Loupedeck.StringDictionaryNoCase, PluginApi",
+          "keyboardKey": "ControlOrCommand+Shift+Escape___{hkl}___Ctrl+Shift+Escape___win-27#¤%&+?132#¤%&+?{hkl}#¤%&+?1"
+        },
+        "count": 1
+      },
+      "displayName": "Ctrl+Shift+Escape",
+      "description": "Activate a keyboard shortcut with a single press or hold down for continuous use like a keyboard key",
+      "groupName": "",
+      "superGroupName": "@macro",
+      "isProfileAction": true,
+      "isMultiState": false,
+      "isResetCommand": false,
+      "adjustmentName": null,
+      "states": null
+    },
+    "systemItemIsAReferenceOnly": "$DefaultWin___MediaPlayPause"
+  },
+  "f4_edit_ui_written": {
+    "_comment": "F4a: renaming the folder changed only profileActions[folder].displayName (the page's displayName stays 'Folder'). F4b: a swap of the two items exchanged only the two pressAction strings of folderPage.controls (controlId order unchanged). F3, F4b: the UI disables the Folder action inside a folder, and refuses to move an item into an empty folder slot, so a folder is one level deep and its items are a dense prefix of controls 0..n-1.",
+    "f4a_displayName": {
+      "before": "Folder",
+      "after": "Updated Name",
+      "pageDisplayNameStillFolder": true
+    },
+    "f4b_swapped_controls_before": [
+      [
+        0,
+        "$@Generic___@ProfileAction___741A935342684D479B7FD5A397605A4F"
+      ],
+      [
+        1,
+        "$DefaultWin___MediaPlayPause"
+      ]
+    ],
+    "f4b_swapped_controls_after": [
+      [
+        0,
+        "$DefaultWin___MediaPlayPause"
+      ],
+      [
+        1,
+        "$@Generic___@ProfileAction___741A935342684D479B7FD5A397605A4F"
+      ]
+    ],
+    "ui_refusals": {
+      "folderInsideFolder": "action disabled",
+      "moveIntoEmptyFolderSlot": "refused (swap with an occupied slot is allowed)"
+    }
+  },
+  "f5_folder_deleted_ui_written": {
+    "_comment": "UI: the folder deleted from slot 1. The folder's action and its page are removed; the item actions inside are not (like R4); the .ict stays.",
+    "pressControl0": {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 0,
+      "pressAction": null,
+      "rotateAction": null
+    },
+    "folderPagesAfter": [],
+    "profileActionsAfter": [
+      "$@Generic___@ProfileAction___741A935342684D479B7FD5A397605A4F"
+    ]
+  },
+  "m1_macro_copy": {
+    "_comment": "M1: a Global macro copied by research/ring_poc.py --macro into slot 2 of the Notepad Ring: the macro object, key order included, appended to the target's macroCommands; slot 2's pressAction is $@Generic___@Macro___<its name>. Nothing else in the target changed: the macro needs no other definition (see f0_macros_sanitized).",
+    "macroCommandsAppended": "<the Global macro, verbatim>",
+    "slotControl": {
+      "$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService",
+      "controlId": 1,
+      "pressAction": "$@Generic___@Macro___<macro GUID>",
+      "rotateAction": null
+    }
   }
 }

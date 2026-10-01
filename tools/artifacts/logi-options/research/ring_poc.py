@@ -4,6 +4,10 @@ slot can be written from a spec. Experiment R5 in docs/actions-ring.md.
     python research/ring_poc.py [--slot 5] [--app @_defaultwin] [--shortcut CTRL+SHIFT+ESC]
                                 [--form full|short|nolayout] [--label TEXT] [--dry-run]
     python research/ring_poc.py --app chrome --create [--display-name "Google Chrome"] ...
+    python research/ring_poc.py --app notepad --slot 1 --folder Folder --folder-item CTRL+SHIFT+ESC
+                                --folder-item system:MediaPlayPause          (F6: a folder, 1-4 items)
+    python research/ring_poc.py --app notepad --slot 2 --macro <GUID> [--macro-from ProfileInfo.json]
+                                                                              (M1: copy a macro verbatim)
     python research/ring_poc.py --rollback <backup dir>
 
 --create makes a plugin-less LPS application the way the UI did for 7-Zip (R3c, R7, R5c):
@@ -225,6 +229,109 @@ def action_for(key: str, display: str, label: str | None = None) -> dict:
     }
 
 
+FOLDER_TEMPLATE = "$@Generic___@OpenFolder"
+FOLDER_MAX_ITEMS = 4  # F2: a folder page offers 4 slots (controls 0..3); the UI allows no gap (F4b) and no nesting (F3)
+SYSTEM_PREFIX = "$DefaultWin___"
+MACRO_PREFIX = "$@Generic___@Macro___"
+FOLDER_DESCRIPTION = "Group and nest multiple actions"  # what the current UI writes (an older UI wrote "")
+
+
+def folder_action(guid: str, label: str, group: str = "Folders") -> dict:
+    """The folder item in the exact key order the UI wrote it (F1). `group` is the UI language's word for
+    "Folders" ("Foldery" in a Polish UI, "Folders" in an English one); cosmetic, so English is written."""
+    return {
+        "$type": "Loupedeck.Service.ApplicationProfileCommand, LoupedeckService",
+        "isCommand": True,
+        "name": "$@Generic___@ProfileAction___" + guid,
+        "templateActionName": FOLDER_TEMPLATE,
+        "actionParameters": {
+            "$type": "Loupedeck.ActionEditorActionParameters, PluginApi",
+            "parameters": {"$type": "Loupedeck.StringDictionaryNoCase, PluginApi", "folderName": guid},
+            "count": 1,
+        },
+        "displayName": label,
+        "description": FOLDER_DESCRIPTION,
+        "groupName": group,
+        "superGroupName": "@navigation",
+        "isProfileAction": True,
+        "isMultiState": False,
+        "isResetCommand": False,
+        "adjustmentName": None,
+        "states": None,
+    }
+
+
+def folder_page(guid: str, refs: list[str]) -> dict:
+    """The folder's own page (F1): named like the action, a generic "Folder" title, and only the used controls."""
+    return {"$type": "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutPage7, LoupedeckService",
+            "name": guid, "displayName": "Folder", "description": FOLDER_DESCRIPTION,
+            "controls": [{"$type": CONTROL_TYPE, "controlId": i, "pressAction": ref, "rotateAction": None}
+                         for i, ref in enumerate(refs)]}
+
+
+def folder_item(spec: str) -> tuple[str, dict | None]:
+    """'system:MediaPlayPause' -> its reference and no definition; 'CTRL+SHIFT+ESC' -> reference and profile action."""
+    if spec.lower().startswith("system:"):
+        return SYSTEM_PREFIX + spec.split(":", 1)[1], None
+    action = action_for(*encode(spec))
+    return action["name"], action
+
+
+def upsert(items: list, new: dict, changes: list[str], where: str) -> None:
+    cur = next((a for a in items if a.get("name") == new["name"]), None)
+    if cur is None:
+        items.append(new)
+        changes.append(f"+ {where}[{new['name']}]")
+    elif cur != new:
+        items[items.index(cur)] = new
+        changes.append(f"~ {where}[{new['name']}]")
+
+
+def point_slot(doc: dict, slot: int, ref: str, changes: list[str]) -> None:
+    ctl = controls(doc)[slot - 1]
+    if ctl.get("pressAction") != ref:
+        changes.append(f"~ slot {slot} (controlId {slot - 1}): {ctl.get('pressAction')} -> {ref}")
+        ctl["pressAction"] = ref
+
+
+def patch_folder(doc: dict, slot: int, label: str, specs: list[str]) -> list[str]:
+    """A folder with 1-4 items in `slot`, ids derived from its content (F6). Same order the UI saved
+    them in (F1): the folder action, then each item's action, then the page. Idempotent."""
+    if not 1 <= len(specs) <= FOLDER_MAX_ITEMS:
+        raise ValueError(f"a folder holds 1-{FOLDER_MAX_ITEMS} items, got {len(specs)}")
+    guid = _gid("folder", label, *specs)
+    changes: list[str] = []
+    actions = doc.setdefault("profileActions", [])
+    folder = folder_action(guid, label)
+    upsert(actions, folder, changes, "profileActions")
+    refs = []
+    for spec in specs:
+        ref, action = folder_item(spec)
+        if action is not None:
+            upsert(actions, action, changes, "profileActions")
+        refs.append(ref)
+    upsert(doc["layout"].setdefault("folderPages", []), folder_page(guid, refs), changes, "layout.folderPages")
+    point_slot(doc, slot, folder["name"], changes)
+    return changes
+
+
+def macro_from(src: Path, name: str) -> dict:
+    """A macro exactly as `src` (a Ring ProfileInfo.json) holds it, selected by its GUID."""
+    doc = json.loads(src.read_text(encoding="utf-8"))
+    macro = next((m for m in doc.get("macroCommands") or [] if m.get("name") == name), None)
+    if macro is None:
+        raise ValueError(f"{src.name} has no macro named {name!r} (use the GUID: display names repeat)")
+    return macro
+
+
+def patch_macro(doc: dict, slot: int, macro: dict) -> list[str]:
+    """Copy a macro verbatim into the target profile and point `slot` at it (M1)."""
+    changes: list[str] = []
+    upsert(doc.setdefault("macroCommands", []), macro, changes, "macroCommands")
+    point_slot(doc, slot, MACRO_PREFIX + macro["name"], changes)
+    return changes
+
+
 def patch(doc: dict, slot: int, action: dict) -> list[str]:
     """Mutates doc; returns what changed (empty = already in the desired state)."""
     changes = []
@@ -318,6 +425,11 @@ def main() -> int:
     ap.add_argument("--label", help="displayName of the item, if it should differ from the shortcut (K5)")
     ap.add_argument("--create", action="store_true", help="create the plugin-less app --app if it is missing")
     ap.add_argument("--display-name", help="with --create: the app's displayName (default: the exe stem)")
+    ap.add_argument("--folder", metavar="LABEL", help="write a folder named LABEL into --slot, not a shortcut (F6)")
+    ap.add_argument("--folder-item", action="append", default=[], metavar="ITEM",
+                    help="with --folder, 1-4 times: a shortcut (CTRL+SHIFT+ESC) or system:<Name>")
+    ap.add_argument("--macro", metavar="GUID", help="copy this macro verbatim into the target profile + --slot (M1)")
+    ap.add_argument("--macro-from", metavar="FILE", help="with --macro: the ProfileInfo.json holding it (Global)")
     args = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
     if args.rollback:
@@ -326,7 +438,32 @@ def main() -> int:
         return fail("--slot must be 1..8")
     created = None
     try:
-        action = action_for(*encode(args.shortcut, args.form), label=args.label)
+        if args.folder is not None:
+            specs = list(args.folder_item)
+            if args.macro:
+                return fail("--folder and --macro are exclusive")
+
+            def mutate(d: dict) -> list[str]:
+                return patch_folder(d, args.slot, args.folder, specs)
+
+            guid = _gid("folder", args.folder, *specs)
+            target_ref, shown = "$@Generic___@ProfileAction___" + guid, f"folder {args.folder!r}: {specs}"
+        elif args.macro:
+            macro = macro_from(Path(args.macro_from) if args.macro_from else profile_path("@_defaultwin"), args.macro)
+
+            def mutate(d: dict) -> list[str]:
+                return patch_macro(d, args.slot, macro)
+
+            target_ref = MACRO_PREFIX + macro["name"]
+            shown = f"macro {macro['displayName']!r} ({len(json.dumps(macro))} chars)"
+        else:
+            action = action_for(*encode(args.shortcut, args.form), label=args.label)
+
+            def mutate(d: dict) -> list[str]:
+                return patch(d, args.slot, action)
+
+            target_ref = action["name"]
+            shown = f"keyboardKey: {action['actionParameters']['parameters']['keyboardKey']}"
         if args.create and not app_dir(args.app).exists():
             if args.app.startswith("@") or args.app != args.app.lower() or "." in args.app:
                 return fail("--create takes a lower-case exe stem, e.g. chrome or notepad")
@@ -340,8 +477,11 @@ def main() -> int:
     except (OSError, ValueError) as e:
         return fail(str(e))
 
-    changes = patch(doc, args.slot, action)
-    print(f"profile: {path}\nkeyboardKey: {action['actionParameters']['parameters']['keyboardKey']}")
+    try:
+        changes = mutate(doc)
+    except ValueError as e:
+        return fail(str(e))
+    print(f"profile: {path}\n{shown}")
     if not changes:
         print("already in the desired state; nothing written, no process touched")
         return 0
@@ -382,12 +522,12 @@ def main() -> int:
     final = watch(path, new, args.watch)
     try:
         kept_doc, _ = read_profile(path)
-        kept = patch(kept_doc, args.slot, action) == []
+        kept = mutate(kept_doc) == []
     except ValueError as e:
         print(f"the owner's re-save fails the guards: {e}")
         kept = False
     print(f"byte-identical to what was written: {final == new}")
-    print(f"item kept (slot {args.slot} -> {action['name']}, action body unchanged): {kept}")
+    print(f"item kept (slot {args.slot} -> {target_ref}, bodies unchanged): {kept}")
     if not kept:
         print(f"NOT kept. Roll back: python research/ring_poc.py --rollback {dest}")
         return 1
