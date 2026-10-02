@@ -8,6 +8,7 @@ means its format drifted: follow docs/maintenance.md before applying Ring specs.
 """
 from __future__ import annotations
 
+import base64
 import copy
 import json
 import shutil
@@ -24,7 +25,7 @@ sys.path.insert(0, str(HERE.parent / "research"))  # FolderEvidence checks the r
 import ring  # noqa: E402
 import ring_poc  # noqa: E402
 from errors import SpecError, StoreError  # noqa: E402
-from make_ring_store import HKL_PL, make_ring_store, with_hkl  # noqa: E402
+from make_ring_store import HKL_PL, make_ring_store, ui_icon, with_hkl  # noqa: E402
 
 EVIDENCE = json.loads((HERE / "fixtures" / "ring-ui-written.json").read_text(encoding="utf-8"))
 HKL_US = 0x04090409
@@ -454,6 +455,7 @@ class Folders(Tree):
         got, _ = ring.export_slots(chrome, self.store.systems())
         self.assertEqual(got, slots)
         self.assertEqual(len(chrome.doc["macroCommands"]), 6)  # every macro came along verbatim (M1)
+        self.assertEqual(len(list(chrome.path.parent.glob("ActionIcons/*.ict"))), 2)  # and the icons (I1)
         self.assertEqual(self.plan(slots, {"builtin": "google-chrome"}).changes, [])
 
     def test_changing_a_folder_replaces_it_and_collects_the_old_one(self):
@@ -500,6 +502,165 @@ class Folders(Tree):
         ]:
             with self.subTest(why), self.assertRaises(SpecError):
                 ring.validate_ring({"top": action}, "test")
+
+
+class Icons(Tree):
+    """Item icons: ActionIcons/<ref>.ict next to ProfileInfo.json (I1-I3). An icon in a spec is
+    written to the file of the reference its item compiles to; no icon leaves the file alone."""
+
+    YT = {"shortcut": "CTRL+SHIFT+Y", "label": "YT → mp3"}
+    SVG = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>'
+
+    def icon(self, name: str = "yt.svg", data: bytes | None = None) -> dict:
+        (self.tmp / name).write_bytes(self.SVG if data is None else data)
+        return ring.icon_from_file(self.tmp, name, "test")
+
+    def icon_file(self, app: str, slot: int) -> Path:
+        prof = self.store.read(app)
+        return ring.icon_path(prof.path, ring.controls(prof.doc)[slot].get("pressAction"))
+
+    def test_every_icon_form_validates_and_nothing_takes_none(self):
+        doc = EVIDENCE["i2_ict_uploaded_png"]
+        ring.validate_ring({"top": dict(self.YT, icon="icons/yt.svg"), "right": {"system": "media-stop", "icon": doc},
+                            "left": {"folder": {"label": "x", "items": [dict(self.YT, icon="a.PNG")]}, "icon": "f.ict"},
+                            "bottom": {"raw": {"pressAction": "$DefaultWin___X", "definition": None}, "icon": doc}},
+                           "t")
+        for action, why in [({"nothing": True, "icon": "a.svg"}, "nothing with an icon"),
+                            (dict(self.YT, icon="a.jpg"), "unsupported file type"),
+                            (dict(self.YT, icon=""), "empty path"),
+                            (dict(self.YT, icon={"items": []}), "no items"),
+                            (dict(self.YT, icon={"items": [{"image": "x"}]}), "an item without itemType")]:
+            with self.subTest(why), self.assertRaises(SpecError):
+                ring.validate_ring({"top": action}, "t")
+
+    def test_an_svg_or_png_becomes_the_uis_uploaded_image_shape(self):
+        got = self.icon()
+        want = copy.deepcopy(EVIDENCE["i2_ict_uploaded_png"])
+        want["items"][0].update(image=base64.b64encode(self.SVG).decode(), imageFileName="yt.svg")
+        self.assertEqual(json.dumps(got), json.dumps(want))  # key order too
+        png = self.icon("p.png", b"\x89PNG\r\n\x1a\n" + b"\0" * 8)
+        self.assertEqual(png["items"][0]["imageFileName"], "p.png")
+        (self.tmp / "i.ict").write_bytes(b"\xef\xbb\xbf" + json.dumps(got).encode())  # a BOM is tolerated
+        self.assertEqual(ring.icon_from_file(self.tmp, "i.ict", "t"), got)
+        for name, data, why in [("x.svg", b"not an svg", "not an SVG"), ("x.png", b"GIF89a", "not a PNG"),
+                                ("x.ict", b"{", "not JSON"),
+                                ("big.svg", b"<svg" + b" " * ring.ICON_MAX_BYTES, "too big")]:
+            with self.subTest(why), self.assertRaises(SpecError):
+                self.icon(name, data)
+        with self.assertRaisesRegex(SpecError, "relative to the spec file"):
+            ring.icon_from_file(self.tmp, "missing.svg", "t")
+
+    def test_resolve_icons_reads_paths_relative_to_the_spec_including_folder_items(self):
+        (self.tmp / "icons").mkdir()
+        (self.tmp / "icons" / "yt.svg").write_bytes(self.SVG)
+        spec = {"folder": {"label": "x", "items": [dict(self.YT, icon="icons/yt.svg")]}, "icon": "icons/yt.svg"}
+        got = ring.resolve_icons(spec, self.tmp, "t")
+        self.assertEqual(got["icon"], got["folder"]["items"][0]["icon"])
+        self.assertEqual(got["icon"]["items"][0]["imageFileName"], "yt.svg")
+        self.assertEqual(spec["icon"], "icons/yt.svg")  # the spec itself is not modified
+
+    def test_an_icon_is_written_once_and_is_not_part_of_the_items_identity(self):
+        app, icon = {"builtin": "google-chrome"}, self.icon()
+        plain = self.apply({"top": {"folder": {"label": "T", "items": [self.YT]}}}, app)
+        doc_before = self.store.read("chrome").raw
+        spec = {"top": {"folder": {"label": "T", "items": [dict(self.YT, icon=icon)]}, "icon": icon}}
+        p = self.apply(spec, app)
+        self.assertEqual(self.store.read("chrome").raw, doc_before)  # same ids: only the files are new
+        self.assertEqual(sorted(c[:2] for c in p.changes), ["+ ", "+ "])
+        self.assertTrue(plain.changes)
+        prof = self.store.read("chrome")
+        for ref in ring.item_refs(prof.doc, ring.controls(prof.doc)[0]["pressAction"]):
+            self.assertEqual(ring.icon_path(prof.path, ref).read_bytes(), ring.canonical_json(icon))
+        self.assertEqual(self.plan(spec, app).changes, [])
+
+    def test_a_spec_without_icons_leaves_the_uis_icons_alone(self):
+        before = self.icon_file(ring.GLOBAL_APP, 1).read_bytes()
+        self.apply({"top": {"system": "media-next-track"},
+                    "right": {"system": "media-play-pause"}})  # replaces the UI's folder
+        self.assertEqual(self.icon_file(ring.GLOBAL_APP, 1).read_bytes(), before)
+        folder_icon = ring.icon_path(self.store.read(ring.GLOBAL_APP).path,
+                                     EVIDENCE["r0_global_controls_before"][2]["pressAction"])
+        self.assertTrue(folder_icon.is_file())  # the UI's folder isn't the tool's: its icon stays too
+
+    def test_a_ui_formatted_icon_with_the_same_content_is_in_sync_and_a_changed_one_is_drift(self):
+        slots, _ = ring.export_slots(self.store.read(ring.GLOBAL_APP), self.store.systems())
+        self.assertEqual(self.plan(slots).changes, [])  # 2-space LF files equal to the spec's documents
+        file = self.icon_file(ring.GLOBAL_APP, 1)
+        file.write_bytes(file.read_bytes().replace(b'"isVisible": true', b'"isVisible": false', 1))
+        p = self.plan(slots)
+        self.assertEqual(p.changes, [f"~ {ring.ICON_DIR}/{file.name}"])
+        self.assertEqual(len(p.drift), 1)
+        self.assertIn("icon", p.drift[0])
+        file.unlink()
+        self.assertEqual(self.plan(slots).changes, [f"+ {ring.ICON_DIR}/{file.name}"])
+
+    def test_the_icon_of_the_tools_own_item_goes_with_it(self):
+        app = {"builtin": "google-chrome"}
+        self.apply({"top": dict(self.YT, icon=self.icon())}, app)
+        file = self.icon_file("chrome", 0)
+        self.assertTrue(file.is_file())
+        p = self.apply({"top": {"nothing": True}}, app)
+        self.assertFalse(file.exists())
+        self.assertIn(f"- {ring.ICON_DIR}/{file.name} (its action was the tool's own)", p.changes)
+
+    def test_one_item_with_two_icons_or_a_reference_that_cant_name_a_file_is_refused(self):
+        a, b = self.icon("a.svg"), self.icon("b.svg")
+        with self.assertRaisesRegex(SpecError, "used twice with different icons"):
+            self.plan({"top": dict(self.YT, icon=a), "left": dict(self.YT, icon=b)})
+        raw = {"raw": {"pressAction": "$@Generic___@ExecuteApplication___C:\\x.exe", "definition": None}, "icon": a}
+        with self.assertRaisesRegex(SpecError, "can't name an icon file"):
+            self.plan({"top": raw})
+        with self.assertRaisesRegex(SpecError, "was not resolved"):
+            self.plan({"top": dict(self.YT, icon="a.svg")})
+
+    def test_backup_write_restore_and_undo_cover_icons(self):
+        before = self.snapshot()
+        icon = self.icon()
+        changed = copy.deepcopy(icon)
+        changed["items"][1]["text"] = "x"
+        slots, _ = ring.export_slots(self.store.read(ring.GLOBAL_APP), self.store.systems())
+        macro = dict(slots[ring.SLOTS[1]], icon=changed)  # the UI's macro, with another icon
+        plans = [self.plan({"left": dict(self.YT, icon=icon), ring.SLOTS[1]: macro}),
+                 self.plan({"top": dict(self.YT, icon=icon)}, {"builtin": "google-chrome"})]
+        self.assertEqual(len(plans[0].icons), 2)  # one new, one replacing the UI's
+        dest = self.tmp / "backup"
+        dest.mkdir()
+        ring.backup(plans, self.store, dest)
+        ring.precheck(plans)
+        ring.write(plans)
+        self.assertEqual([ring.verify(p, self.store, lambda: KB) for p in plans], [[], []])
+        safety = self.tmp / "safety"
+        safety.mkdir()
+        ring.restore(dest, self.store, safety)
+        ring.verify_restore(dest, self.store)
+        self.assertEqual(self.snapshot(), before)
+        ring.write(plans[:1])
+        ring.undo(plans[:1])
+        self.assertEqual(self.snapshot(), before)
+
+    def test_precheck_and_verify_watch_the_icon_files(self):
+        p = self.plan({"top-right": dict(self.YT, icon=self.icon())})
+        file = next(iter(p.icons))
+        file.write_bytes(b"{}")
+        with self.assertRaisesRegex(StoreError, "changed since it was read"):
+            ring.precheck([p])
+        file.unlink()
+        ring.precheck([p])
+        ring.write([p])
+        file.write_bytes(b"{}")
+        self.assertEqual(ring.verify(p, self.store, lambda: KB), [f"Global Ring: {file} is not what was written"])
+
+    def test_export_embeds_icons_and_warns_about_an_unreadable_one(self):
+        slots, warnings = ring.export_slots(self.store.read(ring.GLOBAL_APP), self.store.systems())
+        self.assertEqual(slots[ring.SLOTS[1]]["icon"], json.loads(ui_icon("i2_ict_uploaded_png")))
+        self.assertEqual(slots["right"]["icon"]["items"][1]["text"], "<label>")
+        self.assertTrue(all("icon" not in i for i in slots["right"]["folder"]["items"]))
+        self.assertEqual(len(warnings), 6)
+        self.icon_file(ring.GLOBAL_APP, 1).write_bytes(b"{")
+        slots, warnings = ring.export_slots(self.store.read(ring.GLOBAL_APP), self.store.systems())
+        self.assertNotIn("icon", slots[ring.SLOTS[1]])
+        self.assertEqual(sum("unreadable" in w for w in warnings), 1)
+
 
 class FolderEvidence(unittest.TestCase):
     """Folders and macros as the UI wrote them (F0-F5, M1 in docs/actions-ring.md), and the research PoC that

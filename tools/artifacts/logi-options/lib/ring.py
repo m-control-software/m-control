@@ -6,6 +6,7 @@ The Ring is not in settings.db. It lives in a second store with a second owner
     %LOCALAPPDATA%\\Logi\\LogiPluginService\\Applications\\Loupedeck72\\<app>\\
         ApplicationInfo.json
         Profiles\\<profile>\\ProfileInfo.json       8 slots (controlId 0 = top, clockwise)
+        Profiles\\<profile>\\ActionIcons\\<ref>.ict  an item's icon, by its reference (optional)
 
 owned by LogiPluginService.exe (LPS), a child of the Options+ agent. Verified
 facts this module relies on:
@@ -24,6 +25,7 @@ processes) are injected, so the tests run on any OS against a fixture tree.
 """
 from __future__ import annotations
 
+import base64
 import copy
 import datetime as dt
 import functools
@@ -59,6 +61,15 @@ FOLDER_MAX_ITEMS = 4
 FOLDER_DESCRIPTION = "Group and nest multiple actions"  # what the current UI writes (F1); an older one wrote ""
 FOLDER_GROUP = "Folders"  # the UI language's word for it ("Foldery" in Polish); cosmetic (F6)
 PAGE_TYPE = "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutPage7, LoupedeckService"
+# Item icons: Profiles\<profile>\ActionIcons\<ref>.ict, looked up by file name (I1). Without one a
+# shortcut or system item still gets a drawn icon, a macro or folder only its caption (I3).
+ICON_DIR = "ActionIcons"
+ICON_SUFFIX = ".ict"
+ICON_FILE_SUFFIXES = {".svg", ".png", ICON_SUFFIX}
+ICON_MAX_BYTES = 1 << 20
+ICON_BACKGROUND = 0xFF000000  # opaque black, every .ict observed
+ICON_UNTINTED = 0xFFFFFFFF    # what the UI writes for an uploaded image (I2)
+_ICON_REF = re.compile(r"\$[A-Za-z0-9@_.\-]+")  # a reference that is safe as a file name
 
 PROFILE_ACTION = "$@Generic___@ProfileAction___"
 MACRO = "$@Generic___@Macro___"
@@ -280,11 +291,21 @@ def canonical_action(action, where: str, in_folder: bool = False) -> dict:
     if not isinstance(action, dict):
         raise SpecError(f"{where}: expected an action object like {{\"shortcut\": \"CTRL+SHIFT+Y\"}}, got {action!r}.")
     kinds = [k for k in action if k in ACTION_KEYS]
-    unknown = [k for k in action if k not in ACTION_KEYS and not (k == "label" and kinds == ["shortcut"])]
+    extra = {"label"} if kinds == ["shortcut"] else set()
+    if len(kinds) == 1 and kinds != ["nothing"]:
+        extra.add("icon")
+    unknown = [k for k in action if k not in ACTION_KEYS and k not in extra]
     if len(kinds) != 1 or unknown:
         raise SpecError(f"{where}: a Ring action is exactly one of {', '.join(ACTION_KEYS)} (a shortcut may add a "
-                        f"label); got {kinds or 'none'}, unknown fields: {unknown or 'none'}.")
-    kind, value = kinds[0], action[kinds[0]]
+                        f"label, any but nothing an icon); got {kinds or 'none'}, unknown fields: {unknown or 'none'}.")
+    out = _canonical_kind(action, kinds[0], where, in_folder)
+    if "icon" in action:
+        out["icon"] = canonical_icon(action["icon"], f"{where}.icon")
+    return out
+
+
+def _canonical_kind(action: dict, kind: str, where: str, in_folder: bool) -> dict:
+    value = action[kind]
     if in_folder and kind in ("folder", "nothing"):
         raise SpecError(f"{where}: a folder item can't be {kind}: Options+ allows no folder inside a folder and no "
                         "empty slot between items (docs/actions-ring.md, F3/F4). List only the items, in order.")
@@ -343,10 +364,104 @@ def walk(canon: dict):
     yield from canon.get("folder", {}).get("items", [])
 
 
+def bare(action: dict) -> dict:
+    """The action without icons, a folder's items included: what ProfileInfo.json holds (icons are files)."""
+    out = {k: v for k, v in action.items() if k != "icon"}
+    if isinstance(out.get("folder"), dict) and isinstance(out["folder"].get("items"), list):
+        out["folder"] = {**out["folder"], "items": [bare(i) if isinstance(i, dict) else i
+                                                    for i in out["folder"]["items"]]}
+    return out
+
+
 def folder_guid(folder: dict) -> str:
     """From the folder's content, like a shortcut's id (ADR-0013 Decision 4): a rename or an item change
-    gives a new folder, and the tool's old one is collected."""
-    return uuid.uuid5(RING_NAMESPACE, "folder:" + json.dumps(folder, sort_keys=True, ensure_ascii=False)).hex.upper()
+    gives a new folder, and the tool's old one is collected. Icons are not content: changing one
+    rewrites its file and keeps the id."""
+    key = json.dumps(bare({"folder": folder})["folder"], sort_keys=True, ensure_ascii=False)
+    return uuid.uuid5(RING_NAMESPACE, "folder:" + key).hex.upper()
+
+
+# ------------------------------------------------------------------ icons (ActionIcons/<ref>.ict, I1-I3)
+
+def canonical_icon(value, where: str):
+    """An icon is a path to an .svg/.png/.ict file (resolved against the spec file by the pack
+    loader, resolve_icons) or the .ict document itself, which is what export writes."""
+    if isinstance(value, str):
+        if not value.strip() or Path(value).suffix.lower() not in ICON_FILE_SUFFIXES:
+            raise SpecError(f"{where}: an icon path must name a {', '.join(sorted(ICON_FILE_SUFFIXES))} file, got "
+                            f"{value!r}.")
+        return value
+    items = value.get("items") if isinstance(value, dict) else None
+    if not isinstance(items, list) or not items or not all(
+            isinstance(i, dict) and isinstance(i.get("itemType"), str) for i in items):
+        raise SpecError(f"{where}: an icon is a file path (.svg, .png, .ict) or an .ict document "
+                        "{\"backgroundColor\": …, \"items\": [{\"itemType\": \"Image\", …}]} as mode=export writes it.")
+    return copy.deepcopy(value)
+
+
+def icon_from_file(base: Path, rel: str, where: str) -> dict:
+    """An .ict document from a file: an .ict as it is; an .svg or .png the way the UI stores an
+    uploaded image (I2): full-size, untinted, with an empty caption."""
+    path = Path(os.path.expandvars(rel))
+    path = path if path.is_absolute() else base / path
+    try:
+        data = path.read_bytes()
+    except OSError as e:
+        raise SpecError(f"{where}: icon file {path} can't be read ({e.strerror or e}). Paths are relative to the "
+                        "spec file.") from e
+    if len(data) > ICON_MAX_BYTES:
+        raise SpecError(f"{where}: icon file {path} is {len(data)} bytes; the limit is {ICON_MAX_BYTES}.")
+    suffix = path.suffix.lower()
+    if suffix == ICON_SUFFIX:
+        try:
+            doc = json.loads(data.decode("utf-8-sig"))
+        except (UnicodeDecodeError, ValueError) as e:
+            raise SpecError(f"{where}: {path} is not an .ict document ({e}).") from e
+        return canonical_icon(doc, where)
+    if suffix == ".svg" and b"<svg" not in data[:4096]:
+        raise SpecError(f"{where}: {path} doesn't look like an SVG (no <svg element at the start).")
+    if suffix == ".png" and not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise SpecError(f"{where}: {path} is not a PNG file.")
+    return {"backgroundColor": ICON_BACKGROUND, "items": [
+        {"$type": "Loupedeck.Service.ActionIconImageItem, LoupedeckShared",
+         "image": base64.b64encode(data).decode("ascii"), "imageFileName": path.name, "imageColor": ICON_UNTINTED,
+         "imageRotation": "None", "isVisible": True, "itemType": "Image",
+         "area": {"x": 0, "y": 0, "width": 100, "height": 100, "isFullScreen": True}},
+        {"$type": "Loupedeck.Service.ActionIconTextItem, LoupedeckShared", "text": "", "textColor": ICON_UNTINTED,
+         "fontSize": 6, "fontName": "Brown Logitech Pan Light", "isVisible": True, "itemType": "Text",
+         "area": {"x": 0, "y": 81, "width": 100, "height": 18, "isFullScreen": False}}]}
+
+
+def resolve_icons(action, base: Path, where: str):
+    """A copy of a spec action with every icon path replaced by its .ict document (the pack loader
+    calls this, so paths are relative to the spec file). Anything malformed is left for
+    canonical_action to report."""
+    if not isinstance(action, dict):
+        return action
+    out = dict(action)
+    if isinstance(out.get("icon"), str):
+        canonical_icon(out["icon"], f"{where}.icon")
+        out["icon"] = icon_from_file(base, out["icon"], f"{where}.icon")
+    folder = out.get("folder")
+    if isinstance(folder, dict) and isinstance(folder.get("items"), list):
+        out["folder"] = {**folder, "items": [resolve_icons(a, base, f"{where}.folder.items[{n}]")
+                                             for n, a in enumerate(folder["items"])]}
+    return out
+
+
+def icon_path(profile_path: Path, ref: str) -> Path:
+    """Where LPS looks up a referenced action's icon: by file name, next to ProfileInfo.json (I1)."""
+    return profile_path.parent / ICON_DIR / (ref + ICON_SUFFIX)
+
+
+def read_icon(path: Path) -> dict | None:
+    """The parsed .ict, None when absent; an unreadable one is a value no spec equals."""
+    try:
+        return json.loads(path.read_bytes().decode("utf-8-sig"))
+    except FileNotFoundError:
+        return None
+    except (OSError, UnicodeDecodeError, ValueError) as e:
+        return {"_unreadable": str(e)}
 
 
 def validate_ring(ring, where: str) -> None:
@@ -574,11 +689,22 @@ def describe(action: dict) -> str:
 
 
 def in_sync(doc: dict, ref: str | None, canon: dict, kb_installed, systems) -> bool:
+    """The slot's stored action is the spec action; icons are files and are compared by plan()."""
     got = decompile(doc, ref, systems)
-    if portable(got) != canon:
+    if portable(got) != bare(canon):
         return False
     # an HKL difference alone never triggers a write, as long as that layout is installed here
     return all("_hkl" not in a or a["_hkl"] in kb_installed for a in walk(got))
+
+
+def item_refs(doc: dict, ref: str | None) -> list[str | None]:
+    """The references behind walk(decompile(doc, ref)), in the same order: the slot's own and,
+    for a folder, its page's."""
+    definition = _definition(doc, ref) if ref else None
+    if definition is None or definition.get("templateActionName") != FOLDER_TEMPLATE:
+        return [ref]
+    page = _folder_page_of(doc, definition)
+    return [ref] + [c.get("pressAction") for c in (page or {}).get("controls") or []]
 
 
 def is_ours(action: dict, doc: dict, systems: dict[str, str]) -> bool:
@@ -769,6 +895,7 @@ class Plan:
     path: Path
     changes: list[str]
     drift: list[str]
+    icons: dict[Path, tuple[bytes | None, bytes | None]] = field(default_factory=dict)  # file -> (before, after)
 
 
 def plan(target: Target, ring_spec: dict, sources: dict[str, str], store: RingStore,
@@ -812,7 +939,7 @@ def plan(target: Target, ring_spec: dict, sources: dict[str, str], store: RingSt
             continue
         have = decompile(doc, ref, systems)
         if target.profile is not None:
-            stale = portable(have) == canon  # same action, recorded under a layout not installed here
+            stale = portable(have) == bare(canon)  # same action, recorded under a layout not installed here
             drift.append(f"{target.label}: actionsRing.{SLOTS[i]} should be {describe(canon)}, is "
                          f"{describe(have)}" + (" (keyboard layout not installed here)" if stale else ""))
         new_ref = _compile_into(doc, canon, kb, systems, f"{srcs[i]}: actionsRing.{SLOTS[i]}", changes)
@@ -822,11 +949,53 @@ def plan(target: Target, ring_spec: dict, sources: dict[str, str], store: RingSt
         else:
             changes.append(f"~ actionsRing.{SLOTS[i]} (controlId {i}): {describe(canon)} re-encoded for keyboard "
                            f"layout {kb.hkl if kb else '-'}")
-    _collect_garbage(doc, changes, systems)
+    gone = _collect_garbage(doc, changes, systems)
     after = canonical_json(doc)
     if target.profile is not None and after == before:
         changes = []
-    return Plan(target, slots, srcs, before, after, info_bytes, path, changes, drift)
+    icons = _plan_icons(target, doc, slots, srcs, path, gone, changes, drift)
+    return Plan(target, slots, srcs, before, after, info_bytes, path, changes, drift, icons)
+
+
+def _plan_icons(target: Target, doc: dict, slots: dict[int, dict], srcs: dict[int, str], path: Path,
+                gone: list[str], changes: list[str], drift: list[str]) -> dict[Path, tuple[bytes | None, bytes | None]]:
+    """Icon files to write: each listed item with an icon whose file differs, by the reference its
+    slot holds after the patch. An item without an icon leaves its file alone. The icon of an
+    action of ours that garbage collection dropped goes with it."""
+    want: dict[str, tuple[dict, int, dict]] = {}
+    ctls = controls(doc)
+    for i in sorted(slots):
+        for item, ref in zip(walk(slots[i]), item_refs(doc, ctls[i].get("pressAction")), strict=False):
+            if "icon" not in item:
+                continue
+            where = f"{srcs[i]}: actionsRing.{SLOTS[i]}"
+            if not isinstance(item["icon"], dict):
+                raise SpecError(f"{where}: icon {item['icon']!r} was not resolved to a file's content. Icon paths "
+                                "are resolved when the pack is loaded (packs.merge).")
+            if ref is None or not _ICON_REF.fullmatch(ref):
+                raise SpecError(f"{where}: the item's reference {ref!r} can't name an icon file.")
+            if ref in want and want[ref][0] != item["icon"]:
+                raise SpecError(f"{where}: {ref} is used twice with different icons ({SLOTS[want[ref][1]]} too); "
+                                "LogiPluginService keeps one icon per item.")
+            want[ref] = (item["icon"], i, item)
+    exists = target.profile is not None
+    icons: dict[Path, tuple[bytes | None, bytes | None]] = {}
+    for ref, (icon, i, item) in want.items():
+        file = icon_path(path, ref)
+        current = file.read_bytes() if exists and file.is_file() else None
+        if current is not None and read_icon(file) == icon:
+            continue
+        icons[file] = (current, canonical_json(icon))
+        changes.append(f"{'~' if current is not None else '+'} {ICON_DIR}/{file.name}")
+        if exists:
+            drift.append(f"{target.label}: actionsRing.{SLOTS[i]}: the icon of {describe(item)} "
+                         f"{'differs' if current is not None else 'is missing'}")
+    for ref in gone:
+        file = icon_path(path, ref)
+        if exists and ref not in want and file.is_file():
+            icons[file] = (file.read_bytes(), None)
+            changes.append(f"- {ICON_DIR}/{file.name} (its action was the tool's own)")
+    return icons
 
 
 def _compile_into(doc: dict, canon: dict, kb: Keyboard | None, systems: dict, where: str,
@@ -872,14 +1041,17 @@ def _upsert(items: list, list_name: str, definition: dict, where: str, changes: 
         changes.append(f"~ {list_name}[{definition['name']}]")
 
 
-def _collect_garbage(doc: dict, changes: list[str], systems: dict[str, str]) -> None:
+def _collect_garbage(doc: dict, changes: list[str], systems: dict[str, str]) -> list[str]:
     """Drop our own actions that nothing references any more, and the page of each of our folders
-    dropped. Repeated, since dropping a folder unreferences its items. UI items and orphans stay."""
+    dropped. Repeated, since dropping a folder unreferences its items. UI items and orphans stay.
+    Returns the names dropped."""
+    dropped: list[str] = []
     while True:
         refs = _references(doc, set())
         gone = [a for a in doc.get("profileActions") or [] if a.get("name") not in refs and is_ours(a, doc, systems)]
         if not gone:
-            return
+            return dropped
+        dropped += [a["name"] for a in gone]
         pages = {(p := _folder_page_of(doc, a)) and p.get("name") for a in gone} - {None}
         for a in gone:
             changes.append(f"- profileActions[{a['name']}] (the tool's own, no longer referenced)")
@@ -899,10 +1071,16 @@ def export_slots(prof: RingProfile, systems: dict[str, str]) -> tuple[dict, list
         if "_unsupported" in a:
             raise SpecError(f"Ring app {prof.app}, slot {SLOTS[i]}: {a['_unsupported']}, which a Ring spec can't "
                             "express. Fix it in the Options+ UI, or export without the Ring: ring=false.")
-        for item in walk(a):
+        for item, ref in zip(walk(a), item_refs(prof.doc, ctl.get("pressAction")), strict=False):
             if "raw" in item:
                 warnings.append(f"Ring app {prof.app} actionsRing.{SLOTS[i]}: {item['raw']['pressAction']} exported "
                                 "as raw; it has no portable form and may not survive LPS updates.")
+            icon = read_icon(icon_path(prof.path, ref)) if ref and _ICON_REF.fullmatch(ref) else None
+            if icon is not None and "_unreadable" in icon:
+                warnings.append(f"Ring app {prof.app} actionsRing.{SLOTS[i]}: the icon of {ref} is unreadable "
+                                f"({icon['_unreadable']}); exported without it.")
+            elif icon is not None:
+                item["icon"] = icon
         ring[SLOTS[i]] = portable(a)
     return ring, warnings
 
@@ -923,6 +1101,9 @@ def verify(p: Plan, store: RingStore, keyboard: Callable[[], Keyboard]) -> list[
         if not in_sync(prof.doc, ref, canon, kb.installed if kb else frozenset(), systems):
             problems.append(f"{p.target.label}: actionsRing.{SLOTS[i]} should be {describe(canon)}, is "
                             f"{describe(decompile(prof.doc, ref, systems))}")
+    for file, (_, data) in p.icons.items():
+        if (file.read_bytes() if file.is_file() else None) != data:
+            problems.append(f"{p.target.label}: {file} is not what was written")
     return problems
 
 
@@ -969,6 +1150,9 @@ def precheck(plans: list[Plan]) -> None:
                                  "run the command again.")
         elif not p.path.is_file() or sha256(p.path.read_bytes()) != sha256(p.before):
             raise StoreError(f"{p.path} changed since it was read. Nothing was written; run the command again.")
+        for file, (before, _) in p.icons.items():
+            if (file.read_bytes() if file.is_file() else None) != before:
+                raise StoreError(f"{file} changed since it was read. Nothing was written; run the command again.")
 
 
 def write(plans: list[Plan]) -> None:
@@ -983,6 +1167,14 @@ def write(plans: list[Plan]) -> None:
             _atomic_write(p.path, p.after)
             if p.path.read_bytes() != p.after:
                 raise StoreError(f"{p.path}: read-back after write does not match.")
+            for file, (_, data) in p.icons.items():
+                if data is None:
+                    file.unlink(missing_ok=True)
+                    continue
+                file.parent.mkdir(exist_ok=True)
+                _atomic_write(file, data)
+                if file.read_bytes() != data:
+                    raise StoreError(f"{file}: read-back after write does not match.")
     except (OSError, StoreError):
         undo(done)
         raise
@@ -992,12 +1184,17 @@ def undo(plans: list[Plan]) -> None:
     for p in plans:
         if p.info_bytes is not None:
             shutil.rmtree(p.path.parents[2], ignore_errors=True)
-        else:
-            _atomic_write(p.path, p.before)
+            continue
+        _atomic_write(p.path, p.before)
+        for file, (before, _) in p.icons.items():
+            if before is None:
+                file.unlink(missing_ok=True)
+            else:
+                _atomic_write(file, before)
 
 
 def backup(plans: list[Plan], store: RingStore, dest: Path) -> None:
-    """Into an existing backup directory: dest/ring/manifest.json + the profiles as they were."""
+    """Into an existing backup directory: dest/ring/manifest.json + the profiles and icons as they were."""
     entries = []
     for p in plans:
         rel = p.path.relative_to(store.data_dir)
@@ -1006,6 +1203,15 @@ def backup(plans: list[Plan], store: RingStore, dest: Path) -> None:
             (dest / "ring" / "files" / rel).parent.mkdir(parents=True, exist_ok=True)
             (dest / "ring" / "files" / rel).write_bytes(p.before)
             e["sha256"] = sha256(p.before)
+            e["icons"] = []
+            for file, (before, _) in p.icons.items():
+                irel = file.relative_to(store.data_dir)
+                if before is None:
+                    e["icons"].append({"file": irel.as_posix(), "absent": True})
+                    continue
+                (dest / "ring" / "files" / irel).parent.mkdir(parents=True, exist_ok=True)
+                (dest / "ring" / "files" / irel).write_bytes(before)
+                e["icons"].append({"file": irel.as_posix(), "sha256": sha256(before)})
         entries.append(e)
     (dest / "ring").mkdir(parents=True, exist_ok=True)
     manifest = {"dataDir": str(store.data_dir), "entries": entries}
@@ -1019,9 +1225,12 @@ def has_backup(src: Path) -> bool:
 def check_backup(src: Path) -> list[dict]:
     manifest = json.loads((src / "ring" / "manifest.json").read_text(encoding="utf-8"))
     for e in manifest["entries"]:
-        if not e["createdApp"] and sha256((src / "ring" / "files" / e["profile"]).read_bytes()) != e["sha256"]:
-            raise StoreError(f"{src / 'ring' / 'files' / e['profile']} does not match its checksum; refusing to "
-                             "restore it.")
+        saved = [] if e["createdApp"] else [(e["profile"], e["sha256"])]
+        saved += [(i["file"], i["sha256"]) for i in e.get("icons", []) if not i.get("absent")]
+        for rel, digest in saved:
+            if sha256((src / "ring" / "files" / rel).read_bytes()) != digest:
+                raise StoreError(f"{src / 'ring' / 'files' / rel} does not match its checksum; refusing to "
+                                 "restore it.")
     return manifest["entries"]
 
 
@@ -1040,6 +1249,14 @@ def restore(src: Path, store: RingStore, safety: Path) -> list[str]:
             target = store.data_dir / e["profile"]
             _atomic_write(target, (src / "ring" / "files" / e["profile"]).read_bytes())
             restored.append(f"restored {target}")
+            for i in e.get("icons", []):
+                file = store.data_dir / i["file"]
+                if i.get("absent"):
+                    file.unlink(missing_ok=True)
+                else:
+                    file.parent.mkdir(exist_ok=True)
+                    _atomic_write(file, (src / "ring" / "files" / i["file"]).read_bytes())
+                restored.append(f"restored {file}" + (" (removed)" if i.get("absent") else ""))
     return restored
 
 
@@ -1049,5 +1266,12 @@ def verify_restore(src: Path, store: RingStore) -> None:
         if e["createdApp"]:
             if app_dir.exists():
                 raise VerifyError(f"{app_dir} still exists after the restore.")
-        elif sha256((store.data_dir / e["profile"]).read_bytes()) != e["sha256"]:
+            continue
+        if sha256((store.data_dir / e["profile"]).read_bytes()) != e["sha256"]:
             raise VerifyError(f"{store.data_dir / e['profile']} does not match the backup after the restore.")
+        for i in e.get("icons", []):
+            file = store.data_dir / i["file"]
+            if i.get("absent") and file.exists():
+                raise VerifyError(f"{file} should be gone after the restore.")
+            if not i.get("absent") and (not file.is_file() or sha256(file.read_bytes()) != i["sha256"]):
+                raise VerifyError(f"{file} does not match the backup after the restore.")

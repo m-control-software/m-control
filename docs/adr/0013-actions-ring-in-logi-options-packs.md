@@ -9,6 +9,11 @@
 > after the F0–F7 and M1–M2 research in `actions-ring.md`. The user's own
 > Global Ring holds a folder, so without them neither a full backup nor a
 > per-app Ring copied from Global was possible.
+>
+> **Amended 2026-10-02 (icons):** item icons are part of the spec (Decisions 1,
+> 6, 10), after I1–I2 in `actions-ring.md`. An icon is a separate file found by
+> the item's reference, so the first Global → Chrome copy kept every macro and
+> the folder but lost their pictures.
 
 ## Context
 
@@ -70,6 +75,14 @@ Extend **`logi-options`**, not a new tool.
    - A folder Options+ wouldn't make (no page, gaps, more than 4 items, a
      folder inside) is refused by export, naming the slot. A slot is never
      skipped silently.
+   - `icon` *(amended 2026-10-02)*: on any action but `nothing`, folder items
+     included: a path to an `.svg`, `.png` or `.ict` file (relative to the spec
+     file) or the `.ict` document. It is written to
+     `ActionIcons/<reference>.ict` next to the profile, where LPS looks it up
+     by name (I1); an `.svg`/`.png` is wrapped the way the UI stores an
+     uploaded picture (I2). An icon is not part of the item's id (Decision 4)
+     nor of its in-sync check: an icon change rewrites only the file, compared
+     as parsed JSON. No `icon` leaves the file as it is.
 2. **Applications, per app as well as global.**
    - `{"global": true}` → LPS app `@_defaultwin`.
    - `{"executable": "x.exe"}` → plugin-less LPS app `x` (lower-case stem),
@@ -97,7 +110,9 @@ Extend **`logi-options`**, not a new tool.
    triggers a write (and so never an agent restart).
 6. **Surgical.** Only listed slots are written. Only actions with our own
    namespace ids are ever replaced or removed, and only once nothing
-   references them. Items and orphans the UI created are left alone.
+   references them. Items and orphans the UI created are left alone. The icon
+   file of an action of ours that is removed goes with it; a UI item's icon
+   is never deleted.
 7. **One transaction for both stores.** The Ring write runs inside the
    existing stop → write → start window of `transaction.apply_change`, with
    one agent restart. After stopping the agent, the tool waits at most ~1 s
@@ -115,7 +130,8 @@ Extend **`logi-options`**, not a new tool.
     `system`, `nothing` and `folder`, and anything else into `raw`, so a
     hand-made Ring can be adopted into a pack without loss. Macros export as
     `raw`; they are self-contained (M2), so a copy works in another app's Ring
-    (M1).
+    (M1). Each item's icon is exported as its `.ict` document, so the copy
+    keeps its pictures too.
 
 ## Consequences
 

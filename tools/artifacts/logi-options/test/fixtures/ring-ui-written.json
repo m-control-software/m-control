@@ -830,5 +830,80 @@
       "pressAction": "$@Generic___@Macro___<macro GUID>",
       "rotateAction": null
     }
+  },
+  "_comment_icons": "I1-I2 (docs/actions-ring.md): a Ring item's icon is <profile dir>/ActionIcons/<pressAction>.ict, looked up by file name; ProfileInfo.json does not reference it. Shapes as the UI wrote them, with the image replaced by '<base64 ...>' (the real ones are 2-40 KB). The UI writes 2- or 4-space indent, LF or CRLF, no BOM.",
+  "i2_ict_uploaded_png": {
+    "backgroundColor": 4278190080,
+    "items": [
+      {
+        "$type": "Loupedeck.Service.ActionIconImageItem, LoupedeckShared",
+        "image": "<base64 PNG>",
+        "imageFileName": "<name>.png",
+        "imageColor": 4294967295,
+        "imageRotation": "None",
+        "isVisible": true,
+        "itemType": "Image",
+        "area": {
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 100,
+          "isFullScreen": true
+        }
+      },
+      {
+        "$type": "Loupedeck.Service.ActionIconTextItem, LoupedeckShared",
+        "text": "",
+        "textColor": 4294967295,
+        "fontSize": 6,
+        "fontName": "Brown Logitech Pan Light",
+        "isVisible": true,
+        "itemType": "Text",
+        "area": {
+          "x": 0,
+          "y": 81,
+          "width": 100,
+          "height": 18,
+          "isFullScreen": false
+        }
+      }
+    ]
+  },
+  "i1_ict_folder_icon_edited": {
+    "backgroundColor": 4278190080,
+    "items": [
+      {
+        "$type": "Loupedeck.Service.ActionIconImageItem, LoupedeckShared",
+        "image": "<base64 SVG>",
+        "imageFileName": "<name>.svg",
+        "imageColor": 4294704123,
+        "imageRotation": "None",
+        "isVisible": true,
+        "itemType": "Image",
+        "area": {
+          "x": -5,
+          "y": -2,
+          "width": 106,
+          "height": 103,
+          "isFullScreen": false
+        }
+      },
+      {
+        "$type": "Loupedeck.Service.ActionIconTextItem, LoupedeckShared",
+        "text": "<label>",
+        "textColor": 4294967295,
+        "fontSize": 5,
+        "fontName": "Brown Logitech Pan Light",
+        "isVisible": false,
+        "itemType": "Text",
+        "area": {
+          "x": 0,
+          "y": 65,
+          "width": 100,
+          "height": 30,
+          "isFullScreen": false
+        }
+      }
+    ]
   }
 }

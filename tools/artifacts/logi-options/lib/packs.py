@@ -109,7 +109,7 @@ def merge(files: list[Path]) -> list[MergedProfile]:
                 if name in mp.ring:
                     raise SpecError(f"Actions Ring slot '{name}' of {key[1]} is set twice: in "
                                     f"{mp.ring_sources[name]} and in {where}. Remove one of them.")
-                mp.ring[name] = action
+                mp.ring[name] = ring.resolve_icons(action, path.parent, f"{where}.actionsRing.{slot}")
                 mp.ring_sources[name] = where
             for button, action in p.get("buttons", {}).items():
                 canonical_button = cat.BUTTON_ALIASES.get(button, button)

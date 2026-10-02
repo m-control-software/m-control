@@ -386,6 +386,8 @@ def mode_presets(ctx: Ctx) -> dict:
             "slotAliases": ring.SLOT_ALIASES,
             "actionForms": list(ring.ACTION_KEYS),
             "folderItems": f"1-{ring.FOLDER_MAX_ITEMS} actions: shortcut, system or raw (no folder, no nothing)",
+            "icon": "on any action but nothing: a path to an .svg, .png or .ict file (relative to the spec file) "
+                    "or an .ict document as mode=export writes it",
             "keys": sorted(ring.KEYS),
             "systemActions": systems,
             "builtinApps": sorted(m["alias"] for m in ring.BUILTIN_APPS.values()),

@@ -35,7 +35,11 @@ grammar. Don't restate it from memory; the details matter.
    - A Ring slot can hold a `folder` (a label and 1-4 items, no folder
      inside it). A new app's Ring starts empty and replaces the Global Ring
      while that app is in front, so copy the Global items the user wants to
-     keep (`mode=export` gives them, folders and macros included).
+     keep (`mode=export` gives them, folders, macros and icons included).
+   - Any Ring item but `nothing` can take an `icon` (an `.svg`/`.png`/`.ict`
+     path relative to the spec, or the `.ict` document export writes). Macros
+     and folders show only text without one. Icon files go in the pack's
+     directory, never in this repo.
    - v1 does not cover device settings (pointer speed, SmartShift, scroll
      direction, haptics), authoring macros, or other devices. Say so rather
      than approximating.

@@ -250,6 +250,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   backup nor a per-app Ring copied from Global was possible. Export now writes
   folders, and their macros as `raw` copies that work in another app's Ring.
 
+- **Actions Ring items keep their icons** (`logi-options`, ADR-0013 amended).
+  LogiPluginService keeps an item's picture in `ActionIcons/<reference>.ict`
+  next to the profile, which the tool didn't copy: a Ring copied from Global
+  into Chrome showed its macros and folder as bare text. Any Ring action but
+  `nothing` now takes an `icon`: a `.svg`, `.png` or `.ict` file relative to
+  the spec, or the `.ict` document that `mode=export` now writes for every
+  item that has one. Icons are written in the same transaction, backed up and
+  restored with the profile, removed with the tool's own items, and left alone
+  when a spec has none. They are not part of an item's id.
+
 - **A guardrail stops everything the tool started.** On a timeout (or the
   output/event caps) the runner used to stop only the tool process. On Windows
   that is TerminateProcess, which never reaches children, so yt-download's

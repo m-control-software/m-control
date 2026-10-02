@@ -6,7 +6,8 @@ The Global profile holds the UI-written evidence of ring-ui-written.json: the
 original 8 controls (R0), the UI's Ctrl+Shift+Esc item (R1) and its first K1
 item as orphans (R4: the UI never garbage-collects), and its own folder in slot
 `right` with the six macros (F0: the folder action and page as the UI wrote them,
-the macro bodies sanitized). --install also writes a synthetic DefaultWin xliff
+the macro bodies sanitized). The folder and the slot-1 macro have icons
+(ActionIcons/<ref>.ict, I1/I2). --install also writes a synthetic DefaultWin xliff
 (a few of the S1 names) so system actions resolve without LPS.
 """
 from __future__ import annotations
@@ -84,11 +85,25 @@ def write_xliff(install_dir: Path) -> Path:
     return path
 
 
+def ui_icon(key: str) -> bytes:
+    """An I1/I2 icon as the UI writes one (2-space indent, LF), with a tiny stand-in image."""
+    doc = copy.deepcopy(EVIDENCE[key])
+    doc["items"][0]["image"] = "PHN2Zy8+"  # "<svg/>"
+    return json.dumps(doc, indent=2, ensure_ascii=False).encode("utf-8")
+
+
 def make_ring_store(data_dir: Path, install_dir: Path | None = None) -> Path:
     app = data_dir / "Applications" / ring.RING_DEVICE / ring.GLOBAL_APP
     (app / "Profiles" / GLOBAL_PROFILE).mkdir(parents=True, exist_ok=True)
     (app / "ApplicationInfo.json").write_bytes(ring.canonical_json(global_info()))
-    (app / "Profiles" / GLOBAL_PROFILE / "ProfileInfo.json").write_bytes(ring.canonical_json(global_profile()))
+    profile = global_profile()
+    (app / "Profiles" / GLOBAL_PROFILE / "ProfileInfo.json").write_bytes(ring.canonical_json(profile))
+    # I1: the folder in slot `right` and the macro in slot 1 have icons; the other macros don't.
+    controls = ring.controls(profile)
+    icons = app / "Profiles" / GLOBAL_PROFILE / ring.ICON_DIR
+    icons.mkdir()
+    (icons / (controls[1]["pressAction"] + ring.ICON_SUFFIX)).write_bytes(ui_icon("i2_ict_uploaded_png"))
+    (icons / (controls[2]["pressAction"] + ring.ICON_SUFFIX)).write_bytes(ui_icon("i1_ict_folder_icon_edited"))
     if install_dir is not None:
         write_xliff(install_dir)
     return app

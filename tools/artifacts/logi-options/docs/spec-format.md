@@ -143,6 +143,15 @@ Each application can have its own Ring; an app without one shows the Global Ring
 | `nothing` | `{"nothing": true}` | an empty slot |
 | `raw` | `{"raw": {"pressAction": "$…", "definition": {…}}}` | a verbatim LogiPluginService item (macro, plugin action, run program). Export's lossless fallback. A macro is self-contained, so its `raw` copy works in another app's Ring too ([actions-ring.md](actions-ring.md#macros-m2-m1)) |
 | `folder` | `{"folder": {"label": "Explore AI", "items": [ …1-4 actions… ]}}` | a folder: the Ring shows `label`, and opening it shows its items in order. Items are `shortcut`, `system` or `raw`; no folder inside a folder, no empty item (Options+ allows neither) |
+| any + `icon` | `{"shortcut": "CTRL+SHIFT+Y", "label": "YT → mp3", "icon": "icons/yt.svg"}` | the item's picture, on any action but `nothing`, folder items included. A path to an `.svg`, `.png` or `.ict` file, relative to the spec file (`%VAR%` expands; at most 1 MB), or the `.ict` document itself, which is what `mode=export` writes. An `.svg`/`.png` is stored the way the UI stores an uploaded image (full size, untinted). Without `icon` the item's icon is left as it is |
+
+**Icons.** LogiPluginService keeps an item's icon in a file next to the profile,
+`ActionIcons/<item reference>.ict` ([actions-ring.md](actions-ring.md#icons-i1-i3)).
+Macros and folders have no picture without one (the Ring shows their text);
+shortcuts and system actions get a drawn one. An icon isn't part of an item's
+identity: changing it rewrites only the file. When the tool removes one of its own
+items, the item's icon goes too. Items whose reference names a program path or URL
+(some `raw` items) can't take an icon.
 
 **Ring shortcuts.** Modifiers `CTRL SHIFT ALT WIN`. Keys `A`–`Z`, `0`–`9`,
 `F1`–`F24`, `ESC`, `SPACE`, `LEFT`, `ENTER`, `SLASH`. That is what the UI was seen
@@ -165,7 +174,8 @@ machine; an item written under another installed layout counts as in sync.
 - **A folder is declared as a whole**: its label and its 1-4 items, in order. Changing
   any of them replaces the tool's folder and removes the old one; a folder the UI made
   is never deleted, only replaced in its slot. `mode=export` writes folders in this form,
-  and refuses (naming the slot) only a folder Options+ itself wouldn't make.
+  and refuses (naming the slot) only a folder Options+ itself wouldn't make. It also
+  writes each item's icon, so copying a Ring into another app keeps its pictures.
 - A profile may have only `actionsRing`: then nothing in settings.db changes and the
   executable doesn't have to be installed.
 

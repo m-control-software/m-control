@@ -23,7 +23,7 @@ ADR wins; "Proposed spec shape" below is the study's input to it.
 | Location | Holds | Changed by a Ring edit? |
 |---|---|---|
 | `%LOCALAPPDATA%\Logi\LogiPluginService\Applications\Loupedeck72\<app>\Profiles\<profile>\ProfileInfo.json` | **the Ring**: its 8 slots and the items they reference | **yes: the only authoritative file** |
-| `…\Profiles\<profile>\ActionIcons\<action>.ict` | rendered icon (JSON: base64 SVG + label) | written by the UI; **optional** (R5 wrote none and the item still showed an icon) |
+| `…\Profiles\<profile>\ActionIcons\<action>.ict` | the item's icon (JSON: base64 SVG/PNG + caption), looked up by file name | written by the UI; a shortcut or system item without one still shows a drawn icon (R5), a macro or folder only its text (I3). Written by the tool when a spec gives `icon` ([Icons](#icons-i1-i3)) |
 | `…\LogiPluginService\Snapshots\<guid>.st4` | zip of one whole profile: the UI's undo point | UI state; deleted again when the UI moves on |
 | `…\LogiPluginService\LoupedeckSettings.ini` | `CurrentApplication/<device>`: which app the UI shows; `Sentry/…` start timestamp | UI state / noise |
 | `…\LogiPluginService\Applications.Backups\backup_<date>.zip` | LPS's own backup of `Applications\` | at most daily, when the content hash changed |
@@ -266,7 +266,8 @@ that put the key at the same VK and scan code as US were tested. On a layout whe
 they differ (German QWERTZ: Y and Z swapped), which of VK, scan and HKL LPS
 replays from is **not known**.
 | `ShellExecute.filePath` | yes: a path | would need resolving like custom-app paths |
-| `.ict` icons, `lastModifiedTimeUtc`, `Snapshots\`, ini | UI state | not written (icons optional, R5) |
+| `lastModifiedTimeUtc`, `Snapshots\`, ini | UI state | not written |
+| `.ict` icons | the item's picture | written only for an item whose spec has `icon`; otherwise left alone ([Icons](#icons-i1-i3)) |
 
 ## Q6 — Write path
 
@@ -427,6 +428,25 @@ can copy a folder with its macros. Authoring: [spec-format.md](spec-format.md#ac
   fired from the copy in the Notepad Ring with Notepad in front. Which step makes the second tab, the launch or the Ctrl+N
   (stored in the older `keyboardKey` form), was not separated, and the copy question doesn't need it.
 
+### Icons (I1–I3)
+
+- **Where** (I1): `<profile dir>\ActionIcons\<pressAction>.ict`, one file per referenced item, named by the reference
+  (`$@Generic___@Macro___<G>.ict`, `$@Generic___@ProfileAction___<G>.ict`). `ProfileInfo.json` doesn't point at it
+  (`actionImages90`/`actionImages60`/`wheelImages` stay `null`); LPS finds it by name when it loads the profile. So a Ring copied
+  to another app (step 3 of the 2026-10-02 run) lost every macro's and the folder's picture: the items were there, the files
+  weren't. Copying the seven `.ict` files into the Chrome profile, owner stopped, brought them all back (**verified on the device**).
+  The folder's file had to be renamed, since the tool's folder has its own id.
+- **Shape** (I2): `{"backgroundColor": 4278190080, "items": [<image item>, <text item>]}`; the image item holds the base64 SVG or
+  PNG, its file name, a tint (`imageColor`) and an area in a 100×100 box. A picture uploaded in the UI is stored full-size,
+  untinted (`0xFFFFFFFF`) with a visible empty caption; the tool writes `.svg`/`.png` icons in that shape. The UI writes 2- or
+  4-space indent, LF or CRLF, no BOM, so files are compared as parsed JSON.
+- **Without one** (I3): shortcut and system items still get a drawn icon (R5); macros and folders show only their text.
+- Other per-item files (`ActionImages\*.png`, `ActionMetadata\icon-editor-v1\*.json`, the UI's editor state) are not needed
+  for the Ring to show the icon and are not written.
+
+**Decided** (ADR-0013, amended 2026-10-02): `icon` on any spec action but `nothing`, as a file path or the `.ict` document;
+written to the item's file, not part of its id, removed with the tool's own item, left alone when absent. Export embeds it.
+
 ## Risks after an Options+ / LPS update
 
 | Most likely break | Caught by ("refuse, not corrupt") |
@@ -491,6 +511,9 @@ The raw snapshots and file copies stayed under `~/.m-control/research/logi-optio
 | M1 | `ring_poc.py --app notepad --slot 2 --macro 4C29B55B…` (the Global "New Note" macro: launch Notepad, wait 1 s, Ctrl+N) into the Notepad Ring, owner stopped | kept byte for byte; the copy equals the Global macro, key order included. **Verified on the device:** fired from the Notepad Ring (Notepad in front) and from the Global Ring (Notepad in the background), each took Notepad from 1 tab to 2 |
 | M2 | read-only: the steps, plugins and references of the six Ring macros | Generic plugin only; every step inline or defined inside the macro; nothing refers to the profile. "Reply with ChatGPT" ends in a Mac-only keystroke |
 | R6d | restore the phase start: the Notepad Ring copied aside, the UI-created `notepad` app deleted and the ini put back from the baseline copy, owner stopped | after 45 s all 2568 files of the baseline hash manifest identical except the ini's Sentry stamp; the Global profile's SHA-256 equals the F0 value (`479FC647…F3B7`); `check=true` back to its earlier drift (the unapplied Chrome Ring) |
+| I1 | 2026-10-02, after the first tool-driven apply of the Chrome Ring (the Global Ring with its folder): the user saw text instead of icons for the macros and the folder. Read-only: the Global and Chrome `ActionIcons\` | Global: one `.ict` per macro and the folder (plus orphans); Chrome: none for them. `ProfileInfo.json` references no icon file |
+| I1b | Chrome app copied to a backup; owner stopped; the six macro `.ict` copied from Global under the same names, the folder's under the tool folder's reference; agent restarted | LPS back, `check=true` in sync. **Verified on the device**: every icon shown ("looks good") |
+| I2 | read-only: the shapes of the Global `.ict` files | the UI-uploaded PNGs: full-size, untinted, empty visible caption; the folder: an SVG, tinted, the label as a hidden caption. Kept, image removed, in the evidence fixture |
 
 The raw files of F0–F7 and M1–M2 (the watcher's log with its `MARK` lines, every saved version of every file under `Applications\`,
 the baseline hash manifest) stay under `~/.m-control/research/logi-options/ring-folders/`; the watcher and the diff script are in
