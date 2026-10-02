@@ -32,9 +32,13 @@ grammar. Don't restate it from memory; the details matter.
      a `haptic-panel` binding. Ring shortcuts accept fewer keys than buttons
      (spec-format.md, `actionsRing`); give an item a `label` when the shortcut
      alone doesn't say what it does.
+   - A Ring slot can hold a `folder` (a label and 1-4 items, no folder
+     inside it). A new app's Ring starts empty and replaces the Global Ring
+     while that app is in front, so copy the Global items the user wants to
+     keep (`mode=export` gives them, folders and macros included).
    - v1 does not cover device settings (pointer speed, SmartShift, scroll
-     direction, haptics), macros, Ring folders, or other devices. Say so
-     rather than approximating.
+     direction, haptics), authoring macros, or other devices. Say so rather
+     than approximating.
    - Only listed buttons change. A new profile starts from Logitech defaults,
      not from the Global profile.
 4. **Get real shortcuts from the application's actual key bindings**, never

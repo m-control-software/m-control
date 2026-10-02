@@ -23,7 +23,7 @@ mctl run logi-options mode=presets          # authoring vocabulary: buttons, pre
 mctl run logi-options mode=list             # profiles and Ring apps on this machine, and which pack defines each
 mctl run logi-options mode=export app=all out=C:/MikeM/m-control-personal/logi-options/personal.logi.json pack=personal
 mctl run logi-options mode=export app=rider64.exe      # print one profile as a spec (no file written)
-mctl run logi-options mode=export app=global ring=false  # buttons only (a Ring folder can't be exported)
+mctl run logi-options mode=export app=global ring=false  # buttons only, without the Ring
 mctl run logi-options mode=remove app=rider64.exe
 mctl run logi-options mode=backup | mode=backups | mode=restore backup=latest
 mctl run logi-options mode=inspect          # store, processes, catalog build, profiles in portable form

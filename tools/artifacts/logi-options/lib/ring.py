@@ -53,7 +53,12 @@ RING_NAMESPACE = uuid.UUID("5b0f3c1e-7a42-4d7e-9c35-2f6a8e1d4b90")
 
 SLOTS = ("top", "top-right", "right", "bottom-right", "bottom", "bottom-left", "left", "top-left")
 SLOT_ALIASES = {str(i + 1): s for i, s in enumerate(SLOTS)}
-ACTION_KEYS = ("shortcut", "system", "nothing", "raw")
+ACTION_KEYS = ("shortcut", "system", "nothing", "raw", "folder")
+# A folder page shows 4 slots; the UI allows no gaps and no folder inside a folder (F2-F4b).
+FOLDER_MAX_ITEMS = 4
+FOLDER_DESCRIPTION = "Group and nest multiple actions"  # what the current UI writes (F1); an older one wrote ""
+FOLDER_GROUP = "Folders"  # the UI language's word for it ("Foldery" in Polish); cosmetic (F6)
+PAGE_TYPE = "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutPage7, LoupedeckService"
 
 PROFILE_ACTION = "$@Generic___@ProfileAction___"
 MACRO = "$@Generic___@Macro___"
@@ -270,7 +275,7 @@ def _def_location(ref: str) -> tuple[str, str] | None:
     return None
 
 
-def canonical_action(action, where: str) -> dict:
+def canonical_action(action, where: str, in_folder: bool = False) -> dict:
     """Validate one Ring action and return what it means (aliases resolved)."""
     if not isinstance(action, dict):
         raise SpecError(f"{where}: expected an action object like {{\"shortcut\": \"CTRL+SHIFT+Y\"}}, got {action!r}.")
@@ -278,9 +283,13 @@ def canonical_action(action, where: str) -> dict:
     unknown = [k for k in action if k not in ACTION_KEYS and not (k == "label" and kinds == ["shortcut"])]
     if len(kinds) != 1 or unknown:
         raise SpecError(f"{where}: a Ring action is exactly one of {', '.join(ACTION_KEYS)} (a shortcut may add a "
-                        f"label); got {kinds or 'none'}, unknown fields: {unknown or 'none'}. Folders are not "
-                        "supported (ADR-0013).")
+                        f"label); got {kinds or 'none'}, unknown fields: {unknown or 'none'}.")
     kind, value = kinds[0], action[kinds[0]]
+    if in_folder and kind in ("folder", "nothing"):
+        raise SpecError(f"{where}: a folder item can't be {kind}: Options+ allows no folder inside a folder and no "
+                        "empty slot between items (docs/actions-ring.md, F3/F4). List only the items, in order.")
+    if kind == "folder":
+        return {"folder": _canonical_folder(value, where)}
     if kind == "shortcut":
         out = {"shortcut": canonical_shortcut(value, where)}
         if "label" in action:
@@ -310,8 +319,34 @@ def canonical_action(action, where: str) -> dict:
         if loc is None or not isinstance(definition, dict) or definition.get("name") != loc[1]:
             raise SpecError(f"{where}: raw.definition must be the profile action or macro that {ref} names.")
         if definition.get("templateActionName") == FOLDER_TEMPLATE:
-            raise SpecError(f"{where}: folders are not supported in a Ring spec (ADR-0013).")
+            raise SpecError(f"{where}: a folder can't be raw: write it as {{\"folder\": {{\"label\": …, \"items\": "
+                            "[…]}}}} (mode=export produces that form).")
     return {"raw": {"pressAction": ref, "definition": definition}}
+
+
+def _canonical_folder(value, where: str) -> dict:
+    if not isinstance(value, dict) or set(value) != {"label", "items"}:
+        raise SpecError(f"{where}.folder must be {{\"label\": \"…\", \"items\": [1-{FOLDER_MAX_ITEMS} actions]}}.")
+    label, items = value["label"], value["items"]
+    if not isinstance(label, str) or not label.strip():
+        raise SpecError(f"{where}.folder.label must be a non-empty string.")
+    if not isinstance(items, list) or not 1 <= len(items) <= FOLDER_MAX_ITEMS:
+        raise SpecError(f"{where}.folder.items must list 1-{FOLDER_MAX_ITEMS} actions: a folder page shows "
+                        f"{FOLDER_MAX_ITEMS} slots (docs/actions-ring.md, F2).")
+    return {"label": label,
+            "items": [canonical_action(a, f"{where}.folder.items[{n}]", in_folder=True) for n, a in enumerate(items)]}
+
+
+def walk(canon: dict):
+    """The action and, for a folder, each of its items."""
+    yield canon
+    yield from canon.get("folder", {}).get("items", [])
+
+
+def folder_guid(folder: dict) -> str:
+    """From the folder's content, like a shortcut's id (ADR-0013 Decision 4): a rename or an item change
+    gives a new folder, and the tool's old one is collected."""
+    return uuid.uuid5(RING_NAMESPACE, "folder:" + json.dumps(folder, sort_keys=True, ensure_ascii=False)).hex.upper()
 
 
 def validate_ring(ring, where: str) -> None:
@@ -328,6 +363,8 @@ def validate_ring(ring, where: str) -> None:
 
 
 def action_id(canon: dict) -> str:
+    if "folder" in canon:
+        return PROFILE_ACTION + folder_guid(canon["folder"])
     key = "shortcut:" + canon["shortcut"] + ("\nlabel:" + canon["label"] if "label" in canon else "")
     return PROFILE_ACTION + uuid.uuid5(RING_NAMESPACE, key).hex.upper()
 
@@ -428,6 +465,60 @@ def keyboard_action(canon: dict, kb: Keyboard) -> dict:
     }
 
 
+def folder_action(guid: str, label: str) -> dict:
+    """The folder item in the exact key order the UI writes it (F1)."""
+    return {
+        "$type": "Loupedeck.Service.ApplicationProfileCommand, LoupedeckService",
+        "isCommand": True,
+        "name": PROFILE_ACTION + guid,
+        "templateActionName": FOLDER_TEMPLATE,
+        "actionParameters": {
+            "$type": "Loupedeck.ActionEditorActionParameters, PluginApi",
+            "parameters": {"$type": "Loupedeck.StringDictionaryNoCase, PluginApi", "folderName": guid},
+            "count": 1,
+        },
+        "displayName": label,
+        "description": FOLDER_DESCRIPTION,
+        "groupName": FOLDER_GROUP,
+        "superGroupName": "@navigation",
+        "isProfileAction": True,
+        "isMultiState": False,
+        "isResetCommand": False,
+        "adjustmentName": None,
+        "states": None,
+    }
+
+
+def folder_page(guid: str, refs: list[str]) -> dict:
+    """The folder's page (F1): named like its action, the generic title "Folder" (the label lives on the
+    action), and only the used controls, ids 0..n-1."""
+    return {"$type": PAGE_TYPE, "name": guid, "displayName": "Folder", "description": FOLDER_DESCRIPTION,
+            "controls": [{"$type": CONTROL_TYPE, "controlId": i, "pressAction": ref, "rotateAction": None}
+                         for i, ref in enumerate(refs)]}
+
+
+def _folder_page_of(doc: dict, definition: dict) -> dict | None:
+    name = ((definition.get("actionParameters") or {}).get("parameters") or {}).get("folderName")
+    pages = (doc.get("layout") or {}).get("folderPages") or []
+    return next((p for p in pages if name and p.get("name") == name), None)
+
+
+def _decompile_folder(doc: dict, definition: dict, systems: dict[str, str]) -> dict:
+    label = definition.get("displayName") or ""
+    page = _folder_page_of(doc, definition)
+    if page is None:
+        return {"_unsupported": f"folder {label!r} has no page"}
+    refs = [c.get("pressAction") for c in page.get("controls") or []]
+    ids = [c.get("controlId") for c in page.get("controls") or []]
+    if not 1 <= len(refs) <= FOLDER_MAX_ITEMS or ids != list(range(len(refs))) or None in refs:
+        return {"_unsupported": f"folder {label!r} has a page Options+ doesn't make (controls {ids}; "
+                                "docs/actions-ring.md F2/F4: 1-4 used controls, ids 0..n-1)"}
+    items = [decompile(doc, r, systems) for r in refs]
+    if any("folder" in i or "_unsupported" in i for i in items):
+        return {"_unsupported": f"folder {label!r} holds a folder, which Options+ doesn't allow (F3)"}
+    return {"folder": {"label": label, "items": items}}
+
+
 def _definition(doc: dict, ref: str) -> dict | None:
     loc = _def_location(ref)
     if loc is None:
@@ -436,9 +527,9 @@ def _definition(doc: dict, ref: str) -> dict | None:
 
 
 def decompile(doc: dict, ref: str | None, systems: dict[str, str]) -> dict:
-    """What a slot's reference means, in spec form. Folders decompile to {"folder": label}
-    (not a spec action: export refuses them). A shortcut carries the HKL it was
-    recorded with under "_hkl" (not part of the spec)."""
+    """What a slot's reference means, in spec form. A shortcut carries the HKL it was
+    recorded with under "_hkl" (not part of the spec). A folder Options+ wouldn't make
+    (no page, gaps, more than 4 items, a folder inside) is {"_unsupported": why}."""
     if ref is None:
         return {"nothing": True}
     by_name = {v: k for k, v in systems.items()}
@@ -446,7 +537,7 @@ def decompile(doc: dict, ref: str | None, systems: dict[str, str]) -> dict:
         return {"system": by_name[ref[len(SYSTEM_PREFIX):]]}
     definition = _definition(doc, ref)
     if definition is not None and definition.get("templateActionName") == FOLDER_TEMPLATE:
-        return {"folder": definition.get("displayName") or ref}
+        return _decompile_folder(doc, definition, systems)
     if definition is not None and definition.get("templateActionName") == KEYBOARD_TEMPLATE:
         params = (definition.get("actionParameters") or {}).get("parameters") or {}
         d = decode(params.get("keyboardKey", ""))
@@ -460,10 +551,16 @@ def decompile(doc: dict, ref: str | None, systems: dict[str, str]) -> dict:
 
 
 def portable(action: dict) -> dict:
-    return {k: v for k, v in action.items() if not k.startswith("_")}
+    """The spec form: without the "_" annotations decompile adds, a folder's items included."""
+    out = {k: v for k, v in action.items() if not k.startswith("_")}
+    if "folder" in out:
+        out["folder"] = {"label": out["folder"]["label"], "items": [portable(i) for i in out["folder"]["items"]]}
+    return out
 
 
 def describe(action: dict) -> str:
+    if "_unsupported" in action:
+        return action["_unsupported"]
     a = portable(action)
     if "shortcut" in a:
         return "shortcut " + a["shortcut"] + (f" (label {a['label']!r})" if "label" in a else "")
@@ -472,7 +569,7 @@ def describe(action: dict) -> str:
     if "nothing" in a:
         return "nothing"
     if "folder" in a:
-        return f"folder {a['folder']!r}"
+        return f"folder {a['folder']['label']!r} [" + ", ".join(describe(i) for i in a["folder"]["items"]) + "]"
     return "raw " + a["raw"]["pressAction"]
 
 
@@ -480,12 +577,17 @@ def in_sync(doc: dict, ref: str | None, canon: dict, kb_installed, systems) -> b
     got = decompile(doc, ref, systems)
     if portable(got) != canon:
         return False
-    return "_hkl" not in got or got["_hkl"] in kb_installed  # an HKL difference alone never triggers a write
+    # an HKL difference alone never triggers a write, as long as that layout is installed here
+    return all("_hkl" not in a or a["_hkl"] in kb_installed for a in walk(got))
 
 
-def is_ours(action: dict) -> bool:
-    """Ours = a shortcut action whose id is the one its own content derives (Decision 6)."""
-    if action.get("templateActionName") != KEYBOARD_TEMPLATE:
+def is_ours(action: dict, doc: dict, systems: dict[str, str]) -> bool:
+    """Ours = a shortcut or folder action whose id is the one its own content derives (Decision 6)."""
+    template = action.get("templateActionName")
+    if template == FOLDER_TEMPLATE:
+        got = _decompile_folder(doc, action, systems)
+        return "folder" in got and action.get("name") == action_id(portable(got))
+    if template != KEYBOARD_TEMPLATE:
         return False
     params = (action.get("actionParameters") or {}).get("parameters") or {}
     d = decode(params.get("keyboardKey", ""))
@@ -676,18 +778,20 @@ def plan(target: Target, ring_spec: dict, sources: dict[str, str], store: RingSt
     `keyboard` is called only when a shortcut must be encoded or compared."""
     slots = {slot_index(s, "actionsRing"): canonical_action(a, f"actionsRing.{s}") for s, a in ring_spec.items()}
     srcs = {slot_index(s, "actionsRing"): sources.get(s, "") for s in ring_spec}
-    if any("system" in a for a in slots.values()):
+    every = [a for top in slots.values() for a in walk(top)]
+    if any("system" in a for a in every):
         systems = store.systems()
     else:
         try:  # only for describing a slot that currently holds a system action
             systems = store.systems()
         except StoreError:
             systems = {}
-    for i, a in slots.items():
-        if "system" in a and a["system"] not in systems:
-            raise SpecError(f"{srcs[i]}: actionsRing.{SLOTS[i]}: unknown system action '{a['system']}'. Installed: "
-                            f"{', '.join(sorted(systems))}.")
-    kb = keyboard() if any("shortcut" in a for a in slots.values()) else None
+    for i, top in slots.items():
+        for a in walk(top):
+            if "system" in a and a["system"] not in systems:
+                raise SpecError(f"{srcs[i]}: actionsRing.{SLOTS[i]}: unknown system action '{a['system']}'. "
+                                f"Installed: {', '.join(sorted(systems))}.")
+    kb = keyboard() if any("shortcut" in a for a in every) else None
     installed = kb.installed if kb else frozenset()
 
     changes, drift = [], []
@@ -718,7 +822,7 @@ def plan(target: Target, ring_spec: dict, sources: dict[str, str], store: RingSt
         else:
             changes.append(f"~ actionsRing.{SLOTS[i]} (controlId {i}): {describe(canon)} re-encoded for keyboard "
                            f"layout {kb.hkl if kb else '-'}")
-    _collect_garbage(doc, changes)
+    _collect_garbage(doc, changes, systems)
     after = canonical_json(doc)
     if target.profile is not None and after == before:
         changes = []
@@ -734,23 +838,33 @@ def _compile_into(doc: dict, canon: dict, kb: Keyboard | None, systems: dict, wh
     if "shortcut" in canon:
         assert kb is not None
         definition = keyboard_action(canon, kb)
-        _upsert(doc, "profileActions", definition, where, changes, replace_ok=True)
+        _upsert(doc.setdefault("profileActions", []), "profileActions", definition, where, changes, replace_ok=True)
         return definition["name"]
+    if "folder" in canon:
+        # The order the UI saves them in (F1): the folder action, each item, then the page.
+        guid = folder_guid(canon["folder"])
+        _upsert(doc.setdefault("profileActions", []), "profileActions", folder_action(guid, canon["folder"]["label"]),
+                where, changes, replace_ok=True)
+        refs = [_compile_into(doc, item, kb, systems, f"{where}.folder.items[{n}]", changes)
+                for n, item in enumerate(canon["folder"]["items"])]
+        _upsert(doc["layout"].setdefault("folderPages", []), "layout.folderPages", folder_page(guid, refs), where,
+                changes, replace_ok=True)
+        return PROFILE_ACTION + guid
     ref, definition = canon["raw"]["pressAction"], canon["raw"]["definition"]
     if definition is not None:
-        _upsert(doc, _def_location(ref)[0], copy.deepcopy(definition), where, changes, replace_ok=False)
+        list_name = _def_location(ref)[0]
+        _upsert(doc.setdefault(list_name, []), list_name, copy.deepcopy(definition), where, changes, replace_ok=False)
     return ref
 
 
-def _upsert(doc: dict, list_name: str, definition: dict, where: str, changes: list[str], replace_ok: bool) -> None:
-    items = doc.setdefault(list_name, [])
+def _upsert(items: list, list_name: str, definition: dict, where: str, changes: list[str], replace_ok: bool) -> None:
     idx = next((j for j, a in enumerate(items) if a.get("name") == definition["name"]), None)
     if idx is None:
         items.append(definition)
         changes.append(f"+ {list_name}[{definition['name']}]")
     elif items[idx] != definition:
-        # A shortcut's id is derived from its spec action in our namespace, so an entry
-        # with that id is ours by construction; a raw definition's id is not.
+        # A shortcut's or folder's id is derived from its spec action in our namespace, so an
+        # entry with that id is ours by construction; a raw definition's id is not.
         if not replace_ok:
             raise SpecError(f"{where}: {list_name}[{definition['name']}] already exists with different content, and "
                             "it isn't the tool's own. Export the Ring again (mode=export) to adopt it.")
@@ -758,31 +872,37 @@ def _upsert(doc: dict, list_name: str, definition: dict, where: str, changes: li
         changes.append(f"~ {list_name}[{definition['name']}]")
 
 
-def _collect_garbage(doc: dict, changes: list[str]) -> None:
-    """Drop our own actions that nothing references any more. UI items and orphans stay."""
-    refs = _references(doc, set())
-    keep = []
-    for a in doc.get("profileActions") or []:
-        if is_ours(a) and a.get("name") not in refs:
+def _collect_garbage(doc: dict, changes: list[str], systems: dict[str, str]) -> None:
+    """Drop our own actions that nothing references any more, and the page of each of our folders
+    dropped. Repeated, since dropping a folder unreferences its items. UI items and orphans stay."""
+    while True:
+        refs = _references(doc, set())
+        gone = [a for a in doc.get("profileActions") or [] if a.get("name") not in refs and is_ours(a, doc, systems)]
+        if not gone:
+            return
+        pages = {(p := _folder_page_of(doc, a)) and p.get("name") for a in gone} - {None}
+        for a in gone:
             changes.append(f"- profileActions[{a['name']}] (the tool's own, no longer referenced)")
-            continue
-        keep.append(a)
-    if "profileActions" in doc:
-        doc["profileActions"] = keep
+        doc["profileActions"] = [a for a in doc["profileActions"] if a not in gone]
+        if pages:
+            for name in sorted(pages):
+                changes.append(f"- layout.folderPages[{name}] (its folder was the tool's own)")
+            doc["layout"]["folderPages"] = [p for p in doc["layout"]["folderPages"] if p.get("name") not in pages]
 
 
 def export_slots(prof: RingProfile, systems: dict[str, str]) -> tuple[dict, list[str]]:
-    """All 8 slots in spec form. A folder is a recoverable error naming the slot (Decision 1)."""
+    """All 8 slots in spec form, folders included. A folder Options+ wouldn't make is a
+    recoverable error naming the slot: export never drops or rewrites what it can't express."""
     ring, warnings = {}, []
     for i, ctl in enumerate(controls(prof.doc)):
         a = decompile(prof.doc, ctl.get("pressAction"), systems)
-        if "folder" in a:
-            raise SpecError(f"Ring app {prof.app}, slot {SLOTS[i]}: it is a folder ({a['folder']!r}), which a Ring "
-                            "spec can't express (ADR-0013). Move the folder's items to slots, or export without "
-                            "the Ring: ring=false.")
-        if "raw" in a:
-            warnings.append(f"Ring app {prof.app} actionsRing.{SLOTS[i]}: exported as raw "
-                            f"({a['raw']['pressAction']}); it has no portable form and may not survive LPS updates.")
+        if "_unsupported" in a:
+            raise SpecError(f"Ring app {prof.app}, slot {SLOTS[i]}: {a['_unsupported']}, which a Ring spec can't "
+                            "express. Fix it in the Options+ UI, or export without the Ring: ring=false.")
+        for item in walk(a):
+            if "raw" in item:
+                warnings.append(f"Ring app {prof.app} actionsRing.{SLOTS[i]}: {item['raw']['pressAction']} exported "
+                                "as raw; it has no portable form and may not survive LPS updates.")
         ring[SLOTS[i]] = portable(a)
     return ring, warnings
 
@@ -796,7 +916,7 @@ def verify(p: Plan, store: RingStore, keyboard: Callable[[], Keyboard]) -> list[
     problems = []
     if prof.raw != p.after:
         problems.append(f"{p.target.label}: {prof.path} changed after it was written (LogiPluginService rewrote it)")
-    kb = keyboard() if any("shortcut" in a for a in p.slots.values()) else None
+    kb = keyboard() if any("shortcut" in a for top in p.slots.values() for a in walk(top)) else None
     systems = store.systems()
     for i, canon in p.slots.items():
         ref = controls(prof.doc)[i].get("pressAction")

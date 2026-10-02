@@ -201,7 +201,7 @@ class Store(Tree):
         got = [ring.describe(ring.decompile(prof.doc, c["pressAction"], self.store.systems()))
                for c in ring.controls(prof.doc)]
         self.assertEqual(got[0], "system media-play-pause")
-        self.assertEqual(got[2], "folder 'Explore AI'")
+        self.assertTrue(got[2].startswith("folder 'Explore AI' [raw $@Generic___@Macro___"), got[2])
         self.assertTrue(got[1].startswith("raw $@Generic___@Macro___"))
 
     def test_guards_refuse_a_changed_writer_or_layout_and_write_nothing(self):
@@ -390,8 +390,21 @@ class Export(Tree):
         self.assertEqual(len(warnings), 2)  # the two macros are raw
         self.assertEqual(self.plan(slots).changes, [])  # re-imports as in sync, raw macros included
 
-    def test_export_refuses_a_folder_naming_the_slot(self):
-        with self.assertRaisesRegex(SpecError, "slot right: it is a folder"):
+    def test_export_writes_the_global_folder_and_it_applies_back_unchanged(self):
+        prof = self.store.read(ring.GLOBAL_APP)
+        slots, warnings = ring.export_slots(prof, self.store.systems())
+        folder = slots["right"]["folder"]
+        self.assertEqual(folder["label"], "Explore AI")
+        self.assertEqual([list(i) for i in folder["items"]], [["raw"]] * 4)  # its four macros
+        self.assertEqual(len(warnings), 6)  # 2 macros on the Ring + 4 in the folder, each named
+        self.assertEqual(self.plan(slots).changes, [])  # what export says is exactly what is there
+
+    def test_export_refuses_a_folder_options_wouldnt_make(self):
+        prof = self.store.read(ring.GLOBAL_APP)
+        broken = copy.deepcopy(prof.doc)
+        broken["layout"]["folderPages"][0]["controls"].pop(1)  # a gap: ids 0, 2, 3
+        prof.path.write_bytes(ring.canonical_json(broken))
+        with self.assertRaisesRegex(SpecError, "slot right: folder 'Explore AI' has a page Options\\+ doesn't make"):
             ring.export_slots(self.store.read(ring.GLOBAL_APP), self.store.systems())
 
     def test_spec_application_of_each_app_kind(self):
@@ -402,9 +415,95 @@ class Export(Tree):
                                "notepad": {"executable": "notepad.exe", "name": "Notepad"}})
 
 
+
+class Folders(Tree):
+    """Folders in a Ring spec (ADR-0013, amended): compiled like the UI writes them (F1), applied
+    surgically, collected when the tool's own folder goes, and refused where Options+ refuses."""
+
+    F1 = EVIDENCE["f1_folder_ui_written"]
+    YT = {"shortcut": "CTRL+SHIFT+Y", "label": "YT → mp3"}
+
+    def folder(self, *items, label="Tools"):
+        return {"folder": {"label": label, "items": list(items)}}
+
+    def test_compiles_the_ui_bodies_byte_for_byte(self):
+        guid = self.F1["folderAction"]["name"].rsplit("___", 1)[1]
+        refs = [c["pressAction"] for c in self.F1["folderPage"]["controls"]]
+        ui_action = dict(self.F1["folderAction"], groupName=ring.FOLDER_GROUP)  # the UI's language word, cosmetic
+        self.assertEqual(json.dumps(ring.folder_action(guid, "Folder")), json.dumps(ui_action))
+        self.assertEqual(json.dumps(ring.folder_page(guid, refs)), json.dumps(self.F1["folderPage"]))
+
+    def test_a_folder_applies_once_and_decompiles_to_its_spec(self):
+        spec = {"top": self.folder(self.YT, {"system": "media-play-pause"})}
+        p = self.apply(spec, {"builtin": "google-chrome"})
+        doc = self.store.read("chrome").doc
+        guid = ring.folder_guid(ring.canonical_action(spec["top"], "x")["folder"])
+        self.assertEqual([pg["name"] for pg in doc["layout"]["folderPages"]], [guid])
+        self.assertEqual([a["templateActionName"] for a in doc["profileActions"]],
+                         [ring.FOLDER_TEMPLATE, ring.KEYBOARD_TEMPLATE])  # the UI's order: folder, then items
+        got = ring.portable(ring.decompile(doc, ring.controls(doc)[0]["pressAction"], self.store.systems()))
+        self.assertEqual(got, spec["top"])
+        self.assertTrue(p.changes)
+        self.assertEqual(self.plan(spec, {"builtin": "google-chrome"}).changes, [])
+
+    def test_the_global_ring_with_its_folder_copies_into_the_chrome_ring(self):
+        slots, _ = ring.export_slots(self.store.read(ring.GLOBAL_APP), self.store.systems())
+        slots["top"] = self.YT  # the YouTube item instead of Media Play/Pause
+        self.apply(slots, {"builtin": "google-chrome"})
+        chrome = self.store.read("chrome")
+        got, _ = ring.export_slots(chrome, self.store.systems())
+        self.assertEqual(got, slots)
+        self.assertEqual(len(chrome.doc["macroCommands"]), 6)  # every macro came along verbatim (M1)
+        self.assertEqual(self.plan(slots, {"builtin": "google-chrome"}).changes, [])
+
+    def test_changing_a_folder_replaces_it_and_collects_the_old_one(self):
+        app = {"builtin": "google-chrome"}
+        self.apply({"top": self.folder(self.YT, {"shortcut": "CTRL+ALT+Y"})}, app)
+        p = self.apply({"top": self.folder(self.YT, label="Renamed")}, app)
+        doc = self.store.read("chrome").doc
+        self.assertEqual(len(doc["layout"]["folderPages"]), 1)
+        self.assertEqual(sorted(a["displayName"] for a in doc["profileActions"]), ["Renamed", "YT → mp3"])
+        self.assertTrue(any(c.startswith("- layout.folderPages[") for c in p.changes))
+        self.apply({"top": {"nothing": True}}, app)
+        doc = self.store.read("chrome").doc
+        self.assertEqual((doc["profileActions"], doc["layout"]["folderPages"]), ([], []))
+
+    def test_replacing_the_uis_own_folder_never_deletes_it(self):
+        before = self.global_doc()
+        self.apply({"right": {"system": "media-play-pause"}})
+        after = self.global_doc()
+        self.assertEqual(after["layout"]["folderPages"], before["layout"]["folderPages"])
+        self.assertEqual(after["profileActions"], before["profileActions"])  # not the tool's: left as an orphan
+        self.assertEqual(after["macroCommands"], before["macroCommands"])
+
+    def test_cosmetic_fields_and_an_installed_layout_are_in_sync(self):
+        app = {"builtin": "google-chrome"}
+        spec = {"top": self.folder(self.YT)}
+        self.apply(spec, app, kb=KB_US)  # recorded under US; KB has both layouts
+        prof = self.store.read("chrome")
+        doc = copy.deepcopy(prof.doc)
+        doc["layout"]["folderPages"][0]["description"] = ""  # an older UI
+        folder = next(a for a in doc["profileActions"] if a["templateActionName"] == ring.FOLDER_TEMPLATE)
+        folder["groupName"] = "Foldery"  # a Polish UI
+        prof.path.write_bytes(ring.canonical_json(doc))
+        self.assertEqual(self.plan(spec, app, kb=KB).changes, [])
+
+    def test_refuses_what_options_refuses(self):
+        for action, why in [
+            (self.folder(), "no items"),
+            (self.folder(*[{"system": "media-play-pause"}] * 5), "five items"),
+            (self.folder(self.folder(self.YT)), "a folder in a folder"),
+            (self.folder({"nothing": True}, self.YT), "a gap"),
+            ({"folder": {"label": "", "items": [self.YT]}}, "empty label"),
+            ({"folder": {"label": "x", "items": [self.YT], "icon": "y"}}, "unknown field"),
+            ({"folder": ["x"]}, "not an object"),
+        ]:
+            with self.subTest(why), self.assertRaises(SpecError):
+                ring.validate_ring({"top": action}, "test")
+
 class FolderEvidence(unittest.TestCase):
     """Folders and macros as the UI wrote them (F0-F5, M1 in docs/actions-ring.md), and the research PoC that
-    reproduces them. Nothing here is a tool feature: folders are not in the spec (ADR-0013)."""
+    reproduces them. The tool's own folder support is tested in `Folders`."""
 
     F1 = EVIDENCE["f1_folder_ui_written"]
     GUID = F1["folderAction"]["name"].rsplit("___", 1)[1]

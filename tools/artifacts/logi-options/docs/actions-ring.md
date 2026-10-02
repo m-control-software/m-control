@@ -370,8 +370,8 @@ profile, write and verify steps for Ctrl/Alt/Win/Shift with A–Z, F1–F24 or E
 Researched 2026-10-01 (F0–F7, M1–M2 in [Evidence](#evidence)) on a **newer build** than the rest of this
 study: Options+ agent 2.8.981479, LogiPluginService 6.4.2.3414, catalog build `876310` (Options+ updated itself in between;
 the Ring's format did not change: every test and `check=true` pass as before). Windows 11 (26200), Polish UI, MX Master 4.
-**No tool change**: folders are still not in the spec (ADR-0013), so `mode=export` still refuses a Ring with one (F7). This
-is the evidence a later decision needs. The UI-written bodies are in
+At the time no tool change was made, and `mode=export` refused a Ring with a folder (F7); this evidence is what folder
+support (ADR-0013, amended 2026-10-02) was then built on. The UI-written bodies are in
 [`../test/fixtures/ring-ui-written.json`](../test/fixtures/ring-ui-written.json) (`f0_*` … `m1_*`, URLs, paths and text replaced),
 and `FolderEvidence` in `test/test_ring.py` pins them.
 
@@ -404,10 +404,10 @@ from (M2), and the copy behaved like the original on the device (M1, [Macros](#m
   and nothing replays from them. The PoC wrote the English `groupName` and the current description under a Polish UI and the
   folder worked (F6). An in-sync check should ignore both, as it ignores the HKL.
 
-What a spec would need, **not decided**: `{"folder": {"label": "…", "items": [1–4 actions]}}`; items limited to shortcut, system
-and `raw` (a macro); no nesting and no gaps (the UI forbids both); ids derived from the content, as for shortcuts (the PoC hashes
-label and items, so a rename replaces the folder's id and its page). It would also let export stop refusing the Global Ring,
-and let a per-app Ring copy a folder's items.
+**Decided** (ADR-0013, amended 2026-10-02) and implemented in `lib/ring.py`: `{"folder": {"label": "…", "items": [1–4
+actions]}}`, items shortcut, system or `raw` (a macro); no nesting and no gaps; the id derived from the content (label and items),
+as for shortcuts, so a rename replaces the folder's id and its page. Export no longer refuses the Global Ring, and a per-app Ring
+can copy a folder with its macros. Authoring: [spec-format.md](spec-format.md#actionsring--the-actions-ring).
 
 ### Macros (M2, M1)
 
@@ -450,7 +450,6 @@ and let a per-app Ring copy a folder's items.
 | Is the Global profile folder name random per install? | compare `defaultProfileName` on a second machine or after a reinstall |
 | Are `settings.db`'s `radial-menu` slots ever read? | not needed for the feature; leave untouched |
 | Logitech account sync of LPS profiles | untested, as for `settings.db` |
-| Which id should a spec folder get: content (label + items, as the PoC does) or label only? | a decision for the ADR: with content, a rename or an item change replaces the folder's id and page; with the label alone, two folders of one name collide |
 | Does a keystroke in the older `keyboardKey` form (no platform part) fire inside a macro? | M1 copied a macro with one and it behaved like the original (1 → 2 tabs from both Rings), but the launch alone may have made the tab. Copy or write a macro whose only step is that keystroke |
 | Do `groupName`/`description` of a folder matter to anything but the UI's labels? | F6 worked with the English values under a Polish UI; the UI's own edit of a PoC folder was not recorded |
 

@@ -385,6 +385,7 @@ def mode_presets(ctx: Ctx) -> dict:
             "slots": list(ring.SLOTS),
             "slotAliases": ring.SLOT_ALIASES,
             "actionForms": list(ring.ACTION_KEYS),
+            "folderItems": f"1-{ring.FOLDER_MAX_ITEMS} actions: shortcut, system or raw (no folder, no nothing)",
             "keys": sorted(ring.KEYS),
             "systemActions": systems,
             "builtinApps": sorted(m["alias"] for m in ring.BUILTIN_APPS.values()),

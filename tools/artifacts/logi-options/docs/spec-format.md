@@ -125,6 +125,8 @@ Each application can have its own Ring; an app without one shows the Global Ring
   "actionsRing": {
     "top":   { "shortcut": "CTRL+SHIFT+Y", "label": "YT → mp3" },
     "right": { "system": "media-play-pause" },
+    "bottom": { "folder": { "label": "Explore AI", "items": [
+      { "shortcut": "CTRL+ALT+Y" }, { "system": "lock-workstation" } ] } },
     "left":  { "nothing": true }
   } }
 ```
@@ -139,7 +141,8 @@ Each application can have its own Ring; an app without one shows the Global Ring
 | `shortcut` + `label` | `{"shortcut": "CTRL+SHIFT+Y", "label": "YT → mp3"}` | the text the Ring shows; without it the Ring shows the shortcut |
 | `system` | `{"system": "media-play-pause"}` | one of LogiPluginService's system actions: `lock-workstation`, `windows-explorer`, `windows-screenshot`, `windows-magnifier`, `volume-up`, `media-next-track`, … Full list: `mctl run logi-options mode=presets` (`actionsRing.systemActions`) |
 | `nothing` | `{"nothing": true}` | an empty slot |
-| `raw` | `{"raw": {"pressAction": "$…", "definition": {…}}}` | a verbatim LogiPluginService item (macro, plugin action, run program). Export's lossless fallback, not portable |
+| `raw` | `{"raw": {"pressAction": "$…", "definition": {…}}}` | a verbatim LogiPluginService item (macro, plugin action, run program). Export's lossless fallback. A macro is self-contained, so its `raw` copy works in another app's Ring too ([actions-ring.md](actions-ring.md#macros-m2-m1)) |
+| `folder` | `{"folder": {"label": "Explore AI", "items": [ …1-4 actions… ]}}` | a folder: the Ring shows `label`, and opening it shows its items in order. Items are `shortcut`, `system` or `raw`; no folder inside a folder, no empty item (Options+ allows neither) |
 
 **Ring shortcuts.** Modifiers `CTRL SHIFT ALT WIN`. Keys `A`–`Z`, `0`–`9`,
 `F1`–`F24`, `ESC`, `SPACE`, `LEFT`, `ENTER`, `SLASH`. That is what the UI was seen
@@ -159,8 +162,10 @@ machine; an item written under another installed layout counts as in sync.
 - **Only listed slots are written.** Other slots, and every item the UI made,
   stay byte-identical. An item the tool wrote and no slot uses any more is
   removed; the UI's own leftovers are not.
-- **Folders** aren't supported. A slot holding one can be overwritten; `mode=export`
-  refuses to export it and names the slot (`ring=false` exports without the Ring).
+- **A folder is declared as a whole**: its label and its 1-4 items, in order. Changing
+  any of them replaces the tool's folder and removes the old one; a folder the UI made
+  is never deleted, only replaced in its slot. `mode=export` writes folders in this form,
+  and refuses (naming the slot) only a folder Options+ itself wouldn't make.
 - A profile may have only `actionsRing`: then nothing in settings.db changes and the
   executable doesn't have to be installed.
 
@@ -209,6 +214,6 @@ into the pack first.
 - Device settings: pointer speed, SmartShift sensitivity, scroll direction,
   haptic strength. These live only in the Global profile and are left untouched.
 - Macros and Smart Actions authoring (existing ones survive as `card`/`raw`,
-  on the Ring too), Ring folders, and Ring actions other than shortcuts and
-  system actions (open URL, run program, …: `raw` only).
+  on the Ring too), and Ring actions other than shortcuts, system actions and
+  folders (open URL, run program, …: `raw` only).
 - Other devices (keyboards, other mice), and macOS.

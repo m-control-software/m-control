@@ -5,6 +5,11 @@
 **Deciders:** Michał + Claude  
 **Tags:** tools, devices, generated-artifacts, safety
 
+> **Amended 2026-10-02:** folders are part of the spec (Decision 1, Decision 10),
+> after the F0–F7 and M1–M2 research in `actions-ring.md`. The user's own
+> Global Ring holds a folder, so without them neither a full backup nor a
+> per-app Ring copied from Global was possible.
+
 ## Context
 
 ADR-0011 made MX Master 4 buttons reproducible from `*.logi.json` packs. The
@@ -53,8 +58,18 @@ Extend **`logi-options`**, not a new tool.
      and `raw` (the verbatim reference plus its definition; the export fallback,
      not portable). A `shortcut` may carry a `label` (the text the Ring shows;
      K5), otherwise the Ring shows the shortcut.
-   - Folders are not supported: apply rejects them, export fails recoverably
-     naming the slot. A slot is never skipped silently.
+   - `folder` *(amended 2026-10-02)*: `{"folder": {"label": …, "items": [1–4
+     actions]}}`, items `shortcut`, `system` or `raw`. That is the shape
+     Options+ allows: a folder page shows 4 slots, holds only used controls
+     with no gaps, and can't hold a folder (F2–F4). A folder is declared as a
+     whole; its id derives from its content (label and items), like a
+     shortcut's (Decision 4), so a rename or an item change replaces the
+     tool's folder and collects the old action and page (Decision 6). The
+     page's `description` and the action's `groupName` vary with the UI's
+     language and version and are ignored when comparing, as the HKL is.
+   - A folder Options+ wouldn't make (no page, gaps, more than 4 items, a
+     folder inside) is refused by export, naming the slot. A slot is never
+     skipped silently.
 2. **Applications, per app as well as global.**
    - `{"global": true}` → LPS app `@_defaultwin`.
    - `{"executable": "x.exe"}` → plugin-less LPS app `x` (lower-case stem),
@@ -97,8 +112,10 @@ Extend **`logi-options`**, not a new tool.
    that the file is unchanged since the write, and that it decompiles to the
    specs. Whether an item fires is confirmed only on the device.
 10. **Export covers the Ring.** `mode=export` decompiles slots into `shortcut`,
-    `system` and `nothing`, and anything else into `raw`, so a hand-made Ring
-    can be adopted into a pack without loss (folders excepted, see 1).
+    `system`, `nothing` and `folder`, and anything else into `raw`, so a
+    hand-made Ring can be adopted into a pack without loss. Macros export as
+    `raw`; they are self-contained (M2), so a copy works in another app's Ring
+    (M1).
 
 ## Consequences
 
@@ -121,7 +138,7 @@ Extend **`logi-options`**, not a new tool.
 - ❌ `raw` Ring items (e.g. run program, which stores a path) don't port
 
 ### Neutral
-- ⚪ Folders and other `@Generic` actions (open URL, Easy-Switch, macros) can be
+- ⚪ Other `@Generic` actions (open URL, Easy-Switch) and authoring macros can be
   added later, each after its own controlled-change experiment
 
 ## Alternatives Considered

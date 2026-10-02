@@ -243,6 +243,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `%LOCALAPPDATA%\m-control\stream-deck\launchers`), and stale ones are
   removed. The result lists them as `launchers` and `removedLaunchers`.
 
+- **Actions Ring folders** (`logi-options`, ADR-0013 amended). A Ring slot can
+  hold `{"folder": {"label": …, "items": [1-4 actions]}}`, the shape Options+
+  allows (no folder inside a folder, no gaps). `mode=export` used to refuse any
+  Ring with a folder, and the Global Ring ships with one, so neither a full
+  backup nor a per-app Ring copied from Global was possible. Export now writes
+  folders, and their macros as `raw` copies that work in another app's Ring.
+
 - **A guardrail stops everything the tool started.** On a timeout (or the
   output/event caps) the runner used to stop only the tool process. On Windows
   that is TerminateProcess, which never reaches children, so yt-download's

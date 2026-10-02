@@ -264,25 +264,19 @@ suite('logi-options protocol', () => {
       );
     }, 60_000);
 
-    it('export refuses a folder naming the slot, and round-trips once it is gone', () => {
+    it('export writes the Global folder, and the export applies back in sync', () => {
       const out = path.join(root, 'exported', 'all.logi.json');
-      const refused = runTool({ mode: 'export', app: 'all' }, ring());
-      expect(refused.status).toBe(1);
-      expect(String(refused.error!.message)).toContain('slot right');
-      expect(String(refused.error!.message)).toContain('ring=false');
-      expect(
-        runTool({ mode: 'export', app: 'all', ring: 'false' }, ring()).status
-      ).toBe(0);
-
-      writePack('p', [
-        {
-          application: { global: true },
-          actionsRing: { right: { nothing: true } },
-        },
-      ]);
-      expect(runTool({}, ring()).status).toBe(0);
       const exp = runTool({ mode: 'export', app: 'all', out }, ring());
       expect(exp.status, JSON.stringify(exp.error)).toBe(0);
+      const pack = JSON.parse(fs.readFileSync(out, 'utf-8')) as {
+        profiles: Array<{
+          application: Record<string, unknown>;
+          actionsRing?: Record<string, { folder?: { label: string } }>;
+        }>;
+      };
+      const global = pack.profiles.find((p) => p.application.global);
+      expect(global?.actionsRing?.right?.folder?.label).toBe('Explore AI');
+
       const check = runTool(
         { check: 'true' },
         { ...ring(), 'logi-options.packDirs': [path.dirname(out)] }

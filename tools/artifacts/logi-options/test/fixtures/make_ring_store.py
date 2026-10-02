@@ -4,10 +4,10 @@
 
 The Global profile holds the UI-written evidence of ring-ui-written.json: the
 original 8 controls (R0), the UI's Ctrl+Shift+Esc item (R1) and its first K1
-item as orphans (R4: the UI never garbage-collects). The folder behind slot
-`right` and the two macros are synthetic stand-ins (their bodies were never
-captured); only their references are real. --install also writes a synthetic
-DefaultWin xliff (a few of the S1 names) so system actions resolve without LPS.
+item as orphans (R4: the UI never garbage-collects), and its own folder in slot
+`right` with the six macros (F0: the folder action and page as the UI wrote them,
+the macro bodies sanitized). --install also writes a synthetic DefaultWin xliff
+(a few of the S1 names) so system actions resolve without LPS.
 """
 from __future__ import annotations
 
@@ -40,18 +40,21 @@ def global_profile() -> dict:
     mode = doc["layout"]["layoutModes"][0]
     mode["modeName"] = "System"
     mode["workspaces"][0]["pressPages"][0]["controls"] = copy.deepcopy(EVIDENCE["r0_global_controls_before"])
+    # The Global Ring's own folder and macros as F0 recorded them (label, GUIDs, URLs and texts were
+    # replaced there; real-looking ones are filled back in so the file is a valid store).
     folder_ref = EVIDENCE["r0_global_controls_before"][2]["pressAction"]
-    macro_refs = [EVIDENCE["r0_global_controls_before"][i]["pressAction"] for i in (1, 4)]
-    folder = copy.deepcopy(EVIDENCE["k1_first_action_full"])  # synthetic: same envelope, folder template
-    folder.update(name=folder_ref, templateActionName=ring.FOLDER_TEMPLATE, displayName="Explore AI",
-                  superGroupName="@folder")
-    folder["actionParameters"]["parameters"] = {"$type": "Loupedeck.StringDictionaryNoCase, PluginApi",
-                                                "folderName": "FOLDERPAGE1"}
-    doc["layout"]["folderPages"] = [ring._page("FOLDERPAGE1", "Explore AI")]
-    doc["macroCommands"] = [{"$type": "Loupedeck.Service.MacroCommand, LoupedeckService",  # synthetic
-                             "name": ref[len(ring.MACRO):], "displayName": "New Note", "steps": []}
-                            for ref in macro_refs]
-    doc["profileActions"] = [folder, with_hkl(EVIDENCE["r1_global_slot1_ctrl_shift_esc"]["profileAction"]),
+    folder_guid = folder_ref.rsplit("___", 1)[1]
+    ring_macros = [EVIDENCE["r0_global_controls_before"][i]["pressAction"][len(ring.MACRO):] for i in (1, 4)]
+    folder_macros = [f"{n:032X}" for n in range(0xF1, 0xF5)]
+    f0 = json.loads(json.dumps(EVIDENCE["f0_global_folder"]).replace("<FOLDER GUID>", folder_guid)
+                    .replace("<label>", "Explore AI"))
+    for n, guid in enumerate(folder_macros, 1):
+        f0 = json.loads(json.dumps(f0).replace(f"<GUID {n}>", guid))
+    doc["layout"]["folderPages"] = [f0["folderPage"]]
+    bodies = [v for k, v in EVIDENCE["f0_macros_sanitized"].items() if not k.startswith("_")]
+    doc["macroCommands"] = [dict(copy.deepcopy(bodies[n % len(bodies)]), name=guid)
+                            for n, guid in enumerate(ring_macros + folder_macros)]
+    doc["profileActions"] = [f0["folderAction"], with_hkl(EVIDENCE["r1_global_slot1_ctrl_shift_esc"]["profileAction"]),
                              with_hkl(EVIDENCE["k1_first_action_full"])]
     return doc
 
