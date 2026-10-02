@@ -159,6 +159,8 @@ try {
         $pageGuids[$pageId] = Get-PageGuid -ProfileName $model.ProfileName -PageId $pageId
     }
 
+    $launchersDir = Get-DeckLaunchersDir -Override (Get-ConfigValue $config 'launchersDir')
+
     $runContext = @{
         ResolvedApps    = $apps.Resolved
         AppBundleIds    = $apps.BundleIds
@@ -168,6 +170,8 @@ try {
         Plugins         = $model.Plugins
         Palette         = $model.Palette
         PackDir         = $here
+        LaunchersDir    = $launchersDir
+        Launchers       = [ordered]@{}
     }
 
     # ---- 3. Build into staging ------------------------------------------
@@ -197,12 +201,20 @@ try {
                 pageCount = $built.Stats.Pages; keyCount = $built.Stats.Keys
                 missingApps = $apps.Missing
                 missingProfiles = $missingProfiles
+                launchers = @($runContext.Launchers.Keys)
                 installed = $false
             })
         } else {
+            # Launchers first: a profile whose keys point at missing launchers
+            # is worse than a leftover launcher. Stale ones go only after the
+            # new profile is in place, as the old one may still reference them.
+            Write-DeckLaunchers -Dir $launchersDir -Launchers $runContext.Launchers
+
             $installed = Install-DeckProfile -StagedBundleDir $built.BundleDir `
                 -ProfilesRoot $profilesRoot -Guid $built.Guid `
                 -BackupDir (Get-ConfigValue $config 'backupDir')
+
+            $staleLaunchers = @(Remove-StaleDeckLaunchers -Dir $launchersDir -Launchers $runContext.Launchers)
 
             Write-ToolResult -Payload ([ordered]@{
                 mode = 'generate'; ok = $true; profile = $model.ProfileName
@@ -212,6 +224,8 @@ try {
                 pageCount = $built.Stats.Pages; keyCount = $built.Stats.Keys
                 missingApps = $apps.Missing
                 missingProfiles = $missingProfiles
+                launchers = @($runContext.Launchers.Keys)
+                removedLaunchers = $staleLaunchers
                 installed = $true
             })
         }

@@ -72,7 +72,7 @@ drawing code there.
 | `app` | `app` (id in `apps`), `title`, `args` | Launches a resolved application |
 | `website` | `url` | Opens a URL or URI scheme (`ms-todo:`) |
 | `open` | `target` (command, path or URI) **or** `file` (pack-relative) | Stream Deck "Open"; use `file` for wrappers such as a hidden-window `.vbs` |
-| `script` | `script` (pack-relative `.ps1`), `title` | Runs the script with `pwsh -NoProfile -File` (needs the `pwsh` app) |
+| `script` | `script` (pack-relative `.ps1`), `title` | Runs the script in a new, visible `pwsh -NoProfile -File` window (needs the `pwsh` app). Built as an `Open` action on a generated `.vbs` launcher in `launchersDir`: Stream Deck's "Open Application" drops arguments on Windows and only focuses a running pwsh |
 | `hotkey` | `hotkeys`: up to 4 × `{ ctrl, shift, option, cmd, modifiers, native, qt, vkey }` | Sends a key combination |
 | `multimedia` | `index`: 0 play/pause, 1 next, 2 previous, 3 stop, 4 mute, 5 vol+, 6 vol− | Media keys |
 | `folder` | `page` | Opens another page (usually generated from `folder` instead) |

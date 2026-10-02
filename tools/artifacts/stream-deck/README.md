@@ -18,9 +18,10 @@ mctl run stream-deck              # build and install (close the Stream Deck app
 Options are `key=value` input, not flags: `--check` is swallowed by mctl and
 would install for real. `check` accepts `true/false`, `1/0`, `yes/no`, `on/off`.
 
-The result reports the profile GUID, packs and pages, key count, and anything
-that couldn't be resolved on this machine (`missingApps`, `missingProfiles`);
-after an install also the target path and the backup location.
+The result reports the profile GUID, packs and pages, key count, the `script`
+key launchers, and anything that couldn't be resolved on this machine
+(`missingApps`, `missingProfiles`); after an install also the target path, the
+backup location and any stale launchers removed (`removedLaunchers`).
 
 ## Config (`tools.stream-deck` in `~/.m-control/config.json`)
 
@@ -31,6 +32,7 @@ after an install also the target path and the backup location.
 | `profilesRoot` | no | Stream Deck profiles folder. Default `%APPDATA%\Elgato\StreamDeck\ProfilesV3` |
 | `deviceModel` | no | Which device to bind to when several are known |
 | `backupDir` | no | Where the previous profile is copied before replacement. Default `%TEMP%` |
+| `launchersDir` | no | Where the `.vbs` launchers for `script` keys are written on install (tool-owned; stale ones are deleted). Default `%LOCALAPPDATA%\m-control\stream-deck\launchers` |
 
 The manifest declares `timeoutMs: 120000`: a full generate-plus-install of a
 93-key profile measured ~21 s, too close to the 30 s default.

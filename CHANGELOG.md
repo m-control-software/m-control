@@ -233,6 +233,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`stream-deck` script keys run their script.** They were Stream Deck "Open
+  Application" actions on `pwsh.exe` with the script in `args`, which the app
+  ignores on Windows: a press opened a bare pwsh with the user's profile, or
+  only focused a pwsh window that was already open. A `script` key is now an
+  "Open" action on a generated `.vbs` launcher that starts a new, visible
+  `pwsh -NoProfile -File <script>`. Launchers are written on install to the new
+  optional `stream-deck.launchersDir` (default
+  `%LOCALAPPDATA%\m-control\stream-deck\launchers`), and stale ones are
+  removed. The result lists them as `launchers` and `removedLaunchers`.
+
 - **A guardrail stops everything the tool started.** On a timeout (or the
   output/event caps) the runner used to stop only the tool process. On Windows
   that is TerminateProcess, which never reaches children, so yt-download's

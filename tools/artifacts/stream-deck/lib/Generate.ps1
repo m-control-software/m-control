@@ -139,6 +139,49 @@ function Resolve-DeviceBlock {
            'connected so it creates a profile, then re-run - the device serial cannot be synthesised.')
 }
 
+function Get-DeckLaunchersDir {
+    <#
+        Where 'script' keys' .vbs launchers live. Tool-owned, outside any pack,
+        so a run never writes into a pack directory.
+    #>
+    [CmdletBinding()] param([string]$Override)
+    if (-not [string]::IsNullOrWhiteSpace($Override)) {
+        return [System.IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($Override))
+    }
+    return Join-Path $env:LOCALAPPDATA 'm-control\stream-deck\launchers'
+}
+
+function Write-DeckLaunchers {
+    <#
+        Writes every launcher the build registered. UTF-16 LE with a BOM: WSH
+        reads that as Unicode, whereas a BOM-less file is read in the ANSI
+        codepage and would mangle non-ASCII characters in paths.
+    #>
+    [CmdletBinding()] param([Parameter(Mandatory)][string]$Dir, [Parameter(Mandatory)]$Launchers)
+    New-Item -ItemType Directory -Path $Dir -Force | Out-Null
+    foreach ($path in $Launchers.Keys) {
+        [System.IO.File]::WriteAllText($path, $Launchers[$path], [System.Text.Encoding]::Unicode)
+    }
+}
+
+function Remove-StaleDeckLaunchers {
+    <# Deletes launchers no key of the installed profile refers to any more. #>
+    [CmdletBinding()] param([Parameter(Mandatory)][string]$Dir, [Parameter(Mandatory)]$Launchers)
+    if (-not (Test-Path -LiteralPath $Dir)) { return @() }
+    # By file name: every launcher lives in $Dir, and full paths can differ in
+    # form (8.3 short names vs long names) for the same file.
+    $keep = @{}
+    foreach ($path in $Launchers.Keys) { $keep[([System.IO.Path]::GetFileName($path)).ToLowerInvariant()] = $true }
+    $removed = @()
+    foreach ($f in Get-ChildItem -LiteralPath $Dir -File -Filter '*.vbs') {
+        if (-not $keep.ContainsKey($f.Name.ToLowerInvariant())) {
+            Remove-Item -LiteralPath $f.FullName -Force
+            $removed += $f.FullName
+        }
+    }
+    return $removed
+}
+
 function Get-DeckFontSize {
     <# Title width -> font size, in the app's 72px-key units. #>
     [CmdletBinding()] param([string]$Title)

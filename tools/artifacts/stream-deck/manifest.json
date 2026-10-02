@@ -14,7 +14,8 @@
   "optionalConfig": [
     "stream-deck.profilesRoot",
     "stream-deck.deviceModel",
-    "stream-deck.backupDir"
+    "stream-deck.backupDir",
+    "stream-deck.launchersDir"
   ],
   "tags": ["artifacts", "stream-deck", "generator", "devices"]
 }
