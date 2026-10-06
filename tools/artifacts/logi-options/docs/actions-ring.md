@@ -18,6 +18,16 @@ not Logitech cards, so it needs its own (small) compiler.
 Where this study and the ADR differ (v1 scope, action ids, drift equality), the
 ADR wins; "Proposed spec shape" below is the study's input to it.
 
+**Not yet verified on the device** (as of 2026-10-06; record each as an evidence row when done):
+
+1. Icons written by `mctl run logi-options` itself (so far only copied by hand, I1b): export, apply,
+   a second apply writes nothing, the Chrome Ring shows the macros' and folder's icons.
+2. The runner's process-tree stop on Windows: an apply that times out leaves the Options+ agent
+   running (its parent is not the tool), and a `yt-download` that times out leaves no `yt-dlp.exe`/`ffmpeg.exe`.
+3. The whole chain: Chrome Ring → "YT → mp3" (`chrome-bridge`, ADR-0014) → mp3 with tags; a `&list=` URL
+   saves one track; a second press while running is refused; a non-YouTube tab is refused; another app
+   in front shows the Global Ring.
+
 ## Q1 — Storage
 
 | Location | Holds | Changed by a Ring edit? |

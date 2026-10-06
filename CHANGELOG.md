@@ -233,6 +233,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Dev dependencies: 0 known vulnerabilities** (was 45 high, 24 moderate, all
+  in ESLint, typescript-eslint and Vitest, none in what mctl ships). Vitest
+  4.1.11; brace-expansion, js-yaml, flatted, picomatch, nanoid and
+  source-map-js re-resolved to patched releases within their existing ranges.
+  Supersedes Dependabot PRs #2 (flatted) and #3 (picomatch).
+
 - **`stream-deck` script keys run their script.** They were Stream Deck "Open
   Application" actions on `pwsh.exe` with the script in `args`, which the app
   ignores on Windows: a press opened a bare pwsh with the user's profile, or
